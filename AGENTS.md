@@ -11,6 +11,7 @@
 
 ## Frontend architecture
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
-- Render the reusable application shell around the root Outlet and keep each specified navigation destination as a separate leaf route, so deep links and route metadata stay valid.
-- Phase 1A route content uses disconnected states and null statistics, not backend calls or fabricated clinic records, because workflows are outside this phase.
+- Render the application shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`), keeping public and auth pages outside it and each navigation destination a separate leaf route.
+- Role area guards resolve access only from the signed-in user's `profiles` and `clinic_members` rows via `src/lib/access.ts`; they are navigation aids, RLS is the security boundary, and a stored clinic id is honoured only if it matches a verified membership.
 - Express healthcare colors through semantic CSS tokens and reuse shadcn primitives for interaction, so future modules share accessible visual foundations.
+- Workspace pages still show disconnected states and null statistics until each module is built, because no fabricated clinic records are allowed.
