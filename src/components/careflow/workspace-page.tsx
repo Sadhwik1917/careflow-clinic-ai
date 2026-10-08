@@ -15,7 +15,7 @@ const metrics: Record<AppRole, { label: string; icon: LucideIcon }[]> = {
 };
 
 export function WorkspacePage({ role, title, dashboard = false }: { role: AppRole; title: string; dashboard?: boolean }) {
-  if (!dashboard) return <><PageTitle title={title} description={`${roleLabels[role]} workspace`} actions={<StatusBadge>Preview</StatusBadge>} /><div className="border-t"><EmptyState title={`${title} workspace is not connected`} description="Live records and actions will be available in a later phase." icon={navigation[role].find(item => item.title === title)?.icon} /></div></>;
+  if (!dashboard) return <><PageTitle title={title} description={`${roleLabels[role]} workspace`} actions={<StatusBadge>Preview</StatusBadge>} /><div className="border-t"><EmptyState title={`${title} workspace is not connected`} description="Live records and actions will be available in a later phase." icon={navigation[role].find(item => item.title === title)?.icon ?? ClipboardCheck} /></div></>;
   const heading = role === "OWNER" ? "Clinic overview" : role === "PATIENT" ? "Your care overview" : role === "PLATFORM_ADMIN" ? "Platform overview" : role === "DOCTOR" ? "Clinical overview" : "Daily overview";
   const items = navigation[role].filter(item => item.group === "Workspace" && item.title !== "Dashboard").slice(0, 3);
   return <>
