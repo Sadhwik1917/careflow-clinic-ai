@@ -13,8 +13,8 @@
 - [x] Clinic setup form and "CAREFLOW AI × [Clinic Display Name]" branding.
 - [ ] Live signed-in clinic creation test — blocked: no test account exists yet.
 # Phase 1D — Clinic verification
-- [ ] Review exact migration SQL, storage policies, affected rules, tests (awaiting approval).
-- [ ] Apply migration + private bucket; verification pages; admin review; plan gate.
+- [x] Review exact migration SQL, storage policies, affected rules, tests (awaiting approval).
+- [x] Apply migration + private bucket; verification pages; admin review; plan gate.
 - [ ] Live upload/review/enrollment tests — blocked: no admin, no accounts, no payment provider.
-- [ ] Revised proposal: privilege audit, one-document rule, exact 33 policies, stronger submit, new create_first_clinic signature (awaiting approval).
-- [ ] Final checks: deletion/history rule, revoke private operational helper, full rolled-back dry run (awaiting review).
+- [x] Revised proposal: privilege audit, one-document rule, exact 33 policies, stronger submit, new create_first_clinic signature (awaiting approval).
+- [x] Final checks: deletion/history rule, revoke private operational helper, full rolled-back dry run (awaiting review).

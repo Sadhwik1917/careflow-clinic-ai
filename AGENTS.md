@@ -16,3 +16,4 @@
 - Express healthcare colors through semantic CSS tokens and reuse shadcn primitives for interaction, so future modules share accessible visual foundations.
 - Workspace pages still show disconnected states and null statistics until each module is built, because no fabricated clinic records are allowed.
 - Clinics are created only through the database function `create_first_clinic`, which derives the owner from the session and enforces eligibility; never insert clinics or OWNER memberships from the client, because the owner-protection trigger only trusts that function.
+- Clinic verification status lives only in `clinic_verifications`/`verification_events` and changes only through the submit/review database functions; owner area pages stay locked by `ownerGateRedirect` and restrictive RLS until `clinic_is_operational`, because owners can edit their own clinic row.
