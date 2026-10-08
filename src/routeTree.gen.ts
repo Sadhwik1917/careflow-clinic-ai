@@ -45,6 +45,13 @@ import { Route as StaffDashboardRouteImport } from './routes/staff.dashboard'
 import { Route as StaffPatientsRouteImport } from './routes/staff.patients'
 import { Route as StaffProfileRouteImport } from './routes/staff.profile'
 import { Route as StaffQueueRouteImport } from './routes/staff.queue'
+import { Route as ClinicAppointmentsIndexRouteImport } from './routes/clinic.appointments.index'
+import { Route as ClinicAppointmentsNewRouteImport } from './routes/clinic.appointments.new'
+import { Route as ClinicBillingIndexRouteImport } from './routes/clinic.billing.index'
+import { Route as ClinicBillingNewRouteImport } from './routes/clinic.billing.new'
+import { Route as ClinicPatientsIndexRouteImport } from './routes/clinic.patients.index'
+import { Route as ClinicPatientsPatientIdRouteImport } from './routes/clinic.patients.$patientId'
+import { Route as ClinicPatientsNewRouteImport } from './routes/clinic.patients.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -226,6 +233,41 @@ const StaffQueueRoute = StaffQueueRouteImport.update({
   path: '/staff/queue',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClinicAppointmentsIndexRoute = ClinicAppointmentsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClinicAppointmentsRoute,
+} as any)
+const ClinicAppointmentsNewRoute = ClinicAppointmentsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ClinicAppointmentsRoute,
+} as any)
+const ClinicBillingIndexRoute = ClinicBillingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClinicBillingRoute,
+} as any)
+const ClinicBillingNewRoute = ClinicBillingNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ClinicBillingRoute,
+} as any)
+const ClinicPatientsIndexRoute = ClinicPatientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClinicPatientsRoute,
+} as any)
+const ClinicPatientsPatientIdRoute = ClinicPatientsPatientIdRouteImport.update({
+  id: '/$patientId',
+  path: '/$patientId',
+  getParentRoute: () => ClinicPatientsRoute,
+} as any)
+const ClinicPatientsNewRoute = ClinicPatientsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ClinicPatientsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -236,11 +278,11 @@ export interface FileRoutesByFullPath {
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/clinic/ai': typeof ClinicAiRoute
-  '/clinic/appointments': typeof ClinicAppointmentsRoute
-  '/clinic/billing': typeof ClinicBillingRoute
+  '/clinic/appointments': typeof ClinicAppointmentsRouteWithChildren
+  '/clinic/billing': typeof ClinicBillingRouteWithChildren
   '/clinic/dashboard': typeof ClinicDashboardRoute
   '/clinic/doctors': typeof ClinicDoctorsRoute
-  '/clinic/patients': typeof ClinicPatientsRoute
+  '/clinic/patients': typeof ClinicPatientsRouteWithChildren
   '/clinic/queue': typeof ClinicQueueRoute
   '/clinic/reports': typeof ClinicReportsRoute
   '/clinic/settings': typeof ClinicSettingsRoute
@@ -264,6 +306,13 @@ export interface FileRoutesByFullPath {
   '/staff/patients': typeof StaffPatientsRoute
   '/staff/profile': typeof StaffProfileRoute
   '/staff/queue': typeof StaffQueueRoute
+  '/clinic/appointments/new': typeof ClinicAppointmentsNewRoute
+  '/clinic/billing/new': typeof ClinicBillingNewRoute
+  '/clinic/patients/$patientId': typeof ClinicPatientsPatientIdRoute
+  '/clinic/patients/new': typeof ClinicPatientsNewRoute
+  '/clinic/appointments/': typeof ClinicAppointmentsIndexRoute
+  '/clinic/billing/': typeof ClinicBillingIndexRoute
+  '/clinic/patients/': typeof ClinicPatientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -274,11 +323,8 @@ export interface FileRoutesByTo {
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/clinic/ai': typeof ClinicAiRoute
-  '/clinic/appointments': typeof ClinicAppointmentsRoute
-  '/clinic/billing': typeof ClinicBillingRoute
   '/clinic/dashboard': typeof ClinicDashboardRoute
   '/clinic/doctors': typeof ClinicDoctorsRoute
-  '/clinic/patients': typeof ClinicPatientsRoute
   '/clinic/queue': typeof ClinicQueueRoute
   '/clinic/reports': typeof ClinicReportsRoute
   '/clinic/settings': typeof ClinicSettingsRoute
@@ -302,6 +348,13 @@ export interface FileRoutesByTo {
   '/staff/patients': typeof StaffPatientsRoute
   '/staff/profile': typeof StaffProfileRoute
   '/staff/queue': typeof StaffQueueRoute
+  '/clinic/appointments/new': typeof ClinicAppointmentsNewRoute
+  '/clinic/billing/new': typeof ClinicBillingNewRoute
+  '/clinic/patients/$patientId': typeof ClinicPatientsPatientIdRoute
+  '/clinic/patients/new': typeof ClinicPatientsNewRoute
+  '/clinic/appointments': typeof ClinicAppointmentsIndexRoute
+  '/clinic/billing': typeof ClinicBillingIndexRoute
+  '/clinic/patients': typeof ClinicPatientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -313,11 +366,11 @@ export interface FileRoutesById {
   '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/admin/users': typeof AdminUsersRoute
   '/clinic/ai': typeof ClinicAiRoute
-  '/clinic/appointments': typeof ClinicAppointmentsRoute
-  '/clinic/billing': typeof ClinicBillingRoute
+  '/clinic/appointments': typeof ClinicAppointmentsRouteWithChildren
+  '/clinic/billing': typeof ClinicBillingRouteWithChildren
   '/clinic/dashboard': typeof ClinicDashboardRoute
   '/clinic/doctors': typeof ClinicDoctorsRoute
-  '/clinic/patients': typeof ClinicPatientsRoute
+  '/clinic/patients': typeof ClinicPatientsRouteWithChildren
   '/clinic/queue': typeof ClinicQueueRoute
   '/clinic/reports': typeof ClinicReportsRoute
   '/clinic/settings': typeof ClinicSettingsRoute
@@ -341,6 +394,13 @@ export interface FileRoutesById {
   '/staff/patients': typeof StaffPatientsRoute
   '/staff/profile': typeof StaffProfileRoute
   '/staff/queue': typeof StaffQueueRoute
+  '/clinic/appointments/new': typeof ClinicAppointmentsNewRoute
+  '/clinic/billing/new': typeof ClinicBillingNewRoute
+  '/clinic/patients/$patientId': typeof ClinicPatientsPatientIdRoute
+  '/clinic/patients/new': typeof ClinicPatientsNewRoute
+  '/clinic/appointments/': typeof ClinicAppointmentsIndexRoute
+  '/clinic/billing/': typeof ClinicBillingIndexRoute
+  '/clinic/patients/': typeof ClinicPatientsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -381,6 +441,13 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/clinic/appointments/new'
+    | '/clinic/billing/new'
+    | '/clinic/patients/$patientId'
+    | '/clinic/patients/new'
+    | '/clinic/appointments/'
+    | '/clinic/billing/'
+    | '/clinic/patients/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -391,11 +458,8 @@ export interface FileRouteTypes {
     | '/admin/subscriptions'
     | '/admin/users'
     | '/clinic/ai'
-    | '/clinic/appointments'
-    | '/clinic/billing'
     | '/clinic/dashboard'
     | '/clinic/doctors'
-    | '/clinic/patients'
     | '/clinic/queue'
     | '/clinic/reports'
     | '/clinic/settings'
@@ -419,6 +483,13 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/clinic/appointments/new'
+    | '/clinic/billing/new'
+    | '/clinic/patients/$patientId'
+    | '/clinic/patients/new'
+    | '/clinic/appointments'
+    | '/clinic/billing'
+    | '/clinic/patients'
   id:
     | '__root__'
     | '/'
@@ -457,6 +528,13 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/clinic/appointments/new'
+    | '/clinic/billing/new'
+    | '/clinic/patients/$patientId'
+    | '/clinic/patients/new'
+    | '/clinic/appointments/'
+    | '/clinic/billing/'
+    | '/clinic/patients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -468,11 +546,11 @@ export interface RootRouteChildren {
   AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ClinicAiRoute: typeof ClinicAiRoute
-  ClinicAppointmentsRoute: typeof ClinicAppointmentsRoute
-  ClinicBillingRoute: typeof ClinicBillingRoute
+  ClinicAppointmentsRoute: typeof ClinicAppointmentsRouteWithChildren
+  ClinicBillingRoute: typeof ClinicBillingRouteWithChildren
   ClinicDashboardRoute: typeof ClinicDashboardRoute
   ClinicDoctorsRoute: typeof ClinicDoctorsRoute
-  ClinicPatientsRoute: typeof ClinicPatientsRoute
+  ClinicPatientsRoute: typeof ClinicPatientsRouteWithChildren
   ClinicQueueRoute: typeof ClinicQueueRoute
   ClinicReportsRoute: typeof ClinicReportsRoute
   ClinicSettingsRoute: typeof ClinicSettingsRoute
@@ -752,8 +830,100 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clinic/appointments/': {
+      id: '/clinic/appointments/'
+      path: '/'
+      fullPath: '/clinic/appointments/'
+      preLoaderRoute: typeof ClinicAppointmentsIndexRouteImport
+      parentRoute: typeof ClinicAppointmentsRoute
+    }
+    '/clinic/appointments/new': {
+      id: '/clinic/appointments/new'
+      path: '/new'
+      fullPath: '/clinic/appointments/new'
+      preLoaderRoute: typeof ClinicAppointmentsNewRouteImport
+      parentRoute: typeof ClinicAppointmentsRoute
+    }
+    '/clinic/billing/': {
+      id: '/clinic/billing/'
+      path: '/'
+      fullPath: '/clinic/billing/'
+      preLoaderRoute: typeof ClinicBillingIndexRouteImport
+      parentRoute: typeof ClinicBillingRoute
+    }
+    '/clinic/billing/new': {
+      id: '/clinic/billing/new'
+      path: '/new'
+      fullPath: '/clinic/billing/new'
+      preLoaderRoute: typeof ClinicBillingNewRouteImport
+      parentRoute: typeof ClinicBillingRoute
+    }
+    '/clinic/patients/': {
+      id: '/clinic/patients/'
+      path: '/'
+      fullPath: '/clinic/patients/'
+      preLoaderRoute: typeof ClinicPatientsIndexRouteImport
+      parentRoute: typeof ClinicPatientsRoute
+    }
+    '/clinic/patients/$patientId': {
+      id: '/clinic/patients/$patientId'
+      path: '/$patientId'
+      fullPath: '/clinic/patients/$patientId'
+      preLoaderRoute: typeof ClinicPatientsPatientIdRouteImport
+      parentRoute: typeof ClinicPatientsRoute
+    }
+    '/clinic/patients/new': {
+      id: '/clinic/patients/new'
+      path: '/new'
+      fullPath: '/clinic/patients/new'
+      preLoaderRoute: typeof ClinicPatientsNewRouteImport
+      parentRoute: typeof ClinicPatientsRoute
+    }
   }
 }
+
+interface ClinicAppointmentsRouteChildren {
+  ClinicAppointmentsNewRoute: typeof ClinicAppointmentsNewRoute
+  ClinicAppointmentsIndexRoute: typeof ClinicAppointmentsIndexRoute
+}
+
+const ClinicAppointmentsRouteChildren: ClinicAppointmentsRouteChildren = {
+  ClinicAppointmentsNewRoute: ClinicAppointmentsNewRoute,
+  ClinicAppointmentsIndexRoute: ClinicAppointmentsIndexRoute,
+}
+
+const ClinicAppointmentsRouteWithChildren =
+  ClinicAppointmentsRoute._addFileChildren(ClinicAppointmentsRouteChildren)
+
+interface ClinicBillingRouteChildren {
+  ClinicBillingNewRoute: typeof ClinicBillingNewRoute
+  ClinicBillingIndexRoute: typeof ClinicBillingIndexRoute
+}
+
+const ClinicBillingRouteChildren: ClinicBillingRouteChildren = {
+  ClinicBillingNewRoute: ClinicBillingNewRoute,
+  ClinicBillingIndexRoute: ClinicBillingIndexRoute,
+}
+
+const ClinicBillingRouteWithChildren = ClinicBillingRoute._addFileChildren(
+  ClinicBillingRouteChildren,
+)
+
+interface ClinicPatientsRouteChildren {
+  ClinicPatientsPatientIdRoute: typeof ClinicPatientsPatientIdRoute
+  ClinicPatientsNewRoute: typeof ClinicPatientsNewRoute
+  ClinicPatientsIndexRoute: typeof ClinicPatientsIndexRoute
+}
+
+const ClinicPatientsRouteChildren: ClinicPatientsRouteChildren = {
+  ClinicPatientsPatientIdRoute: ClinicPatientsPatientIdRoute,
+  ClinicPatientsNewRoute: ClinicPatientsNewRoute,
+  ClinicPatientsIndexRoute: ClinicPatientsIndexRoute,
+}
+
+const ClinicPatientsRouteWithChildren = ClinicPatientsRoute._addFileChildren(
+  ClinicPatientsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -764,11 +934,11 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSubscriptionsRoute: AdminSubscriptionsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ClinicAiRoute: ClinicAiRoute,
-  ClinicAppointmentsRoute: ClinicAppointmentsRoute,
-  ClinicBillingRoute: ClinicBillingRoute,
+  ClinicAppointmentsRoute: ClinicAppointmentsRouteWithChildren,
+  ClinicBillingRoute: ClinicBillingRouteWithChildren,
   ClinicDashboardRoute: ClinicDashboardRoute,
   ClinicDoctorsRoute: ClinicDoctorsRoute,
-  ClinicPatientsRoute: ClinicPatientsRoute,
+  ClinicPatientsRoute: ClinicPatientsRouteWithChildren,
   ClinicQueueRoute: ClinicQueueRoute,
   ClinicReportsRoute: ClinicReportsRoute,
   ClinicSettingsRoute: ClinicSettingsRoute,
