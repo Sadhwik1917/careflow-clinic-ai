@@ -429,6 +429,7 @@ export type Database = {
           country: string
           created_at: string
           currency: string
+          display_name: string
           email: string | null
           id: string
           logo_url: string | null
@@ -450,6 +451,7 @@ export type Database = {
           country?: string
           created_at?: string
           currency?: string
+          display_name: string
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -471,6 +473,7 @@ export type Database = {
           country?: string
           created_at?: string
           currency?: string
+          display_name?: string
           email?: string | null
           id?: string
           logo_url?: string | null
@@ -1489,18 +1492,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_clinic_with_owner: {
+      create_first_clinic: {
         Args: {
           p_address?: string
           p_city?: string
-          p_clinic_code: string
-          p_country?: string
-          p_currency?: string
+          p_display_name: string
           p_email?: string
           p_name: string
           p_phone?: string
           p_state?: string
-          p_timezone?: string
         }
         Returns: string
       }
