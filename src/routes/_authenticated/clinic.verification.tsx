@@ -106,11 +106,11 @@ function Page() {
   return <>
     <PageTitle title="Clinic verification" description="Submit your clinic's details and documents for review by CAREFLOW." actions={<StatusBadge tone={status ? statusTone[status] : "neutral"}>{status ? statusLabel[status] : "Not started"}</StatusBadge>} />
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
-      {status === "PENDING_REVIEW" && <FormAlert tone="info">Your application is under review. Details and documents are locked until a decision is made.</FormAlert>}
+      {status === "PENDING_REVIEW" && <FormAlert tone="success">Your application is under review. Details and documents are locked until a decision is made.</FormAlert>}
       {status === "CHANGES_REQUESTED" && <FormAlert>Changes requested: {data.verification?.decision_reason}. Update the details or documents below and resubmit.</FormAlert>}
       {status === "REJECTED" && <FormAlert>Application rejected: {data.verification?.decision_reason}. You can correct it and apply again.</FormAlert>}
-      {status === "APPROVED" && <FormAlert tone="info">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
-      {message && <FormAlert tone={message.ok ? "info" : undefined}>{message.text}</FormAlert>}
+      {status === "APPROVED" && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
+      {message && <FormAlert tone={message.ok ? "success" : "error"}>{message.text}</FormAlert>}
 
       <section className="rounded-lg border bg-card p-5">
         <h2 className="text-base font-semibold">Clinic details</h2>

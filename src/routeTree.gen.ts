@@ -42,6 +42,7 @@ import { Route as AuthenticatedClinicQueueRouteImport } from './routes/_authenti
 import { Route as AuthenticatedClinicReportsRouteImport } from './routes/_authenticated/clinic.reports'
 import { Route as AuthenticatedClinicSettingsRouteImport } from './routes/_authenticated/clinic.settings'
 import { Route as AuthenticatedClinicStaffRouteImport } from './routes/_authenticated/clinic.staff'
+import { Route as AuthenticatedClinicVerificationRouteImport } from './routes/_authenticated/clinic.verification'
 import { Route as AuthenticatedDoctorAppointmentsRouteImport } from './routes/_authenticated/doctor.appointments'
 import { Route as AuthenticatedDoctorConsultationsRouteImport } from './routes/_authenticated/doctor.consultations'
 import { Route as AuthenticatedDoctorDashboardRouteImport } from './routes/_authenticated/doctor.dashboard'
@@ -249,6 +250,12 @@ const AuthenticatedClinicStaffRoute =
     path: '/staff',
     getParentRoute: () => AuthenticatedClinicRoute,
   } as any)
+const AuthenticatedClinicVerificationRoute =
+  AuthenticatedClinicVerificationRouteImport.update({
+    id: '/verification',
+    path: '/verification',
+    getParentRoute: () => AuthenticatedClinicRoute,
+  } as any)
 const AuthenticatedDoctorAppointmentsRoute =
   AuthenticatedDoctorAppointmentsRouteImport.update({
     id: '/appointments',
@@ -438,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -495,6 +503,7 @@ export interface FileRoutesByTo {
   '/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -557,6 +566,7 @@ export interface FileRoutesById {
   '/_authenticated/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/_authenticated/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/_authenticated/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/_authenticated/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/_authenticated/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/_authenticated/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/_authenticated/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -619,6 +629,7 @@ export interface FileRouteTypes {
     | '/clinic/reports'
     | '/clinic/settings'
     | '/clinic/staff'
+    | '/clinic/verification'
     | '/doctor/appointments'
     | '/doctor/consultations'
     | '/doctor/dashboard'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/clinic/reports'
     | '/clinic/settings'
     | '/clinic/staff'
+    | '/clinic/verification'
     | '/doctor/appointments'
     | '/doctor/consultations'
     | '/doctor/dashboard'
@@ -737,6 +749,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clinic/reports'
     | '/_authenticated/clinic/settings'
     | '/_authenticated/clinic/staff'
+    | '/_authenticated/clinic/verification'
     | '/_authenticated/doctor/appointments'
     | '/_authenticated/doctor/consultations'
     | '/_authenticated/doctor/dashboard'
@@ -1010,6 +1023,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClinicStaffRouteImport
       parentRoute: typeof AuthenticatedClinicRoute
     }
+    '/_authenticated/clinic/verification': {
+      id: '/_authenticated/clinic/verification'
+      path: '/verification'
+      fullPath: '/clinic/verification'
+      preLoaderRoute: typeof AuthenticatedClinicVerificationRouteImport
+      parentRoute: typeof AuthenticatedClinicRoute
+    }
     '/_authenticated/doctor/appointments': {
       id: '/_authenticated/doctor/appointments'
       path: '/appointments'
@@ -1281,6 +1301,7 @@ interface AuthenticatedClinicRouteChildren {
   AuthenticatedClinicReportsRoute: typeof AuthenticatedClinicReportsRoute
   AuthenticatedClinicSettingsRoute: typeof AuthenticatedClinicSettingsRoute
   AuthenticatedClinicStaffRoute: typeof AuthenticatedClinicStaffRoute
+  AuthenticatedClinicVerificationRoute: typeof AuthenticatedClinicVerificationRoute
 }
 
 const AuthenticatedClinicRouteChildren: AuthenticatedClinicRouteChildren = {
@@ -1296,6 +1317,7 @@ const AuthenticatedClinicRouteChildren: AuthenticatedClinicRouteChildren = {
   AuthenticatedClinicReportsRoute: AuthenticatedClinicReportsRoute,
   AuthenticatedClinicSettingsRoute: AuthenticatedClinicSettingsRoute,
   AuthenticatedClinicStaffRoute: AuthenticatedClinicStaffRoute,
+  AuthenticatedClinicVerificationRoute: AuthenticatedClinicVerificationRoute,
 }
 
 const AuthenticatedClinicRouteWithChildren =
