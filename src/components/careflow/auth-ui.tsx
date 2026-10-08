@@ -44,7 +44,6 @@ export function FormAlert({ tone = "error", children }: { tone?: "error" | "succ
 }
 
 export function PublicLayout({ children }: { children: ReactNode }) {
-  const { session, ready } = useAuth();
   return <div className="flex min-h-screen flex-col bg-background">
     <header className="border-b bg-card"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-8">
       <Link to="/" aria-label="CAREFLOW AI home"><CareflowBrand /></Link>
@@ -52,7 +51,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         <Button asChild variant="ghost" size="sm"><Link to="/pricing">Pricing</Link></Button>
         <Button asChild variant="ghost" size="sm"><Link to="/about">About</Link></Button>
         <Button asChild variant="ghost" size="sm"><Link to="/contact">Contact</Link></Button>
-        {ready && session ? <Button asChild size="sm"><Link to="/workspace">Open workspace</Link></Button> : <><Button asChild variant="outline" size="sm"><Link to="/login">Sign in</Link></Button><Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/signup">Create account</Link></Button></>}
+        <AuthActions size="sm" />
       </nav>
     </div></header>
     <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 md:px-8 md:py-16">{children}</main>
@@ -62,4 +61,18 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 
 export function CenteredPanel({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen flex-col bg-background"><header className="px-4 py-5 md:px-8"><CareflowBrand /></header><main id="main-content" className="flex flex-1 justify-center px-4 pb-16 pt-6"><div className="w-full max-w-xl">{children}</div></main></div>;
+}
+
+/**
+ * Session-aware public actions. Reuses the single AuthProvider state; renders a blank placeholder until the
+ * stored session is known so signed-in users never see a flash of "Sign in". "Open workspace" goes to
+ * /workspace, which applies the existing access resolution (auto-enter, picker, or no-access message).
+ */
+export function AuthActions({ size = "sm" }: { size?: "sm" | "lg" }) {
+  const { session, ready } = useAuth();
+  if (!ready) return <span aria-hidden="true" className={size === "lg" ? "inline-block h-10 w-40" : "inline-block h-8 w-28"} />;
+  if (session) return <Button asChild size={size}><Link to="/workspace">Open workspace</Link></Button>;
+  return size === "lg"
+    ? <><Button asChild size="lg"><Link to="/signup">Create account</Link></Button><Button asChild size="lg" variant="outline"><Link to="/login">Sign in</Link></Button></>
+    : <><Button asChild variant="outline" size="sm"><Link to="/login">Sign in</Link></Button><Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/signup">Create account</Link></Button></>;
 }
