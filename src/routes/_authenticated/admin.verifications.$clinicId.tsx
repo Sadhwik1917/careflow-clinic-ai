@@ -22,8 +22,8 @@ const detailQuery = (clinicId: string) => queryOptions({
       supabase.from("verification_events").select("id, cycle, event_type, reason, created_at, actor:profiles(display_name)").eq("clinic_id", clinicId).order("created_at", { ascending: false }),
     ]);
     const err = clinic.error ?? ver.error ?? docs.error ?? events.error;
-    if (err) throw new Error("We couldn't load this application.");
-    return { clinic: clinic.data, verification: ver.data, docs: docs.data ?? [], events: events.data ?? [] };
+    if (err || !clinic.data) throw new Error("We couldn't load this application.");
+    return { clinic: clinic.data!, verification: ver.data, docs: docs.data ?? [], events: events.data ?? [] };
   },
 });
 

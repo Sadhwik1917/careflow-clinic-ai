@@ -22,8 +22,8 @@ const verificationQuery = (clinicId: string) => queryOptions({
       supabase.from("verification_events").select("id, cycle, event_type, reason, created_at").eq("clinic_id", clinicId).order("created_at", { ascending: false }),
     ]);
     const err = clinic.error ?? ver.error ?? reqs.error ?? docs.error ?? events.error;
-    if (err) throw new Error("We couldn't load your verification. Please try again.");
-    return { clinic: clinic.data, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [] };
+    if (err || !clinic.data) throw new Error("We couldn't load your verification. Please try again.");
+    return { clinic: clinic.data!, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [] };
   },
 });
 
