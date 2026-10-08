@@ -12,7 +12,7 @@ export type AccessMembership = {
   clinic_id: string;
   role: MemberRole;
   status: Database["public"]["Enums"]["member_status"];
-  clinic: { id: string; name: string; status: Database["public"]["Enums"]["clinic_status"] } | null;
+  clinic: { id: string; name: string; display_name: string; status: Database["public"]["Enums"]["clinic_status"] } | null;
 };
 export type UserAccess = { userId: string; email: string | null; profile: AccessProfile | null; memberships: AccessMembership[] };
 
@@ -21,7 +21,7 @@ export type UserAccess = { userId: string; email: string | null; profile: Access
 export async function fetchUserAccess(userId: string, email: string | null): Promise<UserAccess> {
   const [profileResult, membershipResult] = await Promise.all([
     supabase.from("profiles").select("id, display_name, platform_role, status").eq("id", userId).maybeSingle(),
-    supabase.from("clinic_members").select("id, clinic_id, role, status, clinic:clinics(id, name, status)").eq("user_id", userId),
+    supabase.from("clinic_members").select("id, clinic_id, role, status, clinic:clinics(id, name, display_name, status)").eq("user_id", userId),
   ]);
   if (profileResult.error) throw new Error("We couldn't load your profile. Please try again.");
   if (membershipResult.error) throw new Error("We couldn't load your clinic memberships. Please try again.");
@@ -46,7 +46,7 @@ export type Workspace = { key: string; role: AppRole; clinicId: string | null; l
 export function availableWorkspaces(access: UserAccess): Workspace[] {
   const list: Workspace[] = [];
   if (isPlatformAdmin(access)) list.push({ key: "admin", role: "PLATFORM_ADMIN", clinicId: null, label: "Platform administration" });
-  for (const m of activeMemberships(access)) list.push({ key: m.id, role: m.role, clinicId: m.clinic_id, label: m.clinic?.name ?? "Clinic" });
+  for (const m of activeMemberships(access)) list.push({ key: m.id, role: m.role, clinicId: m.clinic_id, label: m.clinic?.display_name || m.clinic?.name || "Clinic" });
   return list;
 }
 
