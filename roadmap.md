@@ -8,3 +8,7 @@
 - [x] Access resolution from profiles + clinic_members; role area guards, workspace picker, clinic selection.
 - [x] Public pages: /, /pricing, /about, /contact.
 - [ ] End-to-end signed-in test — blocked: no test accounts / memberships exist yet.
+# Phase 1C
+- [x] Secure first-clinic creation in the database (eligibility, unique code, display name, owner rule).
+- [x] Clinic setup form and "CAREFLOW AI × [Clinic Display Name]" branding.
+- [ ] Live signed-in clinic creation test — blocked: no test account exists yet.

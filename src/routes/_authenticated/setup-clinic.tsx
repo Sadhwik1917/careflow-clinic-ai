@@ -49,8 +49,9 @@ function SetupClinic() {
     setErrors(v); setFailure(null);
     if (Object.keys(v).length) return;
     inFlight.current = true; setSubmitting(true);
-    const t = (s: string) => s.trim() || undefined;
-    const { data, error } = await supabase.rpc("create_first_clinic", { p_display_name: form.displayName.trim(), p_name: form.name.trim(), p_phone: t(form.phone), p_email: t(form.email), p_address: t(form.address), p_city: t(form.city), p_state: t(form.state) });
+    const args: { p_display_name: string; p_name: string; p_phone?: string; p_email?: string; p_address?: string; p_city?: string; p_state?: string } = { p_display_name: form.displayName.trim(), p_name: form.name.trim() };
+    for (const [k, v] of [["p_phone", form.phone], ["p_email", form.email], ["p_address", form.address], ["p_city", form.city], ["p_state", form.state]] as const) if (v.trim()) args[k] = v.trim();
+    const { data, error } = await supabase.rpc("create_first_clinic", args);
     if (error || !data) { setFailure(clinicSetupErrorMessage(error?.message)); inFlight.current = false; setSubmitting(false); return; }
     setSelectedClinicId(data);
     await queryClient.invalidateQueries({ queryKey: accessQueryOptions(user.id, user.email ?? null).queryKey });
