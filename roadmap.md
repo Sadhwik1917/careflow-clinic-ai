@@ -17,3 +17,4 @@
 - [ ] Apply migration + private bucket; verification pages; admin review; plan gate.
 - [ ] Live upload/review/enrollment tests — blocked: no admin, no accounts, no payment provider.
 - [ ] Revised proposal: privilege audit, one-document rule, exact 33 policies, stronger submit, new create_first_clinic signature (awaiting approval).
+- [ ] Final checks: deletion/history rule, revoke private operational helper, full rolled-back dry run (awaiting review).
