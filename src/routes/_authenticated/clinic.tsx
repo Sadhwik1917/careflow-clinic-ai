@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/clinic")({
       ]);
       // Any read failure counts as "not operational": never fail open.
       const target = ownerGateRedirect(location.pathname, v.data?.status ?? null, op.data === true);
-      if (target) throw redirect({ to: target });
+      if (target) throw redirect({ to: target as "/clinic/verification" | "/clinic/plans" });
     }
     return ctx;
   },
