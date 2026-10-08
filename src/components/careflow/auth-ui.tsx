@@ -44,7 +44,6 @@ export function FormAlert({ tone = "error", children }: { tone?: "error" | "succ
 }
 
 export function PublicLayout({ children }: { children: ReactNode }) {
-  const { session, ready } = useAuth();
   return <div className="flex min-h-screen flex-col bg-background">
     <header className="border-b bg-card"><div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-8">
       <Link to="/" aria-label="CAREFLOW AI home"><CareflowBrand /></Link>
