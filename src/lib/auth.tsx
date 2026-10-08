@@ -42,7 +42,7 @@ export function useSignOut() {
 }
 
 /** Converts Supabase Auth errors into plain messages without exposing internals. */
-export function authErrorMessage(error: { message?: string; code?: string; status?: number } | null | undefined): string {
+export function authErrorMessage(error: { message?: string | undefined; code?: string | undefined; status?: number | undefined } | null | undefined): string {
   if (!error) return "Something went wrong. Please try again.";
   const code = error.code ?? "";
   const msg = (error.message ?? "").toLowerCase();

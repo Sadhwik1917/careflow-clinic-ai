@@ -11,7 +11,7 @@ type ClinicRole = Exclude<AppRole, "PLATFORM_ADMIN">;
 const clinicRoles: ClinicRole[] = ["OWNER", "DOCTOR", "STAFF", "PATIENT"];
 
 export const Route = createFileRoute("/_authenticated/select-clinic")({
-  validateSearch: (s: Record<string, unknown>): { role: ClinicRole; redirect?: string } => ({ role: clinicRoles.includes(s.role as ClinicRole) ? (s.role as ClinicRole) : "OWNER", redirect: safeRedirect(s.redirect) }),
+  validateSearch: (s: Record<string, unknown>): { role: ClinicRole; redirect?: string | undefined } => ({ role: clinicRoles.includes(s["role"] as ClinicRole) ? (s["role"] as ClinicRole) : "OWNER", redirect: safeRedirect(s["redirect"]) }),
   head: () => ({ meta: [{ title: "Choose a clinic — CAREFLOW AI" }, { name: "description", content: "Choose which clinic to work in." }, { property: "og:title", content: "Choose a clinic — CAREFLOW AI" }, { property: "og:description", content: "Choose which clinic to work in." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   beforeLoad: ({ context }) => context.queryClient.ensureQueryData(accessQueryOptions(context.user.id, context.user.email ?? null)).then(() => undefined),
   pendingComponent: AreaPending,

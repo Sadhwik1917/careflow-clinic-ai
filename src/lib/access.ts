@@ -71,7 +71,7 @@ export function decideAreaAccess(access: UserAccess, role: AppRole, selectedClin
   if (role === "PLATFORM_ADMIN") return isPlatformAdmin(access) ? { kind: "allow", membership: null } : { kind: "denied" };
   const options = activeMemberships(access).filter(m => m.role === memberRoleForArea[role]);
   if (options.length === 0) return { kind: "denied" };
-  if (options.length === 1) return { kind: "allow", membership: options[0] };
+  if (options.length === 1) return { kind: "allow", membership: options[0] ?? null };
   const selected = options.find(m => m.clinic_id === selectedClinicId);
   return selected ? { kind: "allow", membership: selected } : { kind: "select", options };
 }
@@ -83,8 +83,8 @@ export function safeRedirect(value: unknown): string | undefined {
   return value;
 }
 
-export function redirectSearch(search: Record<string, unknown>) {
-  return { redirect: safeRedirect(search.redirect) };
+export function redirectSearch(search: Record<string, unknown>): { redirect?: string | undefined } {
+  return { redirect: safeRedirect(search["redirect"]) };
 }
 
 type GuardContext = { queryClient: import("@tanstack/react-query").QueryClient; user: { id: string; email?: string | null } };
@@ -92,7 +92,7 @@ export async function guardArea(role: AppRole, context: GuardContext, href: stri
   const access = await context.queryClient.ensureQueryData(accessQueryOptions(context.user.id, context.user.email ?? null));
   const decision = decideAreaAccess(access, role, getSelectedClinicId());
   if (decision.kind === "denied") throw redirect({ to: "/workspace", search: { denied: role } });
-  if (decision.kind === "select") throw redirect({ to: "/select-clinic", search: { role, redirect: href } });
+  if (decision.kind === "select") throw redirect({ to: "/select-clinic", search: { role: role as Exclude<AppRole, "PLATFORM_ADMIN">, redirect: href } });
   if (decision.membership) setSelectedClinicId(decision.membership.clinic_id);
   return { access, area: role, membership: decision.membership };
 }

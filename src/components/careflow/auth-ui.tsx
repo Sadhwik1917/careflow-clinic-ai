@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 
-export function AuthLayout({ title, description, children, footer }: { title: string; description?: string; children: ReactNode; footer?: ReactNode }) {
+export function AuthLayout({ title, description, children, footer }: { title: string; description?: string | undefined; children: ReactNode; footer?: ReactNode }) {
   return <div className="flex min-h-screen flex-col bg-background">
     <header className="px-4 py-5 md:px-8"><Link to="/" aria-label="CAREFLOW AI home" className="inline-flex"><CareflowBrand /></Link></header>
     <main id="main-content" className="flex flex-1 items-start justify-center px-4 pb-16 pt-6 md:items-center md:pt-0">
@@ -21,7 +21,7 @@ export function AuthLayout({ title, description, children, footer }: { title: st
   </div>;
 }
 
-export function FormField({ id, label, error, children, hint }: { id: string; label: string; error?: string; hint?: string; children: ReactNode }) {
+export function FormField({ id, label, error, children, hint }: { id: string; label: string; error?: string | undefined; hint?: string | undefined; children: ReactNode }) {
   return <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
     {children}
@@ -30,7 +30,7 @@ export function FormField({ id, label, error, children, hint }: { id: string; la
   </div>;
 }
 
-export function PasswordInput({ id, value, onChange, error, autoComplete, hint }: { id: string; value: string; onChange: (v: string) => void; error?: string; autoComplete: string; hint?: string }) {
+export function PasswordInput({ id, value, onChange, error, autoComplete, hint }: { id: string; value: string; onChange: (v: string) => void; error?: string | undefined; autoComplete: string; hint?: string | undefined }) {
   const [visible, setVisible] = useState(false);
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return <div className="relative">

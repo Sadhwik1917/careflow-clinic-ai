@@ -12,13 +12,13 @@ import { roleLabels, type AppRole } from "@/lib/navigation";
 const roles: AppRole[] = ["PLATFORM_ADMIN", "OWNER", "DOCTOR", "STAFF", "PATIENT"];
 
 export const Route = createFileRoute("/_authenticated/workspace")({
-  validateSearch: (s: Record<string, unknown>): { denied?: AppRole } => ({ denied: roles.includes(s.denied as AppRole) ? (s.denied as AppRole) : undefined }),
+  validateSearch: (s: Record<string, unknown>): { denied?: AppRole | undefined } => ({ denied: roles.includes(s["denied"] as AppRole) ? (s["denied"] as AppRole) : undefined }),
   head: () => ({ meta: [{ title: "Your workspaces — CAREFLOW AI" }, { name: "description", content: "Choose a CAREFLOW AI workspace." }, { property: "og:title", content: "Your workspaces — CAREFLOW AI" }, { property: "og:description", content: "Choose a CAREFLOW AI workspace." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   beforeLoad: async ({ context, search }) => {
     const access = await context.queryClient.ensureQueryData(accessQueryOptions(context.user.id, context.user.email ?? null));
     const list = availableWorkspaces(access);
     // Auto-enter only when exactly one verified workspace exists; never pick between several.
-    if (!search.denied && list.length === 1) { setSelectedClinicId(list[0].clinicId); throw redirect({ to: dashboardForRole[list[0].role] }); }
+    if (!search.denied && list.length === 1 && list[0]) { setSelectedClinicId(list[0].clinicId); throw redirect({ to: dashboardForRole[list[0].role] }); }
   },
   pendingComponent: AreaPending,
   errorComponent: AreaError,
