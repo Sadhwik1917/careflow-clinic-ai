@@ -27,7 +27,7 @@ function LoginPage() {
   const { session, ready } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<Partial<Record<"email" | "password", string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<"email" | "password", string | undefined>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 

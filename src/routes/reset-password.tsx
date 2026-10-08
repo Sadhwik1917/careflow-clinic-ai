@@ -20,7 +20,7 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"checking" | "ready" | "invalid">("checking");
   const [values, setValues] = useState({ password: "", confirm: "" });
-  const [errors, setErrors] = useState<{ password?: string; confirm?: string }>({});
+  const [errors, setErrors] = useState<{ password?: string | undefined; confirm?: string | undefined }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 

@@ -29,7 +29,7 @@ function SignupPage() {
   const navigate = useNavigate();
   const { session, ready } = useAuth();
   const [values, setValues] = useState<Record<Field, string>>({ name: "", email: "", password: "", confirm: "" });
-  const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<Field, string | undefined>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
