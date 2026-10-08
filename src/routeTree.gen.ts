@@ -23,6 +23,7 @@ import { Route as AuthenticatedClinicRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDoctorRouteImport } from './routes/_authenticated/doctor'
 import { Route as AuthenticatedPatientRouteImport } from './routes/_authenticated/patient'
 import { Route as AuthenticatedSelectClinicRouteImport } from './routes/_authenticated/select-clinic'
+import { Route as AuthenticatedSetupClinicRouteImport } from './routes/_authenticated/setup-clinic'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
@@ -136,6 +137,12 @@ const AuthenticatedSelectClinicRoute =
   AuthenticatedSelectClinicRouteImport.update({
     id: '/select-clinic',
     path: '/select-clinic',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSetupClinicRoute =
+  AuthenticatedSetupClinicRouteImport.update({
+    id: '/setup-clinic',
+    path: '/setup-clinic',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedStaffRoute = AuthenticatedStaffRouteImport.update({
@@ -412,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/doctor': typeof AuthenticatedDoctorRouteWithChildren
   '/patient': typeof AuthenticatedPatientRouteWithChildren
   '/select-clinic': typeof AuthenticatedSelectClinicRoute
+  '/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -471,6 +479,7 @@ export interface FileRoutesByTo {
   '/doctor': typeof AuthenticatedDoctorRouteWithChildren
   '/patient': typeof AuthenticatedPatientRouteWithChildren
   '/select-clinic': typeof AuthenticatedSelectClinicRoute
+  '/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -529,6 +538,7 @@ export interface FileRoutesById {
   '/_authenticated/doctor': typeof AuthenticatedDoctorRouteWithChildren
   '/_authenticated/patient': typeof AuthenticatedPatientRouteWithChildren
   '/_authenticated/select-clinic': typeof AuthenticatedSelectClinicRoute
+  '/_authenticated/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRouteWithChildren
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/doctor'
     | '/patient'
     | '/select-clinic'
+    | '/setup-clinic'
     | '/staff'
     | '/workspace'
     | '/admin/analytics'
@@ -649,6 +660,7 @@ export interface FileRouteTypes {
     | '/doctor'
     | '/patient'
     | '/select-clinic'
+    | '/setup-clinic'
     | '/staff'
     | '/workspace'
     | '/admin/analytics'
@@ -706,6 +718,7 @@ export interface FileRouteTypes {
     | '/_authenticated/doctor'
     | '/_authenticated/patient'
     | '/_authenticated/select-clinic'
+    | '/_authenticated/setup-clinic'
     | '/_authenticated/staff'
     | '/_authenticated/workspace'
     | '/_authenticated/admin/analytics'
@@ -862,6 +875,13 @@ declare module '@tanstack/react-router' {
       path: '/select-clinic'
       fullPath: '/select-clinic'
       preLoaderRoute: typeof AuthenticatedSelectClinicRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/setup-clinic': {
+      id: '/_authenticated/setup-clinic'
+      path: '/setup-clinic'
+      fullPath: '/setup-clinic'
+      preLoaderRoute: typeof AuthenticatedSetupClinicRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/staff': {
@@ -1353,6 +1373,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDoctorRoute: typeof AuthenticatedDoctorRouteWithChildren
   AuthenticatedPatientRoute: typeof AuthenticatedPatientRouteWithChildren
   AuthenticatedSelectClinicRoute: typeof AuthenticatedSelectClinicRoute
+  AuthenticatedSetupClinicRoute: typeof AuthenticatedSetupClinicRoute
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRouteWithChildren
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
 }
@@ -1363,6 +1384,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDoctorRoute: AuthenticatedDoctorRouteWithChildren,
   AuthenticatedPatientRoute: AuthenticatedPatientRouteWithChildren,
   AuthenticatedSelectClinicRoute: AuthenticatedSelectClinicRoute,
+  AuthenticatedSetupClinicRoute: AuthenticatedSetupClinicRoute,
   AuthenticatedStaffRoute: AuthenticatedStaffRouteWithChildren,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
 }

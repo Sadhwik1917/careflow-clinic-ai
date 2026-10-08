@@ -1,0 +1,1 @@
+ALTER FUNCTION public.create_first_clinic(text,text,text,text,text,text,text) SECURITY INVOKER;

@@ -31,7 +31,7 @@ function SelectClinic() {
   return <CenteredPanel>
     <h1 className="text-2xl font-semibold">Choose a clinic</h1>
     <p className="mt-2 text-sm text-muted-foreground">You're a {roleLabels[role].toLowerCase()} in more than one clinic. Choose where to work.</p>
-    <ul className="mt-6 space-y-3">{options.map(m => <li key={m.id}><Button variant="outline" className="h-auto w-full justify-between gap-4 bg-card p-4 text-left shadow-none" onClick={() => { setSelectedClinicId(m.clinic_id); void navigate({ to: target }); }}><span className="flex items-center gap-3"><Building2 className="size-5 text-primary" /><span className="font-medium">{m.clinic?.name}</span></span><ArrowUpRight className="text-muted-foreground" /></Button></li>)}</ul>
+    <ul className="mt-6 space-y-3">{options.map(m => <li key={m.id}><Button variant="outline" className="h-auto w-full justify-between gap-4 bg-card p-4 text-left shadow-none" onClick={() => { setSelectedClinicId(m.clinic_id); void navigate({ to: target }); }}><span className="flex items-center gap-3"><Building2 className="size-5 text-primary" /><span className="font-medium">{m.clinic?.display_name || m.clinic?.name}</span></span><ArrowUpRight className="text-muted-foreground" /></Button></li>)}</ul>
     {options.length === 0 && <p className="mt-6 text-sm text-muted-foreground">No active clinics found for this role.</p>}
     <Button variant="ghost" asChild className="mt-6"><Link to="/workspace">All workspaces</Link></Button>
   </CenteredPanel>;

@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 
-function WorkspaceSidebar({ role, pathname, contextLabel }: { role: AppRole; pathname: string; contextLabel: string }) {
+function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: AppRole; pathname: string; contextLabel: string; clinicName: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const items = navigation[role];
   return <Sidebar collapsible="icon" className="border-sidebar-border">
     <SidebarHeader className="gap-6 px-4 py-6 group-data-[collapsible=icon]:px-1.5">
-      <div className="flex items-center justify-between"><CareflowBrand compact={state === "collapsed" && !isMobile} />{isMobile && <Button size="icon" variant="ghost" aria-label="Close navigation" onClick={() => setOpenMobile(false)}><X /></Button>}</div>
+      <div className="flex items-center justify-between"><CareflowBrand compact={state === "collapsed" && !isMobile} clinicName={clinicName} />{isMobile && <Button size="icon" variant="ghost" aria-label="Close navigation" onClick={() => setOpenMobile(false)}><X /></Button>}</div>
       <div className="flex items-center gap-3 rounded-md border border-sidebar-border px-3 py-3 group-data-[collapsible=icon]:hidden"><Building2 className="size-5 shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-medium">{contextLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">{roleLabels[role]}</p></div></div>
     </SidebarHeader>
     <SidebarContent className="gap-3 px-2 group-data-[collapsible=icon]:px-0">
@@ -36,13 +36,14 @@ export function ApplicationShell({ role, access, membership, children }: { role:
   const navigate = useNavigate();
   const signOut = useSignOut();
   const workspaces = availableWorkspaces(access);
+  const clinicName = role === "PLATFORM_ADMIN" ? null : membership?.clinic?.display_name ?? null;
   const currentKey = role === "PLATFORM_ADMIN" ? "admin" : membership?.id ?? "";
-  const contextLabel = role === "PLATFORM_ADMIN" ? "Platform administration" : membership?.clinic?.name ?? "Clinic";
+  const contextLabel = role === "PLATFORM_ADMIN" ? "Platform administration" : membership?.clinic?.display_name || membership?.clinic?.name || "Clinic";
   const currentPage = navigation[role].find(item => pathname === item.path || pathname.startsWith(`${item.path}/`))?.title ?? "Dashboard";
   const name = access.profile?.display_name || access.email || "Signed in";
-  return <SidebarProvider><a href="#main-content" className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a><WorkspaceSidebar role={role} pathname={pathname} contextLabel={contextLabel} /><div className="flex min-w-0 flex-1 flex-col">
+  return <SidebarProvider><a href="#main-content" className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a><WorkspaceSidebar role={role} pathname={pathname} contextLabel={contextLabel} clinicName={clinicName} /><div className="flex min-w-0 flex-1 flex-col">
     <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 md:px-8">
-      <div className="flex items-center gap-3"><SidebarTrigger className="size-10 text-muted-foreground" title="Toggle navigation" /><div className="hidden items-center gap-2 text-sm sm:flex"><span className="max-w-48 truncate text-muted-foreground">{contextLabel}</span><ChevronRight className="size-3 text-muted-foreground" /><span className="font-medium">{currentPage}</span></div><CareflowBrand className="sm:hidden" compact /></div>
+      <div className="flex min-w-0 items-center gap-3"><SidebarTrigger className="size-10 text-muted-foreground" title="Toggle navigation" /><div className="hidden items-center gap-2 text-sm sm:flex"><span className="max-w-48 truncate text-muted-foreground">{contextLabel}</span><ChevronRight className="size-3 text-muted-foreground" /><span className="font-medium">{currentPage}</span></div><CareflowBrand className="min-w-0 sm:hidden" clinicName={clinicName} /></div>
       <div className="flex items-center gap-2">
         {workspaces.length > 1 && <Select value={currentKey} onValueChange={key => { const w = workspaces.find(x => x.key === key); if (!w) return; setSelectedClinicId(w.clinicId); void navigate({ to: dashboardForRole[w.role] }); }}><SelectTrigger aria-label="Switch workspace" className="w-52 bg-card shadow-none"><SelectValue /></SelectTrigger><SelectContent>{workspaces.map(w => <SelectItem key={w.key} value={w.key}>{w.label} · {roleLabels[w.role]}</SelectItem>)}</SelectContent></Select>}
         <span className="hidden max-w-44 truncate text-sm text-muted-foreground lg:inline" title={name}>{name}</span>
