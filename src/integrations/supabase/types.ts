@@ -241,6 +241,73 @@ export type Database = {
           },
         ]
       }
+      clinic_documents: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string
+          requirement_id: string
+          review_note: string | null
+          review_status: Database["public"]["Enums"]["document_review_status"]
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type: string
+          requirement_id: string
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["document_review_status"]
+          size_bytes: number
+          storage_path: string
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string
+          requirement_id?: string
+          review_note?: string | null
+          review_status?: Database["public"]["Enums"]["document_review_status"]
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_documents_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_documents_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "document_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_invitations: {
         Row: {
           clinic_id: string
@@ -421,23 +488,81 @@ export type Database = {
           },
         ]
       }
+      clinic_verifications: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          cycle: number
+          decided_at: string | null
+          decided_by: string | null
+          decision_reason: string | null
+          status: Database["public"]["Enums"]["verification_status"]
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          cycle?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          status?: Database["public"]["Enums"]["verification_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          cycle?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          status?: Database["public"]["Enums"]["verification_status"]
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_verifications_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: true
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_verifications_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinics: {
         Row: {
           address: string | null
           city: string | null
           clinic_code: string
+          clinic_type: string | null
           country: string
           created_at: string
           currency: string
           display_name: string
           email: string | null
           id: string
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           name: string
           onboarding_status: Database["public"]["Enums"]["onboarding_status"]
           onboarding_step: number
           owner_user_id: string
           phone: string | null
+          postal_code: string | null
+          registration_number: string | null
+          representative_name: string | null
+          representative_phone: string | null
           state: string | null
           status: Database["public"]["Enums"]["clinic_status"]
           timezone: string
@@ -448,18 +573,25 @@ export type Database = {
           address?: string | null
           city?: string | null
           clinic_code: string
+          clinic_type?: string | null
           country?: string
           created_at?: string
           currency?: string
           display_name: string
           email?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name: string
           onboarding_status?: Database["public"]["Enums"]["onboarding_status"]
           onboarding_step?: number
           owner_user_id: string
           phone?: string | null
+          postal_code?: string | null
+          registration_number?: string | null
+          representative_name?: string | null
+          representative_phone?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["clinic_status"]
           timezone?: string
@@ -470,18 +602,25 @@ export type Database = {
           address?: string | null
           city?: string | null
           clinic_code?: string
+          clinic_type?: string | null
           country?: string
           created_at?: string
           currency?: string
           display_name?: string
           email?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name?: string
           onboarding_status?: Database["public"]["Enums"]["onboarding_status"]
           onboarding_step?: number
           owner_user_id?: string
           phone?: string | null
+          postal_code?: string | null
+          registration_number?: string | null
+          representative_name?: string | null
+          representative_phone?: string | null
           state?: string | null
           status?: Database["public"]["Enums"]["clinic_status"]
           timezone?: string
@@ -643,6 +782,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_requirements: {
+        Row: {
+          allowed_mime_types: string[]
+          clinic_type: string
+          created_at: string
+          description: string | null
+          doc_key: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          label: string
+          max_size_bytes: number
+          provisional: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          allowed_mime_types?: string[]
+          clinic_type: string
+          created_at?: string
+          description?: string | null
+          doc_key: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label: string
+          max_size_bytes?: number
+          provisional?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          allowed_mime_types?: string[]
+          clinic_type?: string
+          created_at?: string
+          description?: string | null
+          doc_key?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          label?: string
+          max_size_bytes?: number
+          provisional?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       invoice_items: {
         Row: {
@@ -1394,6 +1581,61 @@ export type Database = {
           },
         ]
       }
+      verification_events: {
+        Row: {
+          actor_user_id: string
+          clinic_id: string
+          created_at: string
+          cycle: number
+          event_type: string
+          from_status: Database["public"]["Enums"]["verification_status"] | null
+          id: string
+          reason: string | null
+          to_status: Database["public"]["Enums"]["verification_status"]
+        }
+        Insert: {
+          actor_user_id: string
+          clinic_id: string
+          created_at?: string
+          cycle: number
+          event_type: string
+          from_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
+          id?: string
+          reason?: string | null
+          to_status: Database["public"]["Enums"]["verification_status"]
+        }
+        Update: {
+          actor_user_id?: string
+          clinic_id?: string
+          created_at?: string
+          cycle?: number
+          event_type?: string
+          from_status?:
+            | Database["public"]["Enums"]["verification_status"]
+            | null
+          id?: string
+          reason?: string | null
+          to_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_events_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vitals: {
         Row: {
           appointment_id: string | null
@@ -1492,17 +1734,55 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
       create_first_clinic: {
         Args: {
           p_address?: string
           p_city?: string
+          p_clinic_type?: string
           p_display_name: string
           p_email?: string
+          p_latitude?: number
+          p_longitude?: number
           p_name: string
           p_phone?: string
+          p_postal_code?: string
+          p_registration_number?: string
+          p_representative_name?: string
+          p_representative_phone?: string
           p_state?: string
         }
         Returns: string
+      }
+      register_clinic_document: {
+        Args: {
+          p_clinic: string
+          p_file_name: string
+          p_path: string
+          p_requirement: string
+        }
+        Returns: string
+      }
+      remove_clinic_document: { Args: { p_document: string }; Returns: string }
+      review_clinic_document: {
+        Args: {
+          p_document: string
+          p_note: string
+          p_status: Database["public"]["Enums"]["document_review_status"]
+        }
+        Returns: undefined
+      }
+      review_clinic_verification: {
+        Args: {
+          p_clinic: string
+          p_decision: Database["public"]["Enums"]["verification_status"]
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      submit_clinic_verification: {
+        Args: { p_clinic: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -1521,6 +1801,7 @@ export type Database = {
       clinic_status: "ACTIVE" | "INACTIVE" | "SUSPENDED"
       consultation_status: "DRAFT" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"
       doctor_status: "ACTIVE" | "INACTIVE" | "ON_LEAVE"
+      document_review_status: "PENDING" | "ACCEPTED" | "NEEDS_REPLACEMENT"
       invitation_status: "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED"
       invoice_status:
         | "DRAFT"
@@ -1573,6 +1854,12 @@ export type Database = {
         | "TRIAL_CONVERTED"
         | "PAYMENT_SUCCESS"
         | "PAYMENT_FAILED"
+      verification_status:
+        | "DRAFT"
+        | "PENDING_REVIEW"
+        | "CHANGES_REQUESTED"
+        | "APPROVED"
+        | "REJECTED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1716,6 +2003,7 @@ export const Constants = {
       clinic_status: ["ACTIVE", "INACTIVE", "SUSPENDED"],
       consultation_status: ["DRAFT", "IN_PROGRESS", "COMPLETED", "CANCELLED"],
       doctor_status: ["ACTIVE", "INACTIVE", "ON_LEAVE"],
+      document_review_status: ["PENDING", "ACCEPTED", "NEEDS_REPLACEMENT"],
       invitation_status: ["PENDING", "ACCEPTED", "EXPIRED", "CANCELLED"],
       invoice_status: [
         "DRAFT",
@@ -1767,6 +2055,13 @@ export const Constants = {
         "TRIAL_CONVERTED",
         "PAYMENT_SUCCESS",
         "PAYMENT_FAILED",
+      ],
+      verification_status: [
+        "DRAFT",
+        "PENDING_REVIEW",
+        "CHANGES_REQUESTED",
+        "APPROVED",
+        "REJECTED",
       ],
     },
   },

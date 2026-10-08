@@ -38,10 +38,12 @@ import { Route as AuthenticatedClinicBillingRouteImport } from './routes/_authen
 import { Route as AuthenticatedClinicDashboardRouteImport } from './routes/_authenticated/clinic.dashboard'
 import { Route as AuthenticatedClinicDoctorsRouteImport } from './routes/_authenticated/clinic.doctors'
 import { Route as AuthenticatedClinicPatientsRouteImport } from './routes/_authenticated/clinic.patients'
+import { Route as AuthenticatedClinicPlansRouteImport } from './routes/_authenticated/clinic.plans'
 import { Route as AuthenticatedClinicQueueRouteImport } from './routes/_authenticated/clinic.queue'
 import { Route as AuthenticatedClinicReportsRouteImport } from './routes/_authenticated/clinic.reports'
 import { Route as AuthenticatedClinicSettingsRouteImport } from './routes/_authenticated/clinic.settings'
 import { Route as AuthenticatedClinicStaffRouteImport } from './routes/_authenticated/clinic.staff'
+import { Route as AuthenticatedClinicVerificationRouteImport } from './routes/_authenticated/clinic.verification'
 import { Route as AuthenticatedDoctorAppointmentsRouteImport } from './routes/_authenticated/doctor.appointments'
 import { Route as AuthenticatedDoctorConsultationsRouteImport } from './routes/_authenticated/doctor.consultations'
 import { Route as AuthenticatedDoctorDashboardRouteImport } from './routes/_authenticated/doctor.dashboard'
@@ -61,6 +63,8 @@ import { Route as AuthenticatedStaffDashboardRouteImport } from './routes/_authe
 import { Route as AuthenticatedStaffPatientsRouteImport } from './routes/_authenticated/staff.patients'
 import { Route as AuthenticatedStaffProfileRouteImport } from './routes/_authenticated/staff.profile'
 import { Route as AuthenticatedStaffQueueRouteImport } from './routes/_authenticated/staff.queue'
+import { Route as AuthenticatedAdminVerificationsIndexRouteImport } from './routes/_authenticated/admin.verifications.index'
+import { Route as AuthenticatedAdminVerificationsClinicIdRouteImport } from './routes/_authenticated/admin.verifications.$clinicId'
 import { Route as AuthenticatedClinicAppointmentsIndexRouteImport } from './routes/_authenticated/clinic.appointments.index'
 import { Route as AuthenticatedClinicAppointmentsNewRouteImport } from './routes/_authenticated/clinic.appointments.new'
 import { Route as AuthenticatedClinicBillingIndexRouteImport } from './routes/_authenticated/clinic.billing.index'
@@ -225,6 +229,12 @@ const AuthenticatedClinicPatientsRoute =
     path: '/patients',
     getParentRoute: () => AuthenticatedClinicRoute,
   } as any)
+const AuthenticatedClinicPlansRoute =
+  AuthenticatedClinicPlansRouteImport.update({
+    id: '/plans',
+    path: '/plans',
+    getParentRoute: () => AuthenticatedClinicRoute,
+  } as any)
 const AuthenticatedClinicQueueRoute =
   AuthenticatedClinicQueueRouteImport.update({
     id: '/queue',
@@ -247,6 +257,12 @@ const AuthenticatedClinicStaffRoute =
   AuthenticatedClinicStaffRouteImport.update({
     id: '/staff',
     path: '/staff',
+    getParentRoute: () => AuthenticatedClinicRoute,
+  } as any)
+const AuthenticatedClinicVerificationRoute =
+  AuthenticatedClinicVerificationRouteImport.update({
+    id: '/verification',
+    path: '/verification',
     getParentRoute: () => AuthenticatedClinicRoute,
   } as any)
 const AuthenticatedDoctorAppointmentsRoute =
@@ -362,6 +378,18 @@ const AuthenticatedStaffQueueRoute = AuthenticatedStaffQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => AuthenticatedStaffRoute,
 } as any)
+const AuthenticatedAdminVerificationsIndexRoute =
+  AuthenticatedAdminVerificationsIndexRouteImport.update({
+    id: '/verifications/',
+    path: '/verifications/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminVerificationsClinicIdRoute =
+  AuthenticatedAdminVerificationsClinicIdRouteImport.update({
+    id: '/verifications/$clinicId',
+    path: '/verifications/$clinicId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedClinicAppointmentsIndexRoute =
   AuthenticatedClinicAppointmentsIndexRouteImport.update({
     id: '/',
@@ -434,10 +462,12 @@ export interface FileRoutesByFullPath {
   '/clinic/dashboard': typeof AuthenticatedClinicDashboardRoute
   '/clinic/doctors': typeof AuthenticatedClinicDoctorsRoute
   '/clinic/patients': typeof AuthenticatedClinicPatientsRouteWithChildren
+  '/clinic/plans': typeof AuthenticatedClinicPlansRoute
   '/clinic/queue': typeof AuthenticatedClinicQueueRoute
   '/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -457,10 +487,12 @@ export interface FileRoutesByFullPath {
   '/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/clinic/billing/': typeof AuthenticatedClinicBillingIndexRoute
   '/clinic/patients/': typeof AuthenticatedClinicPatientsIndexRoute
@@ -491,10 +523,12 @@ export interface FileRoutesByTo {
   '/clinic/ai': typeof AuthenticatedClinicAiRoute
   '/clinic/dashboard': typeof AuthenticatedClinicDashboardRoute
   '/clinic/doctors': typeof AuthenticatedClinicDoctorsRoute
+  '/clinic/plans': typeof AuthenticatedClinicPlansRoute
   '/clinic/queue': typeof AuthenticatedClinicQueueRoute
   '/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -514,10 +548,12 @@ export interface FileRoutesByTo {
   '/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/admin/verifications': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/clinic/billing': typeof AuthenticatedClinicBillingIndexRoute
   '/clinic/patients': typeof AuthenticatedClinicPatientsIndexRoute
@@ -553,10 +589,12 @@ export interface FileRoutesById {
   '/_authenticated/clinic/dashboard': typeof AuthenticatedClinicDashboardRoute
   '/_authenticated/clinic/doctors': typeof AuthenticatedClinicDoctorsRoute
   '/_authenticated/clinic/patients': typeof AuthenticatedClinicPatientsRouteWithChildren
+  '/_authenticated/clinic/plans': typeof AuthenticatedClinicPlansRoute
   '/_authenticated/clinic/queue': typeof AuthenticatedClinicQueueRoute
   '/_authenticated/clinic/reports': typeof AuthenticatedClinicReportsRoute
   '/_authenticated/clinic/settings': typeof AuthenticatedClinicSettingsRoute
   '/_authenticated/clinic/staff': typeof AuthenticatedClinicStaffRoute
+  '/_authenticated/clinic/verification': typeof AuthenticatedClinicVerificationRoute
   '/_authenticated/doctor/appointments': typeof AuthenticatedDoctorAppointmentsRoute
   '/_authenticated/doctor/consultations': typeof AuthenticatedDoctorConsultationsRoute
   '/_authenticated/doctor/dashboard': typeof AuthenticatedDoctorDashboardRoute
@@ -576,10 +614,12 @@ export interface FileRoutesById {
   '/_authenticated/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/_authenticated/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/_authenticated/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/_authenticated/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/_authenticated/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/_authenticated/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/_authenticated/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/_authenticated/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/_authenticated/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/_authenticated/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/_authenticated/clinic/billing/': typeof AuthenticatedClinicBillingIndexRoute
   '/_authenticated/clinic/patients/': typeof AuthenticatedClinicPatientsIndexRoute
@@ -615,10 +655,12 @@ export interface FileRouteTypes {
     | '/clinic/dashboard'
     | '/clinic/doctors'
     | '/clinic/patients'
+    | '/clinic/plans'
     | '/clinic/queue'
     | '/clinic/reports'
     | '/clinic/settings'
     | '/clinic/staff'
+    | '/clinic/verification'
     | '/doctor/appointments'
     | '/doctor/consultations'
     | '/doctor/dashboard'
@@ -638,10 +680,12 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/admin/verifications/'
     | '/clinic/appointments/'
     | '/clinic/billing/'
     | '/clinic/patients/'
@@ -672,10 +716,12 @@ export interface FileRouteTypes {
     | '/clinic/ai'
     | '/clinic/dashboard'
     | '/clinic/doctors'
+    | '/clinic/plans'
     | '/clinic/queue'
     | '/clinic/reports'
     | '/clinic/settings'
     | '/clinic/staff'
+    | '/clinic/verification'
     | '/doctor/appointments'
     | '/doctor/consultations'
     | '/doctor/dashboard'
@@ -695,10 +741,12 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/admin/verifications'
     | '/clinic/appointments'
     | '/clinic/billing'
     | '/clinic/patients'
@@ -733,10 +781,12 @@ export interface FileRouteTypes {
     | '/_authenticated/clinic/dashboard'
     | '/_authenticated/clinic/doctors'
     | '/_authenticated/clinic/patients'
+    | '/_authenticated/clinic/plans'
     | '/_authenticated/clinic/queue'
     | '/_authenticated/clinic/reports'
     | '/_authenticated/clinic/settings'
     | '/_authenticated/clinic/staff'
+    | '/_authenticated/clinic/verification'
     | '/_authenticated/doctor/appointments'
     | '/_authenticated/doctor/consultations'
     | '/_authenticated/doctor/dashboard'
@@ -756,10 +806,12 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/patients'
     | '/_authenticated/staff/profile'
     | '/_authenticated/staff/queue'
+    | '/_authenticated/admin/verifications/$clinicId'
     | '/_authenticated/clinic/appointments/new'
     | '/_authenticated/clinic/billing/new'
     | '/_authenticated/clinic/patients/$patientId'
     | '/_authenticated/clinic/patients/new'
+    | '/_authenticated/admin/verifications/'
     | '/_authenticated/clinic/appointments/'
     | '/_authenticated/clinic/billing/'
     | '/_authenticated/clinic/patients/'
@@ -982,6 +1034,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClinicPatientsRouteImport
       parentRoute: typeof AuthenticatedClinicRoute
     }
+    '/_authenticated/clinic/plans': {
+      id: '/_authenticated/clinic/plans'
+      path: '/plans'
+      fullPath: '/clinic/plans'
+      preLoaderRoute: typeof AuthenticatedClinicPlansRouteImport
+      parentRoute: typeof AuthenticatedClinicRoute
+    }
     '/_authenticated/clinic/queue': {
       id: '/_authenticated/clinic/queue'
       path: '/queue'
@@ -1008,6 +1067,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/clinic/staff'
       preLoaderRoute: typeof AuthenticatedClinicStaffRouteImport
+      parentRoute: typeof AuthenticatedClinicRoute
+    }
+    '/_authenticated/clinic/verification': {
+      id: '/_authenticated/clinic/verification'
+      path: '/verification'
+      fullPath: '/clinic/verification'
+      preLoaderRoute: typeof AuthenticatedClinicVerificationRouteImport
       parentRoute: typeof AuthenticatedClinicRoute
     }
     '/_authenticated/doctor/appointments': {
@@ -1143,6 +1209,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffQueueRouteImport
       parentRoute: typeof AuthenticatedStaffRoute
     }
+    '/_authenticated/admin/verifications/': {
+      id: '/_authenticated/admin/verifications/'
+      path: '/verifications'
+      fullPath: '/admin/verifications/'
+      preLoaderRoute: typeof AuthenticatedAdminVerificationsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/verifications/$clinicId': {
+      id: '/_authenticated/admin/verifications/$clinicId'
+      path: '/verifications/$clinicId'
+      fullPath: '/admin/verifications/$clinicId'
+      preLoaderRoute: typeof AuthenticatedAdminVerificationsClinicIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/clinic/appointments/': {
       id: '/_authenticated/clinic/appointments/'
       path: '/'
@@ -1202,6 +1282,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSubscriptionsRoute: typeof AuthenticatedAdminSubscriptionsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminVerificationsClinicIdRoute: typeof AuthenticatedAdminVerificationsClinicIdRoute
+  AuthenticatedAdminVerificationsIndexRoute: typeof AuthenticatedAdminVerificationsIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -1211,6 +1293,10 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSubscriptionsRoute: AuthenticatedAdminSubscriptionsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminVerificationsClinicIdRoute:
+    AuthenticatedAdminVerificationsClinicIdRoute,
+  AuthenticatedAdminVerificationsIndexRoute:
+    AuthenticatedAdminVerificationsIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -1277,10 +1363,12 @@ interface AuthenticatedClinicRouteChildren {
   AuthenticatedClinicDashboardRoute: typeof AuthenticatedClinicDashboardRoute
   AuthenticatedClinicDoctorsRoute: typeof AuthenticatedClinicDoctorsRoute
   AuthenticatedClinicPatientsRoute: typeof AuthenticatedClinicPatientsRouteWithChildren
+  AuthenticatedClinicPlansRoute: typeof AuthenticatedClinicPlansRoute
   AuthenticatedClinicQueueRoute: typeof AuthenticatedClinicQueueRoute
   AuthenticatedClinicReportsRoute: typeof AuthenticatedClinicReportsRoute
   AuthenticatedClinicSettingsRoute: typeof AuthenticatedClinicSettingsRoute
   AuthenticatedClinicStaffRoute: typeof AuthenticatedClinicStaffRoute
+  AuthenticatedClinicVerificationRoute: typeof AuthenticatedClinicVerificationRoute
 }
 
 const AuthenticatedClinicRouteChildren: AuthenticatedClinicRouteChildren = {
@@ -1292,10 +1380,12 @@ const AuthenticatedClinicRouteChildren: AuthenticatedClinicRouteChildren = {
   AuthenticatedClinicDoctorsRoute: AuthenticatedClinicDoctorsRoute,
   AuthenticatedClinicPatientsRoute:
     AuthenticatedClinicPatientsRouteWithChildren,
+  AuthenticatedClinicPlansRoute: AuthenticatedClinicPlansRoute,
   AuthenticatedClinicQueueRoute: AuthenticatedClinicQueueRoute,
   AuthenticatedClinicReportsRoute: AuthenticatedClinicReportsRoute,
   AuthenticatedClinicSettingsRoute: AuthenticatedClinicSettingsRoute,
   AuthenticatedClinicStaffRoute: AuthenticatedClinicStaffRoute,
+  AuthenticatedClinicVerificationRoute: AuthenticatedClinicVerificationRoute,
 }
 
 const AuthenticatedClinicRouteWithChildren =
