@@ -62,3 +62,17 @@ export function PublicLayout({ children }: { children: ReactNode }) {
 export function CenteredPanel({ children }: { children: ReactNode }) {
   return <div className="flex min-h-screen flex-col bg-background"><header className="px-4 py-5 md:px-8"><CareflowBrand /></header><main id="main-content" className="flex flex-1 justify-center px-4 pb-16 pt-6"><div className="w-full max-w-xl">{children}</div></main></div>;
 }
+
+/**
+ * Session-aware public actions. Reuses the single AuthProvider state; renders a blank placeholder until the
+ * stored session is known so signed-in users never see a flash of "Sign in". "Open workspace" goes to
+ * /workspace, which applies the existing access resolution (auto-enter, picker, or no-access message).
+ */
+export function AuthActions({ size = "sm" }: { size?: "sm" | "lg" }) {
+  const { session, ready } = useAuth();
+  if (!ready) return <span aria-hidden="true" className={size === "lg" ? "inline-block h-10 w-40" : "inline-block h-8 w-28"} />;
+  if (session) return <Button asChild size={size}><Link to="/workspace">Open workspace</Link></Button>;
+  return size === "lg"
+    ? <><Button asChild size="lg"><Link to="/signup">Create account</Link></Button><Button asChild size="lg" variant="outline"><Link to="/login">Sign in</Link></Button></>
+    : <><Button asChild variant="outline" size="sm"><Link to="/login">Sign in</Link></Button><Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/signup">Create account</Link></Button></>;
+}
