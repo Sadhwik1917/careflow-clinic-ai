@@ -52,7 +52,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
         <Button asChild variant="ghost" size="sm"><Link to="/pricing">Pricing</Link></Button>
         <Button asChild variant="ghost" size="sm"><Link to="/about">About</Link></Button>
         <Button asChild variant="ghost" size="sm"><Link to="/contact">Contact</Link></Button>
-        {ready && session ? <Button asChild size="sm"><Link to="/workspace">Open workspace</Link></Button> : <><Button asChild variant="outline" size="sm"><Link to="/login">Sign in</Link></Button><Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/signup">Create account</Link></Button></>}
+        <AuthActions size="sm" />
       </nav>
     </div></header>
     <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 md:px-8 md:py-16">{children}</main>

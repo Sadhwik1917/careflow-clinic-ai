@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { CalendarDays, ClipboardList, ListOrdered, Receipt } from "lucide-react";
-import { PublicLayout } from "@/components/careflow/auth-ui";
+import { AuthActions, PublicLayout } from "@/components/careflow/auth-ui";
 import { Button } from "@/components/ui/button";
 import { publicMeta } from "@/lib/public-meta";
 
@@ -21,7 +21,7 @@ function Index() {
     <section className="max-w-2xl">
       <h1 className="text-4xl font-semibold leading-tight md:text-5xl">A calm, connected workspace for your clinic.</h1>
       <p className="mt-5 text-lg leading-relaxed text-muted-foreground">CAREFLOW AI brings patients, appointments, queues, consultations and billing together for clinic owners, doctors, staff and patients.</p>
-      <div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg"><Link to="/signup">Create account</Link></Button><Button asChild size="lg" variant="outline"><Link to="/login">Sign in</Link></Button></div>
+      <div className="mt-8 flex flex-wrap gap-3"><AuthActions size="lg" /></div>
     </section>
     <section aria-label="Features" className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {features.map(f => <div key={f.title} className="rounded-lg border bg-card p-5"><span className="flex size-10 items-center justify-center rounded-md bg-secondary text-primary"><f.icon className="size-5" strokeWidth={1.6} /></span><h2 className="mt-4 font-semibold">{f.title}</h2><p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.text}</p></div>)}
