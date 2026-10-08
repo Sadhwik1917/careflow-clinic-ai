@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decideAreaAccess, safeRedirect, type UserAccess } from "@/lib/access";
 
-const m = (id: string, role: "OWNER" | "DOCTOR" | "STAFF" | "PATIENT", status: "ACTIVE" | "INVITED" = "ACTIVE") => ({ id, clinic_id: `c-${id}`, role, status, clinic: { id: `c-${id}`, name: id, status: "ACTIVE" as const } });
+const m = (id: string, role: "OWNER" | "DOCTOR" | "STAFF" | "PATIENT", status: "ACTIVE" | "INVITED" = "ACTIVE") => ({ id, clinic_id: `c-${id}`, role, status, clinic: { id: `c-${id}`, name: id, display_name: id, status: "ACTIVE" as const } });
 const access = (memberships: ReturnType<typeof m>[], admin = false): UserAccess => ({ userId: "u", email: null, profile: { id: "u", display_name: null, platform_role: admin ? "PLATFORM_ADMIN" : "USER", status: "ACTIVE" }, memberships });
 
 describe("area access", () => {
