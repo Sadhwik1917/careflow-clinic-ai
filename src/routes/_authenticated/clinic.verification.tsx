@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
-import { BUCKET, clinicTypes, documentPath, fileProblem, isEditable, statusLabel, statusTone, submissionProblems, verificationErrorMessage, type ClinicDocument, type Requirement } from "@/lib/verification";
+import { BUCKET, clinicTypes, documentPath, fileProblem, isEditable, statusLabel, statusTone, submissionProblems, uploadErrorMessage, verificationErrorMessage, type ClinicDocument, type Requirement } from "@/lib/verification";
 
 const verificationQuery = (clinicId: string) => queryOptions({
   queryKey: ["verification", clinicId],
@@ -77,9 +77,9 @@ function Page() {
     setBusy(req.id); setMessage(null);
     const path = documentPath(clinicId, req.id, file.name);
     const up = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-    if (up.error) { setBusy(null); setMessage({ ok: false, text: "Upload failed. Please try again." }); return; }
+    if (up.error) { const e = up.error as { message?: string; statusCode?: string }; console.error("[verification] storage upload failed", { status: e.statusCode, message: e.message }); setBusy(null); setMessage({ ok: false, text: `${req.label}: ${uploadErrorMessage(e)}` }); return; }
     const reg = await supabase.rpc("register_clinic_document", { p_clinic: clinicId, p_requirement: req.id, p_path: path, p_file_name: file.name });
-    if (reg.error) { await supabase.storage.from(BUCKET).remove([path]); setBusy(null); setMessage({ ok: false, text: verificationErrorMessage(reg.error.message) }); return; }
+    if (reg.error) { console.error("[verification] register document failed", { code: reg.error.code, message: reg.error.message }); await supabase.storage.from(BUCKET).remove([path]); setBusy(null); setMessage({ ok: false, text: verificationErrorMessage(reg.error.message) }); return; }
     if (reg.data) await supabase.storage.from(BUCKET).remove([reg.data]);
     setBusy(null); setMessage({ ok: true, text: `${req.label} uploaded.` }); await refresh();
   }
