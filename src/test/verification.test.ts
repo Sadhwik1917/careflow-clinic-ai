@@ -28,3 +28,11 @@ describe("owner gate", () => {
   it("plans visible only when approved", () => { expect(canViewPlans("PENDING_REVIEW")).toBe(false); expect(canViewPlans("APPROVED")).toBe(true); });
   it("editable states", () => { expect(isEditable("CHANGES_REQUESTED")).toBe(true); expect(isEditable("PENDING_REVIEW")).toBe(false); expect(isEditable("APPROVED")).toBe(false); });
 });
+
+import { uploadErrorMessage } from "@/lib/verification";
+describe("uploadErrorMessage", () => {
+  it("maps policy refusals", () => expect(uploadErrorMessage({ message: "new row violates row-level security policy", statusCode: "403" })).toMatch(/can't upload/));
+  it("maps size", () => expect(uploadErrorMessage({ statusCode: "413" })).toMatch(/too large/));
+  it("maps type", () => expect(uploadErrorMessage({ message: "invalid_mime_type" })).toMatch(/PDF/));
+  it("falls back", () => expect(uploadErrorMessage(null)).toBe("Upload failed. Please try again."));
+});

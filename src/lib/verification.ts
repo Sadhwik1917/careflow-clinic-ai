@@ -61,6 +61,18 @@ export function documentPath(clinicId: string, requirementId: string, fileName: 
   return `${clinicId}/${requirementId}/${crypto.randomUUID()}.${ext}`;
 }
 
+/** Maps a Storage upload error to a safe, actionable message. */
+export function uploadErrorMessage(error: { message?: string; statusCode?: string | number; status?: number } | null | undefined): string {
+  const m = error?.message ?? "";
+  const code = String(error?.statusCode ?? error?.status ?? "");
+  if (/row-level security|unauthori[sz]ed|permission/i.test(m) || code === "403") return "You can't upload documents for this clinic right now. The application may be locked for review, or you may not be its owner.";
+  if (/too large|exceeded the maximum|payload/i.test(m) || code === "413") return "This file is too large. Keep it under 10 MB.";
+  if (/mime|content type|invalid_mime/i.test(m) || code === "415") return "Use a PDF, JPG or PNG file.";
+  if (/already exists|duplicate/i.test(m) || code === "409") return "A file with this name is already being uploaded. Please try again.";
+  if (/fetch|network|timeout/i.test(m)) return "Network problem while uploading. Check your connection and try again.";
+  return "Upload failed. Please try again.";
+}
+
 export function verificationErrorMessage(message: string | undefined) {
   const m = message ?? "";
   if (/Required documents|Missing required|still need to be replaced|reason is required|note is required|File too large|File type|flagged|Only pending|locked|cannot be submitted/i.test(m)) return m;
