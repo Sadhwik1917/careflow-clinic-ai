@@ -40,7 +40,7 @@ function PlanCard({ p }: { p: Plan }) {
   const scopeText = clinics === 1 ? "Single clinic" : `Multi-clinic · up to ${clinics} clinics`;
   const ai = !p.ai_enabled || p.ai_credit_type === "NONE" ? "No AI features"
     : p.ai_credit_type === "UNLIMITED" ? "Unlimited AI credits"
-    : `${p.ai_credit_limit} AI credits / month${p.clinic_mode === "MULTI" ? " per clinic" : ""}`;
+    : `${p.ai_credit_limit} AI credits / month${p.clinic_mode === "MULTI" ? " (shared across clinics)" : ""}`;
   const features = Array.isArray(p.features) ? (p.features as string[]) : [];
   return <li className="flex flex-col rounded-lg border bg-card p-5">
     <div className="flex items-start justify-between gap-2">
