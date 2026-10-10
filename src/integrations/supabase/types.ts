@@ -410,6 +410,7 @@ export type Database = {
           auto_renew: boolean
           billing_cycle: string
           cancelled_at: string | null
+          clinic_scope: string | null
           created_at: string
           currency: string
           id: string
@@ -418,6 +419,7 @@ export type Database = {
           payment_mandate_id: string | null
           payment_provider: string | null
           plan_id: string
+          provider_subscription_id: string | null
           renewal_date: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"]
@@ -432,6 +434,7 @@ export type Database = {
           auto_renew?: boolean
           billing_cycle?: string
           cancelled_at?: string | null
+          clinic_scope?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -440,6 +443,7 @@ export type Database = {
           payment_mandate_id?: string | null
           payment_provider?: string | null
           plan_id: string
+          provider_subscription_id?: string | null
           renewal_date?: string | null
           start_date?: string
           status: Database["public"]["Enums"]["subscription_status"]
@@ -454,6 +458,7 @@ export type Database = {
           auto_renew?: boolean
           billing_cycle?: string
           cancelled_at?: string | null
+          clinic_scope?: string | null
           created_at?: string
           currency?: string
           id?: string
@@ -462,6 +467,7 @@ export type Database = {
           payment_mandate_id?: string | null
           payment_provider?: string | null
           plan_id?: string
+          provider_subscription_id?: string | null
           renewal_date?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -1173,6 +1179,7 @@ export type Database = {
           max_staff: number | null
           name: string
           price: number
+          razorpay_plan_id: string | null
           requires_payment_mandate: boolean
           trial_duration_days: number | null
           trial_enabled: boolean
@@ -1195,6 +1202,7 @@ export type Database = {
           max_staff?: number | null
           name: string
           price?: number
+          razorpay_plan_id?: string | null
           requires_payment_mandate?: boolean
           trial_duration_days?: number | null
           trial_enabled?: boolean
@@ -1217,6 +1225,7 @@ export type Database = {
           max_staff?: number | null
           name?: string
           price?: number
+          razorpay_plan_id?: string | null
           requires_payment_mandate?: boolean
           trial_duration_days?: number | null
           trial_enabled?: boolean
@@ -1844,6 +1853,7 @@ export type Database = {
         | "PAST_DUE"
         | "CANCELLED"
         | "EXPIRED"
+        | "PENDING_PAYMENT"
       subscription_type: "TRIAL" | "PAID"
       trial_event_type:
         | "TRIAL_STARTED"
@@ -2044,6 +2054,7 @@ export const Constants = {
         "PAST_DUE",
         "CANCELLED",
         "EXPIRED",
+        "PENDING_PAYMENT",
       ],
       subscription_type: ["TRIAL", "PAID"],
       trial_event_type: [
