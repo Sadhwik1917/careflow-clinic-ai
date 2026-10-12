@@ -38,7 +38,7 @@ export function pricingFor(plan: PricedPlan, scope: Scope): { amount: number; ra
 export const OPEN_SUBSCRIPTION_STATUSES = ["PENDING_PAYMENT", "ACTIVE", "TRIAL_ACTIVE", "PAST_DUE"] as const;
 export const CURRENT_STATUSES = ["ACTIVE", "TRIAL_ACTIVE", "PAST_DUE"] as const;
 
-export type OpenSub = { id: string; plan_id: string; clinic_scope: string | null; status: string; provider_subscription_id: string | null };
+export type OpenSub = { id: string; plan_id: string; clinic_scope: string | null; status: string; provider_subscription_id: string | null; mandate_status?: string | null };
 export type Enrollment =
   | { kind: "reuse"; row: OpenSub; supersede: OpenSub[] }
   | { kind: "attach_trial"; row: OpenSub; supersede: OpenSub[] }
@@ -60,6 +60,7 @@ export function decideEnrollment(open: OpenSub[], planId: string, scope: Scope):
   const pending = open.filter(s => s.status === "PENDING_PAYMENT");
   if (cur && same(cur)) {
     if (cur.status !== "TRIAL_ACTIVE") return { kind: "error", error: "This is already your current plan." };
+    if (cur.mandate_status === "AUTHORIZED") return { kind: "error", error: "Your trial already converts to this plan automatically when it ends." };
     return cur.provider_subscription_id ? { kind: "reuse", row: cur, supersede: pending } : { kind: "attach_trial", row: cur, supersede: pending };
   }
   const match = pending.find(s => same(s) && s.provider_subscription_id);
@@ -80,10 +81,22 @@ const TRIAL_ERRORS: Record<string, string> = {
   TRIAL_SCOPE_MISMATCH: "Clinic scope doesn't match this plan.",
   TRIAL_CLINIC_HAS_SUBSCRIPTION: "This clinic already has a plan or trial.",
   TRIAL_ALREADY_USED: "A free trial has already been used for this clinic or account.",
+  TRIAL_BAD_TIMING: "The trial timing couldn't be set. Please try again.",
   TRIAL_NOT_FOUND: "Trial not found.",
   TRIAL_NOT_ACTIVE: "This trial is no longer active.",
 };
 export function trialErrorMessage(dbMessage: string | undefined): string {
   const code = Object.keys(TRIAL_ERRORS).find(k => dbMessage?.includes(k));
   return code ? TRIAL_ERRORS[code]! : "We couldn't update your trial. Please try again.";
+}
+
+/** Razorpay start_at (first charge) is exactly 21 days after enrollment; the authorization link expires in 30 minutes. */
+export function trialTiming(now: Date): { startAt: number; expireBy: number } {
+  const t = Math.floor(now.getTime() / 1000);
+  return { startAt: t + TRIAL_DAYS * 86_400, expireBy: t + 30 * 60 };
+}
+/** Cancellation is accepted until 1 hour before the scheduled first charge, so Razorpay can't have started charging. */
+export const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
+export function beforeCancelCutoff(trialEnd: string | null, now: Date): boolean {
+  return !trialEnd || new Date(trialEnd).getTime() - now.getTime() > CANCEL_CUTOFF_MS;
 }
