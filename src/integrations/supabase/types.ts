@@ -1177,8 +1177,10 @@ export type Database = {
           max_clinics: number
           max_doctors: number | null
           max_staff: number | null
+          multi_price: number | null
           name: string
           price: number
+          razorpay_multi_plan_id: string | null
           razorpay_plan_id: string | null
           requires_payment_mandate: boolean
           trial_duration_days: number | null
@@ -1200,8 +1202,10 @@ export type Database = {
           max_clinics?: number
           max_doctors?: number | null
           max_staff?: number | null
+          multi_price?: number | null
           name: string
           price?: number
+          razorpay_multi_plan_id?: string | null
           razorpay_plan_id?: string | null
           requires_payment_mandate?: boolean
           trial_duration_days?: number | null
@@ -1223,8 +1227,10 @@ export type Database = {
           max_clinics?: number
           max_doctors?: number | null
           max_staff?: number | null
+          multi_price?: number | null
           name?: string
           price?: number
+          razorpay_multi_plan_id?: string | null
           razorpay_plan_id?: string | null
           requires_payment_mandate?: boolean
           trial_duration_days?: number | null
@@ -1764,6 +1770,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_clinic_trial: {
+        Args: { p_subscription: string; p_user: string }
+        Returns: string
+      }
       clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
       create_first_clinic: {
         Args: {
@@ -1809,6 +1819,15 @@ export type Database = {
           p_reason: string
         }
         Returns: undefined
+      }
+      start_clinic_trial: {
+        Args: {
+          p_clinic: string
+          p_plan: string
+          p_scope: string
+          p_user: string
+        }
+        Returns: string
       }
       submit_clinic_verification: {
         Args: { p_clinic: string }
