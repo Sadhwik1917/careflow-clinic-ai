@@ -50,3 +50,17 @@ describe("webhook verification", () => {
     expect(await verifyWebhookSignature("whsec", body, null)).toBe(false);
   });
 });
+
+import { isTrialUsed, trialErrorMessage } from "@/lib/subscription-rules";
+describe("trial enrollment regression", () => {
+  it("abandoned/pending enrollments don't use up the trial", () => {
+    expect(isTrialUsed({ startedEvents: 0, lookupFailed: false, ownerRows: [{ subscription_type: "TRIAL", status: "PENDING_PAYMENT", mandate_status: "PENDING" }, { subscription_type: "TRIAL", status: "CANCELLED", mandate_status: "ABANDONED" }] })).toBe(false);
+  });
+  it("authorized or started trials count as used", () => {
+    expect(isTrialUsed({ startedEvents: 0, lookupFailed: false, ownerRows: [{ subscription_type: "TRIAL", status: "TRIAL_CANCELLED", mandate_status: "AUTHORIZED" }] })).toBe(true);
+    expect(isTrialUsed({ startedEvents: 1, lookupFailed: false, ownerRows: [] })).toBe(true);
+    expect(isTrialUsed({ startedEvents: 0, lookupFailed: true, ownerRows: [] })).toBe(true);
+  });
+  it("an enrollment save failure gives a clear, safe message", () =>
+    expect(trialErrorMessage('new row violates check constraint "clinic_subscriptions_check"', "enroll")).toMatch(/save your trial enrollment.*Nothing was charged/));
+});

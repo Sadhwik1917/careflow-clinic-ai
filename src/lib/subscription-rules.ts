@@ -85,9 +85,10 @@ const TRIAL_ERRORS: Record<string, string> = {
   TRIAL_NOT_FOUND: "Trial not found.",
   TRIAL_NOT_ACTIVE: "This trial is no longer active.",
 };
-export function trialErrorMessage(dbMessage: string | undefined): string {
+export function trialErrorMessage(dbMessage: string | undefined, step: "update" | "enroll" = "update"): string {
   const code = Object.keys(TRIAL_ERRORS).find(k => dbMessage?.includes(k));
-  return code ? TRIAL_ERRORS[code]! : "We couldn't update your trial. Please try again.";
+  if (code) return TRIAL_ERRORS[code]!;
+  return step === "enroll" ? "We couldn't save your trial enrollment. Nothing was charged; please try again." : "We couldn't update your trial. Please try again.";
 }
 
 /** Razorpay start_at (first charge) is exactly 21 days after enrollment; the authorization link expires in 30 minutes. */
@@ -99,4 +100,10 @@ export function trialTiming(now: Date): { startAt: number; expireBy: number } {
 export const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
 export function beforeCancelCutoff(trialEnd: string | null, now: Date): boolean {
   return !trialEnd || new Date(trialEnd).getTime() - now.getTime() > CANCEL_CUTOFF_MS;
+}
+
+/** A trial counts as used only once it really started (event) or its mandate was authorized; abandoned enrollments don't count. */
+export function isTrialUsed(o: { startedEvents: number; ownerRows: { mandate_status: string | null; status: string; subscription_type: string }[]; lookupFailed: boolean }): boolean {
+  if (o.lookupFailed || o.startedEvents > 0) return true;
+  return o.ownerRows.some(r => r.subscription_type === "TRIAL" && (r.mandate_status === "AUTHORIZED" || (r.mandate_status == null && r.status.startsWith("TRIAL_"))));
 }
