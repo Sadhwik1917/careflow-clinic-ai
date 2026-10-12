@@ -44,11 +44,11 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           if (!row.data) return new Response("Unknown subscription", { status: 200 });
           if (!canTransition(row.data.status, to)) return new Response("Ignored", { status: 200 });
 
-          const update: Record<string, unknown> = { status: to };
+          const update: { status: typeof to; next_billing_date?: string; renewal_date?: string; cancelled_at?: string } = { status: to };
           if (to === "ACTIVE") {
-            if (sub.current_end) { update["next_billing_date"] = ts(sub.current_end); update["renewal_date"] = ts(sub.current_end); }
+            if (sub.current_end) { update.next_billing_date = ts(sub.current_end)!; update.renewal_date = ts(sub.current_end)!; }
           }
-          if (to === "CANCELLED") update["cancelled_at"] = new Date().toISOString();
+          if (to === "CANCELLED") update.cancelled_at = new Date().toISOString();
           const up = await supabaseAdmin.from("clinic_subscriptions").update(update).eq("id", row.data.id);
           if (up.error) throw new Error(up.error.message);
 
