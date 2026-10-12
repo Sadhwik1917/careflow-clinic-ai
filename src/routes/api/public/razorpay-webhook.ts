@@ -37,6 +37,18 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         const release = async () => { await supabaseAdmin.from("razorpay_webhook_events").delete().eq("event_id", eventId); };
 
         try {
+          // Mandate authorized for a trial enrollment: the trusted DB function starts the 21-day trial.
+          if (type === "subscription.authenticated" && sub?.id) {
+            const pay = evt.payload?.payment?.entity;
+            const r = await supabaseAdmin.rpc("confirm_trial_mandate", { p_provider_id: sub.id, p_mandate_ref: pay?.id ?? sub.id });
+            if (r.error) throw new Error(r.error.message);
+            if (r.data === "TRIAL_ALREADY_USED" || r.data === "TOO_LATE") {
+              const { cancelAtRazorpay } = await import("@/lib/subscriptions.server");
+              await cancelAtRazorpay(sub.id);
+              await supabaseAdmin.from("clinic_subscriptions").update({ status: "CANCELLED", cancelled_at: new Date().toISOString(), mandate_status: "REJECTED" }).eq("provider_subscription_id", sub.id).eq("status", "PENDING_PAYMENT");
+            }
+            return new Response("OK", { status: 200 });
+          }
           const to = statusForEvent(type);
           if (!sub?.id || !to) return new Response("Ignored", { status: 200 });
           const row = await supabaseAdmin.from("clinic_subscriptions").select("id, status, owner_user_id, subscription_type")
@@ -46,17 +58,27 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
           if (!canTransition(row.data.status, to)) return new Response("Ignored", { status: 200 });
 
           if (row.data.status === to && to !== "ACTIVE") return new Response("OK", { status: 200 });
-          const update: { status: typeof to; subscription_type?: "PAID"; next_billing_date?: string; renewal_date?: string; cancelled_at?: string } = { status: to };
+          const trialEnding = row.data.status === "TRIAL_ACTIVE" && to === "CANCELLED";
+          const update: { status: typeof to | "TRIAL_CANCELLED"; trial_cancelled_at?: string; mandate_status?: string; subscription_type?: "PAID"; next_billing_date?: string; renewal_date?: string; cancelled_at?: string } = { status: to };
           const activating = to === "ACTIVE" && row.data.status !== "ACTIVE";
           if (activating) update.subscription_type = "PAID";
           if (to === "ACTIVE") {
             if (sub.current_end) { update.next_billing_date = ts(sub.current_end)!; update.renewal_date = ts(sub.current_end)!; }
           }
           if (to === "CANCELLED") update.cancelled_at = new Date().toISOString();
+          if (trialEnding) { update.status = "TRIAL_CANCELLED"; update.trial_cancelled_at = update.cancelled_at!; update.mandate_status = "CANCELLED"; }
           // Conditional on the status we read, so a concurrent event can't be overwritten out of order.
           const up = await supabaseAdmin.from("clinic_subscriptions").update(update).eq("id", row.data.id).eq("status", row.data.status as never).select("id");
           if (up.error) throw new Error(up.error.message);
           if (!up.data?.length) throw new Error("status changed concurrently");
+          if (trialEnding) {
+            const link = await supabaseAdmin.from("subscription_clinics").select("clinic_id").eq("subscription_id", row.data.id).maybeSingle();
+            await supabaseAdmin.from("trial_events").insert({ subscription_id: row.data.id, clinic_id: link.data?.clinic_id ?? null, event_type: "TRIAL_CANCELLED", event_date: new Date().toISOString(), metadata: { source: "razorpay" } });
+          }
+          if (to === "PAST_DUE" && row.data.status.startsWith("TRIAL_")) {
+            const link = await supabaseAdmin.from("subscription_clinics").select("clinic_id").eq("subscription_id", row.data.id).maybeSingle();
+            await supabaseAdmin.from("trial_events").insert({ subscription_id: row.data.id, clinic_id: link.data?.clinic_id ?? null, event_type: "PAYMENT_FAILED", event_date: new Date().toISOString(), metadata: { event: type } });
+          }
 
           if (activating) {
             const link = await supabaseAdmin.from("subscription_clinics").select("clinic_id").eq("subscription_id", row.data.id).maybeSingle();

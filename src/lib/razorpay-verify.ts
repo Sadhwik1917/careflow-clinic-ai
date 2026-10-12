@@ -43,8 +43,10 @@ export function statusForEvent(event: string): SubStatus | null {
 
 const ALLOWED_FROM: Record<SubStatus, string[]> = {
   ACTIVE: ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE", "TRIAL_ACTIVE", "TRIAL_EXPIRED"],
-  PAST_DUE: ["ACTIVE", "PAST_DUE"],
-  CANCELLED: ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE"],
+  // A failed trial-end charge (pending/halted) on a mandated trial moves it to PAST_DUE while Razorpay retries.
+  PAST_DUE: ["ACTIVE", "PAST_DUE", "TRIAL_ACTIVE", "TRIAL_EXPIRED"],
+  // A cancelled mandate on a trial ends the trial (recorded as TRIAL_CANCELLED by the webhook).
+  CANCELLED: ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE", "TRIAL_ACTIVE"],
   EXPIRED: ["ACTIVE", "PAST_DUE"],
   PENDING_PAYMENT: [],
 };

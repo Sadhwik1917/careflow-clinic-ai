@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, type OpenSub } from "@/lib/subscription-rules";
+import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, trialTiming, beforeCancelCutoff, type OpenSub } from "@/lib/subscription-rules";
 import { parseCheckoutResult, verifyCheckoutSignature } from "@/lib/razorpay-verify";
 import { cancelAtRazorpay, openSubsForClinic, razorpayAuth, supersede } from "@/lib/subscriptions.server";
 
@@ -116,7 +116,7 @@ export const verifySubscriptionPayment = createServerFn({ method: "POST" })
 const parseClinic = (b: unknown) => { const c = (b as { clinicId?: unknown } | null)?.clinicId; if (!isUuid(c)) throw new Error("Invalid clinic"); return { clinicId: c }; };
 
 export type PlanState = {
-  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean } | null;
+  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean; mandate: string | null; amount: number } | null;
   trialUsed: boolean;
 };
 
@@ -137,36 +137,80 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
     ]);
     const trialUsed = !!byClinic.error || !!byOwner.error || !!byClinic.data?.length || !!byOwner.data?.length;
     return {
-      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id } : null,
+      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount) } : null,
       trialUsed,
     };
   });
 
-// Starts a genuine 21-day trial through the trusted database function; no payment is collected.
+export type StartTrialResult =
+  | { ok: true; subscriptionId: string; razorpaySubscriptionId: string; keyId: string; trialEnd: string }
+  | { ok: false; error: string };
+
+// Starts trial enrollment with a Razorpay subscription whose first charge (start_at) is exactly 21 days away.
+// The customer must authorize the mandate in checkout; the trial starts only when the signed
+// subscription.authenticated webhook confirms it. Razorpay then charges automatically at start_at.
 export const startClinicTrial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseCreateSubscriptionInput)
-  .handler(async ({ data, context }): Promise<{ ok: true; trialEnd: string } | { ok: false; error: string }> => {
+  .handler(async ({ data, context }): Promise<StartTrialResult> => {
+    const keyId = process.env["RAZORPAY_KEY_ID"];
+    const auth = razorpayAuth();
+    if (!keyId || !auth) return { ok: false, error: "Payments aren't configured yet." };
     const denied = await assertOwner(context, data.clinicId, true);
     if (denied) return { ok: false, error: denied };
+    const plan = await context.supabase.from("plans")
+      .select("id, price, multi_price, currency, billing_cycle, clinic_mode, is_active, trial_enabled, razorpay_plan_id, razorpay_multi_plan_id").eq("id", data.planId).maybeSingle();
+    if (plan.error || !plan.data || !plan.data.trial_enabled) return { ok: false, error: "This plan doesn't offer a free trial." };
+    const resolved = resolvePlanScope(plan.data, data.scope);
+    if ("error" in resolved) return { ok: false, error: resolved.error };
+    const pricing = pricingFor(plan.data, resolved.scope);
+    if ("error" in pricing) return { ok: false, error: pricing.error };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // Unpaid checkouts don't count as a plan; they are cancelled so the trial doesn't overlap them.
+    // Unpaid checkouts (including abandoned trial authorizations) are cancelled so they can't overlap.
     const pending = (await openSubsForClinic(supabaseAdmin, data.clinicId)).filter(s => s.status === "PENDING_PAYMENT");
     await supersede(supabaseAdmin, pending);
-    const r = await supabaseAdmin.rpc("start_clinic_trial", { p_user: context.userId, p_clinic: data.clinicId, p_plan: data.planId, p_scope: data.scope as string });
-    if (r.error || !r.data) { console.error("[subscriptions] trial start refused", r.error?.message); return { ok: false, error: trialErrorMessage(r.error?.message) }; }
-    const row = await supabaseAdmin.from("clinic_subscriptions").select("trial_end_date").eq("id", r.data).single();
-    return { ok: true, trialEnd: row.data?.trial_end_date ?? "" };
+
+    const { startAt, expireBy } = trialTiming(new Date());
+    const rz = await fetch("https://api.razorpay.com/v1/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: auth },
+      body: JSON.stringify({
+        plan_id: pricing.razorpayPlanId, total_count: 120, quantity: 1, customer_notify: 1,
+        start_at: startAt, expire_by: expireBy,
+        notes: { clinic_id: data.clinicId, careflow_plan_id: plan.data.id, clinic_scope: resolved.scope, careflow_trial: "21d" },
+      }),
+    });
+    const rzBody = (await rz.json().catch(() => ({}))) as { id?: unknown; error?: { code?: string; description?: string } };
+    if (!rz.ok || typeof rzBody.id !== "string") {
+      console.error("[subscriptions] Razorpay trial create failed", rz.status, rzBody.error?.code, rzBody.error?.description);
+      return { ok: false, error: "We couldn't start the trial authorization. Please try again." };
+    }
+    const trialEnd = new Date(startAt * 1000).toISOString();
+    const r = await supabaseAdmin.rpc("begin_mandated_trial", { p_user: context.userId, p_clinic: data.clinicId, p_plan: data.planId, p_scope: resolved.scope, p_provider_id: rzBody.id, p_trial_end: trialEnd });
+    if (r.error || !r.data) {
+      console.error("[subscriptions] trial enrollment refused", r.error?.message);
+      await cancelAtRazorpay(rzBody.id);
+      return { ok: false, error: trialErrorMessage(r.error?.message) };
+    }
+    return { ok: true, subscriptionId: r.data, razorpaySubscriptionId: rzBody.id, keyId, trialEnd };
   });
 
-// Cancels the caller's own active trial. Policy: access ends immediately and the trial can't be restarted.
+// Cancels the caller's own trial. The Razorpay subscription is cancelled first; if Razorpay refuses, nothing changes,
+// so a trial is never shown as cancelled while its trial-end charge is still scheduled. Access ends immediately.
 export const cancelClinicTrial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((b: unknown) => { const s = (b as { subscriptionId?: unknown } | null)?.subscriptionId; if (!isUuid(s)) throw new Error("Invalid subscription"); return { subscriptionId: s }; })
   .handler(async ({ data, context }): Promise<{ ok: true } | { ok: false; error: string }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const row = await supabaseAdmin.from("clinic_subscriptions").select("status, provider_subscription_id, trial_end_date")
+      .eq("id", data.subscriptionId).eq("owner_user_id", context.userId).maybeSingle();
+    if (row.error || !row.data) return { ok: false, error: trialErrorMessage("TRIAL_NOT_FOUND") };
+    if (row.data.status !== "TRIAL_ACTIVE") return { ok: false, error: trialErrorMessage("TRIAL_NOT_ACTIVE") };
+    if (!beforeCancelCutoff(row.data.trial_end_date, new Date()))
+      return { ok: false, error: "The trial has reached its billing time, so it can no longer be cancelled as a trial. Cancel the plan instead." };
+    if (row.data.provider_subscription_id && !(await cancelAtRazorpay(row.data.provider_subscription_id)))
+      return { ok: false, error: "Razorpay didn't confirm the cancellation, so your trial wasn't changed. Please try again." };
     const r = await supabaseAdmin.rpc("cancel_clinic_trial", { p_user: context.userId, p_subscription: data.subscriptionId });
     if (r.error) return { ok: false, error: trialErrorMessage(r.error.message) };
-    await cancelAtRazorpay(r.data ?? null); // stop any checkout started for converting this trial
     return { ok: true };
   });

@@ -54,8 +54,9 @@ describe("webhook ordering", () => {
   it("never revives cancelled trials or ended plans", () => {
     for (const from of ["TRIAL_CANCELLED", "CANCELLED", "EXPIRED"]) expect(canTransition(from, "ACTIVE")).toBe(false);
   });
-  it("doesn't let a stray Razorpay cancel/halt end a running trial", () => {
-    expect(canTransition("TRIAL_ACTIVE", "CANCELLED")).toBe(false);
-    expect(canTransition("TRIAL_ACTIVE", "PAST_DUE")).toBe(false);
+  it("records a failed trial-end charge as PAST_DUE and a cancelled mandate as ending the trial", () => {
+    expect(canTransition("TRIAL_ACTIVE", "PAST_DUE")).toBe(true);
+    expect(canTransition("TRIAL_EXPIRED", "PAST_DUE")).toBe(true);
+    expect(canTransition("TRIAL_ACTIVE", "CANCELLED")).toBe(true);
   });
 });

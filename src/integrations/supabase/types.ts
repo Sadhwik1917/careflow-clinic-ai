@@ -414,6 +414,8 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          mandate_authorized_at: string | null
+          mandate_status: string | null
           next_billing_date: string | null
           owner_user_id: string
           payment_mandate_id: string | null
@@ -438,6 +440,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          mandate_authorized_at?: string | null
+          mandate_status?: string | null
           next_billing_date?: string | null
           owner_user_id: string
           payment_mandate_id?: string | null
@@ -462,6 +466,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          mandate_authorized_at?: string | null
+          mandate_status?: string | null
           next_billing_date?: string | null
           owner_user_id?: string
           payment_mandate_id?: string | null
@@ -1770,11 +1776,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      begin_mandated_trial: {
+        Args: {
+          p_clinic: string
+          p_plan: string
+          p_provider_id: string
+          p_scope: string
+          p_trial_end: string
+          p_user: string
+        }
+        Returns: string
+      }
       cancel_clinic_trial: {
         Args: { p_subscription: string; p_user: string }
         Returns: string
       }
       clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
+      confirm_trial_mandate: {
+        Args: { p_mandate_ref: string; p_provider_id: string }
+        Returns: string
+      }
       create_first_clinic: {
         Args: {
           p_address?: string

@@ -105,7 +105,9 @@ function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTri
       </ul>
       {trial ? (
         <div className="mt-4 grid gap-2">
-          <Button type="button" disabled={busy} onClick={onContinue}>Continue to Full Plan</Button>
+          {cur?.mandate === "AUTHORIZED"
+            ? <p className="text-xs text-muted-foreground">Renews automatically at {d.price}/month on {fmtDate(trial)}. Cancel up to 1 hour before to avoid the charge.</p>
+            : <Button type="button" disabled={busy} onClick={onContinue}>Continue to Full Plan</Button>}
           <Button type="button" variant="outline" disabled={busy} onClick={onCancelTrial}>Cancel Free Trial</Button>
         </div>
       ) : isCurrent && !d.flexible ? (
@@ -177,19 +179,38 @@ function Page() {
     } finally { setBusy(null); await refresh(); }
   };
 
+  const waitForTrial = async (subscriptionId: string) => {
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const st = await qc.fetchQuery({ ...planStateQuery(clinicId), staleTime: 0 });
+      if (st.current?.id === subscriptionId && st.current.status === "TRIAL_ACTIVE") return true;
+    }
+    return false;
+  };
+
+  // Trial = Razorpay mandate authorization; the trial starts only when the signed webhook confirms it.
   const runTrial = async (scope: "SINGLE" | "MULTI") => {
     if (busy || !selected) return;
+    const plan = selected;
     setBusy("trial"); setDialogError(null);
     try {
-      const r = await startTrial({ data: { clinicId, planId: selected.id, scope: selected.clinic_mode === "SINGLE_OR_MULTI" ? scope : null } });
+      const r = await startTrial({ data: { clinicId, planId: plan.id, scope: plan.clinic_mode === "SINGLE_OR_MULTI" ? scope : null } });
       if (!r.ok) { setDialogError(r.error); return; }
       setSelected(null);
-      setNotice({ tone: "ok", text: `Your 21-day free trial of ${selected.name} has started. It ends on ${fmtDate(r.trialEnd)}. No payment was taken.` });
-      await refresh();
+      const outcome = await openSubscriptionCheckout({ keyId: r.keyId, subscriptionId: r.razorpaySubscriptionId, name: "CAREFLOW AI", description: `${plan.name} — 21-day free trial authorization` });
+      if (outcome.kind === "dismissed") { setNotice({ tone: "info", text: "Authorization was closed. Your trial hasn't started and nothing will be charged." }); return; }
+      if (outcome.kind === "failed") { setNotice({ tone: "error", text: `Authorization didn't go through${outcome.reason ? `: ${outcome.reason}` : ""}. Your trial hasn't started.` }); return; }
+      if (outcome.kind === "load_error") { setNotice({ tone: "error", text: "We couldn't open Razorpay checkout. Check your connection and try again." }); return; }
+      const v = await verify({ data: outcome.result });
+      if (!v.ok) { setNotice({ tone: "error", text: v.error }); return; }
+      setNotice({ tone: "info", text: "Authorization received. Waiting for Razorpay to confirm it…" });
+      const ok = await waitForTrial(r.subscriptionId);
+      setNotice(ok ? { tone: "ok", text: `Your 21-day free trial of ${plan.name} has started. It renews automatically on ${fmtDate(r.trialEnd)} unless you cancel before then.` }
+        : { tone: "info", text: "Authorization received. Your trial starts as soon as Razorpay confirms it." });
     } catch (e) {
       console.error("[plans] trial failed", e instanceof Error ? e.message : e);
       setDialogError("We couldn't start the trial. Please check your connection and try again.");
-    } finally { setBusy(null); }
+    } finally { setBusy(null); await refresh(); }
   };
 
   const runCancelTrial = async () => {
@@ -253,7 +274,7 @@ function Page() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel your free trial?</AlertDialogTitle>
-            <AlertDialogDescription>Cancelling ends clinic access immediately. A free trial can only be used once, so you won't be able to start another — you'll need a full plan to continue.</AlertDialogDescription>
+            <AlertDialogDescription>Cancelling stops the automatic charge scheduled for the end of your trial and ends clinic access immediately. A free trial can only be used once, so you won't be able to start another — you'll need a full plan to continue.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy === "cancel"}>Keep trial</AlertDialogCancel>
