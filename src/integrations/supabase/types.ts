@@ -1509,6 +1509,27 @@ export type Database = {
           },
         ]
       }
+      razorpay_webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+          provider_subscription_id: string | null
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+          provider_subscription_id?: string | null
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+          provider_subscription_id?: string | null
+        }
+        Relationships: []
+      }
       subscription_clinics: {
         Row: {
           clinic_id: string
