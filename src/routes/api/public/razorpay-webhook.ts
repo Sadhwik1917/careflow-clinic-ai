@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
             if (sub.current_end) { update.next_billing_date = ts(sub.current_end)!; update.renewal_date = ts(sub.current_end)!; }
           }
           if (to === "CANCELLED") update.cancelled_at = new Date().toISOString();
-          if (trialEnding) { update.status = "TRIAL_CANCELLED"; update.trial_cancelled_at = update.cancelled_at; update.mandate_status = "CANCELLED"; }
+          if (trialEnding) { update.status = "TRIAL_CANCELLED"; update.trial_cancelled_at = update.cancelled_at!; update.mandate_status = "CANCELLED"; }
           // Conditional on the status we read, so a concurrent event can't be overwritten out of order.
           const up = await supabaseAdmin.from("clinic_subscriptions").update(update).eq("id", row.data.id).eq("status", row.data.status as never).select("id");
           if (up.error) throw new Error(up.error.message);
