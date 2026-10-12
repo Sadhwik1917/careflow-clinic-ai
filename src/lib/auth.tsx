@@ -17,6 +17,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setState({ session, ready: true });
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      // Supabase re-emits SIGNED_IN for the same user (e.g. on tab focus / session re-read); re-running every route guard then remounts the page.
+      if (event === "SIGNED_IN" && lastUserId.current === session?.user.id) return;
+      lastUserId.current = session?.user.id ?? null;
       if (event === "SIGNED_OUT") { queryClient.removeQueries({ queryKey: ["access"] }); setSelectedClinicId(null); }
       else void queryClient.invalidateQueries({ queryKey: ["access"] });
       void router.invalidate();

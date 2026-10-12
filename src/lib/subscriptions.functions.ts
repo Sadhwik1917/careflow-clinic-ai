@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { parseCheckoutResult, verifyCheckoutSignature } from "@/lib/razorpay-verify";
 import { OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, resolvePlanScope } from "@/lib/subscription-rules";
 
 export type CreateSubscriptionResult =
@@ -74,4 +75,25 @@ export const createClinicSubscription = createServerFn({ method: "POST" })
       return { ok: false, error: "We couldn't save the subscription. Please try again." };
     }
     return { ok: true, subscriptionId: ins.data.id, razorpaySubscriptionId: rzId, keyId, reused: false };
+  });
+
+export type VerifyPaymentResult = { ok: true; status: string } | { ok: false; error: string };
+
+// Checks the checkout signature for the caller's own subscription. It never changes status:
+// only the signed Razorpay webhook can make a subscription ACTIVE.
+export const verifySubscriptionPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(parseCheckoutResult)
+  .handler(async ({ data, context }): Promise<VerifyPaymentResult> => {
+    const keySecret = process.env["RAZORPAY_KEY_SECRET"];
+    if (!keySecret) return { ok: false, error: "Payments aren't configured yet." };
+    if (!(await verifyCheckoutSignature(keySecret, data.paymentId, data.subscriptionId, data.signature))) {
+      console.error("[subscriptions] invalid checkout signature");
+      return { ok: false, error: "We couldn't verify this payment. If you were charged, it will be confirmed by Razorpay shortly." };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const row = await supabaseAdmin.from("clinic_subscriptions").select("status")
+      .eq("provider_subscription_id", data.subscriptionId).eq("owner_user_id", context.userId).maybeSingle();
+    if (row.error || !row.data) return { ok: false, error: "Subscription not found." };
+    return { ok: true, status: row.data.status };
   });

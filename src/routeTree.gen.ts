@@ -63,6 +63,7 @@ import { Route as AuthenticatedStaffDashboardRouteImport } from './routes/_authe
 import { Route as AuthenticatedStaffPatientsRouteImport } from './routes/_authenticated/staff.patients'
 import { Route as AuthenticatedStaffProfileRouteImport } from './routes/_authenticated/staff.profile'
 import { Route as AuthenticatedStaffQueueRouteImport } from './routes/_authenticated/staff.queue'
+import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as AuthenticatedAdminVerificationsIndexRouteImport } from './routes/_authenticated/admin.verifications.index'
 import { Route as AuthenticatedAdminVerificationsClinicIdRouteImport } from './routes/_authenticated/admin.verifications.$clinicId'
 import { Route as AuthenticatedClinicAppointmentsIndexRouteImport } from './routes/_authenticated/clinic.appointments.index'
@@ -378,6 +379,12 @@ const AuthenticatedStaffQueueRoute = AuthenticatedStaffQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => AuthenticatedStaffRoute,
 } as any)
+const ApiPublicRazorpayWebhookRoute =
+  ApiPublicRazorpayWebhookRouteImport.update({
+    id: '/api/public/razorpay-webhook',
+    path: '/api/public/razorpay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminVerificationsIndexRoute =
   AuthenticatedAdminVerificationsIndexRouteImport.update({
     id: '/verifications/',
@@ -487,6 +494,7 @@ export interface FileRoutesByFullPath {
   '/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -548,6 +556,7 @@ export interface FileRoutesByTo {
   '/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -614,6 +623,7 @@ export interface FileRoutesById {
   '/_authenticated/staff/patients': typeof AuthenticatedStaffPatientsRoute
   '/_authenticated/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/_authenticated/staff/queue': typeof AuthenticatedStaffQueueRoute
+  '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
   '/_authenticated/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/_authenticated/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/_authenticated/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -680,6 +690,7 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/api/public/razorpay-webhook'
     | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
@@ -741,6 +752,7 @@ export interface FileRouteTypes {
     | '/staff/patients'
     | '/staff/profile'
     | '/staff/queue'
+    | '/api/public/razorpay-webhook'
     | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
@@ -806,6 +818,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/patients'
     | '/_authenticated/staff/profile'
     | '/_authenticated/staff/queue'
+    | '/api/public/razorpay-webhook'
     | '/_authenticated/admin/verifications/$clinicId'
     | '/_authenticated/clinic/appointments/new'
     | '/_authenticated/clinic/billing/new'
@@ -827,6 +840,7 @@ export interface RootRouteChildren {
   PricingRoute: typeof PricingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1209,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStaffQueueRouteImport
       parentRoute: typeof AuthenticatedStaffRoute
     }
+    '/api/public/razorpay-webhook': {
+      id: '/api/public/razorpay-webhook'
+      path: '/api/public/razorpay-webhook'
+      fullPath: '/api/public/razorpay-webhook'
+      preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/verifications/': {
       id: '/_authenticated/admin/verifications/'
       path: '/verifications'
@@ -1492,6 +1513,7 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
