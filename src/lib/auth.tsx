@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import type { Session } from "@supabase/supabase-js";
@@ -13,15 +13,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ session: null, ready: false });
   const router = useRouter();
   const queryClient = useQueryClient();
+  const lastUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setState({ session, ready: true });
+      if (event === "INITIAL_SESSION") lastUserId.current = session?.user.id ?? null;
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      // Supabase re-emits SIGNED_IN for the same user (e.g. on tab focus / session re-read); re-running every route guard then remounts the page.
+      if (event === "SIGNED_IN" && lastUserId.current === session?.user.id) return;
+      lastUserId.current = session?.user.id ?? null;
       if (event === "SIGNED_OUT") { queryClient.removeQueries({ queryKey: ["access"] }); setSelectedClinicId(null); }
       else void queryClient.invalidateQueries({ queryKey: ["access"] });
       void router.invalidate();
     });
-    void supabase.auth.getSession().then(({ data: d }) => setState(s => (s.ready ? s : { session: d.session, ready: true })));
+    void supabase.auth.getSession().then(({ data: d }) => { if (lastUserId.current === undefined) lastUserId.current = d.session?.user.id ?? null; setState(s => (s.ready ? s : { session: d.session, ready: true })); });
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
