@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { Check, CreditCard } from "lucide-react";
 import { PageTitle } from "@/components/careflow/page-title";
 import { EmptyState, StatusBadge } from "@/components/careflow/feedback";
@@ -9,7 +10,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
 import { useServerFn } from "@tanstack/react-start";
-import { createClinicSubscription, verifySubscriptionPayment } from "@/lib/subscriptions.functions";
+import { cancelClinicTrial, createClinicSubscription, startClinicTrial, verifySubscriptionPayment } from "@/lib/subscriptions.functions";
+import { planStateQuery } from "@/lib/plan-state";
+import { trialDaysLeft } from "@/lib/subscription-rules";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { EnrollDialog, type EnrollPlan } from "@/components/careflow/enroll-dialog";
 import { openSubscriptionCheckout } from "@/lib/razorpay-checkout";
 import { canViewPlans, statusLabel } from "@/lib/verification";
@@ -25,7 +29,7 @@ const plansQuery = (clinicId: string) =>
       const plans = await supabase
         .from("plans")
         .select(
-          "id, name, description, price, currency, billing_cycle, trial_enabled, trial_duration_days, clinic_mode, ai_enabled, ai_credit_type, ai_credit_limit, max_clinics, features",
+          "id, name, description, price, currency, billing_cycle, trial_enabled, trial_duration_days, multi_price, clinic_mode, ai_enabled, ai_credit_type, ai_credit_limit, max_clinics, features",
         )
         .eq("is_active", true)
         .order("price");
@@ -55,7 +59,8 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
         ? "Unlimited AI credits"
         : `${p.ai_credit_limit} AI credits / month${p.clinic_mode === "MULTI" ? " (shared across clinics)" : ""}`;
   const features = Array.isArray(p.features) ? (p.features as string[]) : [];
-  const price = p.currency === "INR" ? inr(p.price) : `${p.currency} ${p.price}`;
+  const amount = flexible && mode === "MULTI" && p.multi_price != null ? p.multi_price : p.price;
+  const price = p.currency === "INR" ? inr(amount) : `${p.currency} ${amount}`;
   return {
     flexible,
     scopeText,
@@ -63,59 +68,53 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
     features,
     price,
     trial: p.trial_enabled ? `${p.trial_duration_days}-day free trial` : null,
+    priceRange: flexible && p.multi_price != null ? `${inr(p.price)} single · ${inr(p.multi_price)} multi-clinic` : null,
   };
 }
 
-function PlanCard({
-  p,
-  canEnroll,
-  busy,
-  onChoose,
-}: {
-  p: Plan;
-  canEnroll: boolean;
-  busy: boolean;
-  onChoose: (p: Plan) => void;
+type State = NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<NonNullable<ReturnType<typeof planStateQuery>["queryFn"]>>>>>["data"]>;
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTrial }: {
+  p: Plan; state: State | undefined; canEnroll: boolean; busy: boolean;
+  onChoose: (p: Plan) => void; onContinue: () => void; onCancelTrial: () => void;
 }) {
   const d = describePlan(p, "SINGLE");
+  const cur = state?.current;
+  const isCurrent = cur?.planId === p.id;
+  const trial = isCurrent && cur?.status === "TRIAL_ACTIVE" && cur.trialEnd ? cur.trialEnd : null;
+  const curScope = isCurrent && cur?.scope ? describePlan(p, cur.scope as "SINGLE" | "MULTI").scopeText : null;
   return (
-    <li className="flex flex-col rounded-lg border bg-card p-5">
+    <li className={`flex flex-col rounded-lg border bg-card p-5 ${isCurrent ? "border-primary ring-1 ring-primary/30" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold">{p.name}</h2>
-        {p.ai_credit_type === "UNLIMITED" && <StatusBadge tone="success">Unlimited AI</StatusBadge>}
+        {isCurrent ? <StatusBadge tone="success">{trial ? "Current plan · Free trial" : "Current plan"}</StatusBadge>
+          : p.ai_credit_type === "UNLIMITED" && <StatusBadge tone="success">Unlimited AI</StatusBadge>}
       </div>
       {p.description && <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>}
-      <p className="mt-3 text-xl font-semibold">
-        {d.price} <span className="text-sm font-normal text-muted-foreground">/ month</span>
-      </p>
-      {d.trial && (
-        <div className="mt-2">
-          <StatusBadge tone="info">{d.trial}</StatusBadge>
-        </div>
-      )}
+      <p className="mt-3 text-xl font-semibold">{d.price} <span className="text-sm font-normal text-muted-foreground">/ month</span></p>
+      {d.priceRange && <p className="text-xs text-muted-foreground">{d.priceRange}</p>}
+      {d.trial && !isCurrent && <div className="mt-2"><StatusBadge tone="info">{d.trial}</StatusBadge></div>}
       <dl className="mt-3 space-y-1 text-sm">
-        <div>
-          <dt className="inline text-muted-foreground">Clinic scope: </dt>
-          <dd className="inline font-medium">
-            {d.flexible ? "Single clinic or multi-clinic (choose when enrolling)" : d.scopeText}
-          </dd>
-        </div>
-        <div>
-          <dt className="inline text-muted-foreground">AI allowance: </dt>
-          <dd className="inline font-medium">{d.ai}</dd>
-        </div>
+        <div><dt className="inline text-muted-foreground">Clinic scope: </dt><dd className="inline font-medium">{curScope ?? (d.flexible ? "Single clinic or multi-clinic (choose when enrolling)" : d.scopeText)}</dd></div>
+        <div><dt className="inline text-muted-foreground">AI allowance: </dt><dd className="inline font-medium">{d.ai}</dd></div>
+        {trial && <div><dt className="inline text-muted-foreground">Trial ends: </dt><dd className="inline font-medium">{fmtDate(trial)} · {trialDaysLeft(trial)} day{trialDaysLeft(trial) === 1 ? "" : "s"} left</dd></div>}
       </dl>
       <ul className="mt-3 flex-1 space-y-1 text-sm">
-        {d.features.map((f) => (
-          <li key={f} className="flex gap-2">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-            {f}
-          </li>
-        ))}
+        {d.features.map((f) => <li key={f} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />{f}</li>)}
       </ul>
-      <Button type="button" className="mt-4 w-full" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>
-        {canEnroll ? "Start Now" : "Enrollment unavailable"}
-      </Button>
+      {trial ? (
+        <div className="mt-4 grid gap-2">
+          <Button type="button" disabled={busy} onClick={onContinue}>Continue to Full Plan</Button>
+          <Button type="button" variant="outline" disabled={busy} onClick={onCancelTrial}>Cancel Free Trial</Button>
+        </div>
+      ) : isCurrent && !d.flexible ? (
+        <Button type="button" className="mt-4 w-full" variant="outline" disabled>Your Current Plan</Button>
+      ) : (
+        <Button type="button" className="mt-4 w-full" disabled={!canEnroll || busy || !state} onClick={() => onChoose(p)}>
+          {!canEnroll ? "Enrollment unavailable" : isCurrent ? "Your Current Plan · Change scope" : cur ? "Upgrade Now" : "Start Now"}
+        </Button>
+      )}
     </li>
   );
 }
@@ -124,155 +123,144 @@ type Notice = { tone: "ok" | "error" | "info"; text: string };
 
 function Page() {
   const { membership } = Route.useRouteContext();
-  const { data } = useSuspenseQuery(plansQuery(membership?.clinic_id ?? ""));
+  const clinicId = membership?.clinic_id ?? "";
+  const { data } = useSuspenseQuery(plansQuery(clinicId));
+  const planState = useQuery(planStateQuery(clinicId));
+  const qc = useQueryClient();
+  const router = useRouter();
   const create = useServerFn(createClinicSubscription);
   const verify = useServerFn(verifySubscriptionPayment);
+  const startTrial = useServerFn(startClinicTrial);
+  const cancelTrial = useServerFn(cancelClinicTrial);
   const [selected, setSelected] = useState<Plan | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"trial" | "paid" | "cancel" | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const canEnroll = !!membership && membership.role === "OWNER" && data.status === "APPROVED";
+  const state = planState.data;
 
-  const confirm = async (scope: "SINGLE" | "MULTI") => {
-    if (busy || !membership || !selected) return;
-    setBusy(true);
-    setDialogError(null);
-    try {
-      const r = await create({
-        data: {
-          clinicId: membership.clinic_id,
-          planId: selected.id,
-          scope: selected.clinic_mode === "SINGLE_OR_MULTI" ? scope : null,
-        },
-      });
-      if (!r.ok) {
-        setDialogError(r.error);
-        return;
-      }
-      setSelected(null);
-      const outcome = await openSubscriptionCheckout({
-        keyId: r.keyId,
-        subscriptionId: r.razorpaySubscriptionId,
-        name: "CAREFLOW AI",
-        description: selected.name,
-      });
-      if (outcome.kind === "dismissed") {
-        setNotice({
-          tone: "info",
-          text: `Checkout was closed. Your subscription ${r.razorpaySubscriptionId} is still awaiting payment; choose the same plan again to resume.`,
-        });
-        return;
-      }
-      if (outcome.kind === "failed") {
-        setNotice({
-          tone: "error",
-          text: `Payment didn't go through${outcome.reason ? `: ${outcome.reason}` : ""}. Nothing was activated; you can try again with the same plan.`,
-        });
-        return;
-      }
-      if (outcome.kind === "load_error") {
-        setNotice({ tone: "error", text: "We couldn't open Razorpay checkout. Check your connection and try again." });
-        return;
-      }
-      const v = await verify({ data: outcome.result });
-      setNotice(
-        v.ok
-          ? {
-              tone: "ok",
-              text: `Payment received for subscription ${r.razorpaySubscriptionId}. Razorpay will confirm it shortly; your plan becomes active only after that confirmation (current status: ${v.status.replace("_", " ").toLowerCase()}).`,
-            }
-          : { tone: "error", text: v.error },
-      );
-    } catch (e) {
-      console.error("[plans] enroll failed", e instanceof Error ? e.message : e);
-      setDialogError("We couldn't start the subscription. Please check your connection and try again.");
-    } finally {
-      setBusy(false);
+  const refresh = async () => { await qc.invalidateQueries({ queryKey: ["plan-state", clinicId] }); await router.invalidate(); };
+
+  // The webhook, not the browser, activates plans; poll briefly so the page reflects it without a manual refresh.
+  const waitForActivation = async (subscriptionId: string) => {
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const s = await qc.fetchQuery({ ...planStateQuery(clinicId), staleTime: 0 });
+      if (s.current?.id === subscriptionId && s.current.status === "ACTIVE") return true;
+      if (s.current?.status === "ACTIVE" && s.current.type === "PAID" && s.current.id === subscriptionId) return true;
     }
+    return false;
   };
 
-  const tone =
-    notice?.tone === "ok"
-      ? "border-primary/40 bg-primary/5"
-      : notice?.tone === "error"
-        ? "border-destructive/40 bg-destructive/5 text-destructive"
-        : "bg-muted";
-  const sel: EnrollPlan | null = selected
-    ? {
-        name: selected.name,
-        flexible: selected.clinic_mode === "SINGLE_OR_MULTI",
-        describe: (s) => describePlan(selected, s),
-      }
-    : null;
+  const runPaid = async (planId: string, planName: string, scope: "SINGLE" | "MULTI" | null) => {
+    if (busy || !membership) return;
+    setBusy("paid"); setDialogError(null);
+    try {
+      const r = await create({ data: { clinicId, planId, scope } });
+      if (!r.ok) { if (selected) setDialogError(r.error); else setNotice({ tone: "error", text: r.error }); return; }
+      setSelected(null);
+      const outcome = await openSubscriptionCheckout({ keyId: r.keyId, subscriptionId: r.razorpaySubscriptionId, name: "CAREFLOW AI", description: planName });
+      if (outcome.kind === "dismissed") { setNotice({ tone: "info", text: "Checkout was closed. Nothing was charged and your current access is unchanged; choose the plan again to resume." }); return; }
+      if (outcome.kind === "failed") { setNotice({ tone: "error", text: `Payment didn't go through${outcome.reason ? `: ${outcome.reason}` : ""}. Nothing was activated; you can try again.` }); return; }
+      if (outcome.kind === "load_error") { setNotice({ tone: "error", text: "We couldn't open Razorpay checkout. Check your connection and try again." }); return; }
+      const v = await verify({ data: outcome.result });
+      if (!v.ok) { setNotice({ tone: "error", text: v.error }); return; }
+      setNotice({ tone: "info", text: "Payment received. Waiting for Razorpay to confirm it…" });
+      const active = await waitForActivation(r.subscriptionId);
+      setNotice(active ? { tone: "ok", text: "Payment confirmed. Your plan is now active." }
+        : { tone: "info", text: "Payment received. Razorpay hasn't confirmed it yet; your plan becomes active as soon as it does." });
+    } catch (e) {
+      console.error("[plans] enroll failed", e instanceof Error ? e.message : e);
+      const msg = "We couldn't start the subscription. Please check your connection and try again.";
+      if (selected) setDialogError(msg); else setNotice({ tone: "error", text: msg });
+    } finally { setBusy(null); await refresh(); }
+  };
+
+  const runTrial = async (scope: "SINGLE" | "MULTI") => {
+    if (busy || !selected) return;
+    setBusy("trial"); setDialogError(null);
+    try {
+      const r = await startTrial({ data: { clinicId, planId: selected.id, scope: selected.clinic_mode === "SINGLE_OR_MULTI" ? scope : null } });
+      if (!r.ok) { setDialogError(r.error); return; }
+      setSelected(null);
+      setNotice({ tone: "ok", text: `Your 21-day free trial of ${selected.name} has started. It ends on ${fmtDate(r.trialEnd)}. No payment was taken.` });
+      await refresh();
+    } catch (e) {
+      console.error("[plans] trial failed", e instanceof Error ? e.message : e);
+      setDialogError("We couldn't start the trial. Please check your connection and try again.");
+    } finally { setBusy(null); }
+  };
+
+  const runCancelTrial = async () => {
+    const id = state?.current?.id;
+    if (busy || !id) return;
+    setBusy("cancel");
+    try {
+      const r = await cancelTrial({ data: { subscriptionId: id } });
+      setNotice(r.ok ? { tone: "info", text: "Your free trial was cancelled. Clinic access has ended; choose a full plan to continue." } : { tone: "error", text: r.error });
+      setConfirmCancel(false);
+      await refresh();
+    } catch { setNotice({ tone: "error", text: "We couldn't cancel the trial. Please try again." }); }
+    finally { setBusy(null); }
+  };
+
+  const trialPlan = data.plans.find((p) => p.id === state?.current?.planId);
+  const tone = notice?.tone === "ok" ? "border-primary/40 bg-primary/5" : notice?.tone === "error" ? "border-destructive/40 bg-destructive/5 text-destructive" : "bg-muted";
+  const sel: EnrollPlan | null = selected ? {
+    name: selected.name,
+    flexible: selected.clinic_mode === "SINGLE_OR_MULTI",
+    trialAvailable: selected.trial_enabled && !state?.current && state?.trialUsed === false,
+    describe: (s) => describePlan(selected, s),
+  } : null;
+  const title = state?.current ? "Upgrade Plan" : "Plans";
   return (
     <>
-      <PageTitle title="Plans" description="Choose a plan once your clinic is approved." />
+      <PageTitle title={title} description="Choose a plan once your clinic is approved." />
       <div className="space-y-6 border-t px-4 py-6 md:px-6">
         {!canViewPlans(data.status) ? (
           <div className="rounded-lg border bg-card">
-            <EmptyState
-              icon={CreditCard}
-              title="Plans unlock after approval"
+            <EmptyState icon={CreditCard} title="Plans unlock after approval"
               description={`Your verification status is ${data.status ? statusLabel[data.status].toLowerCase() : "not started"}. Plans become available once CAREFLOW approves your clinic.`}
-              action={
-                <Button asChild>
-                  <Link to="/clinic/verification">Go to verification</Link>
-                </Button>
-              }
-            />
+              action={<Button asChild><Link to="/clinic/verification">Go to verification</Link></Button>} />
           </div>
         ) : (
           <>
-            {notice ? (
-              <div role="status" className={`rounded-md border p-3 text-sm ${tone}`}>
-                {notice.text}
-              </div>
-            ) : (
-              <FormAlert>
-                Payments run in Razorpay Test Mode. Your plan becomes active only after Razorpay confirms the payment.
-              </FormAlert>
-            )}
-            <p className="text-sm text-muted-foreground">
-              AI-enabled plans include a monthly AI credit allowance. Max AI removes the credit limit and lets you pick
-              single-clinic or multi-clinic scope at the same price.
-            </p>
+            {notice ? <div role="status" className={`rounded-md border p-3 text-sm ${tone}`}>{notice.text}</div>
+              : <FormAlert>Payments run in Razorpay Test Mode. A paid plan becomes active only after Razorpay confirms the payment.</FormAlert>}
+            {planState.isError && <p role="alert" className="text-sm text-destructive">We couldn't load your current plan. Refresh the page to try again.</p>}
+            <p className="text-sm text-muted-foreground">AI-enabled plans include a monthly AI credit allowance. Max AI removes the credit limit and lets you pick single-clinic or multi-clinic scope.</p>
             {data.plans.length === 0 ? (
-              <div className="rounded-lg border bg-card">
-                <EmptyState
-                  icon={CreditCard}
-                  title="No plans published yet"
-                  description="CAREFLOW hasn't published any plans yet."
-                />
-              </div>
+              <div className="rounded-lg border bg-card"><EmptyState icon={CreditCard} title="No plans published yet" description="CAREFLOW hasn't published any plans yet." /></div>
             ) : (
               <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.plans.map((p) => (
-                  <PlanCard
-                    key={p.id}
-                    p={p}
-                    canEnroll={canEnroll}
-                    busy={busy}
-                    onChoose={(pl) => {
-                      setDialogError(null);
-                      setNotice(null);
-                      setSelected(pl);
-                    }}
-                  />
+                  <PlanCard key={p.id} p={p} state={state} canEnroll={canEnroll} busy={!!busy}
+                    onChoose={(pl) => { setDialogError(null); setNotice(null); setSelected(pl); }}
+                    onContinue={() => trialPlan && void runPaid(trialPlan.id, trialPlan.name, trialPlan.clinic_mode === "SINGLE_OR_MULTI" ? (state?.current?.scope as "SINGLE" | "MULTI") : null)}
+                    onCancelTrial={() => setConfirmCancel(true)} />
                 ))}
               </ul>
             )}
           </>
         )}
       </div>
-      <EnrollDialog
-        plan={sel}
-        busy={busy}
-        error={dialogError}
-        onCancel={() => {
-          if (!busy) setSelected(null);
-        }}
-        onConfirm={confirm}
-      />
+      <EnrollDialog plan={sel} busy={busy === "trial" || busy === "paid" ? busy : null} error={dialogError}
+        onCancel={() => { if (!busy) setSelected(null); }}
+        onConfirm={(scope) => selected && void runPaid(selected.id, selected.name, selected.clinic_mode === "SINGLE_OR_MULTI" ? scope : null)}
+        onStartTrial={(scope) => void runTrial(scope)} />
+      <AlertDialog open={confirmCancel} onOpenChange={(o) => { if (!busy) setConfirmCancel(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel your free trial?</AlertDialogTitle>
+            <AlertDialogDescription>Cancelling ends clinic access immediately. A free trial can only be used once, so you won't be able to start another — you'll need a full plan to continue.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy === "cancel"}>Keep trial</AlertDialogCancel>
+            <AlertDialogAction disabled={busy === "cancel"} onClick={(e) => { e.preventDefault(); void runCancelTrial(); }}>{busy === "cancel" ? "Cancelling…" : "Cancel Free Trial"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
