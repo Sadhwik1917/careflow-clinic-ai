@@ -17,6 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setState({ session, ready: true });
+      if (event === "INITIAL_SESSION") lastUserId.current = session?.user.id ?? null;
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       // Supabase re-emits SIGNED_IN for the same user (e.g. on tab focus / session re-read); re-running every route guard then remounts the page.
       if (event === "SIGNED_IN" && lastUserId.current === session?.user.id) return;
