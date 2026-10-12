@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/careflow/feedback";
 
 export type PlanDetails = { scopeText: string; ai: string; features: string[]; price: string; trial: string | null };
-export type EnrollPlan = { name: string; flexible: boolean; describe: (scope: "SINGLE" | "MULTI") => PlanDetails };
+export type EnrollPlan = { name: string; flexible: boolean; trialAvailable: boolean; describe: (scope: "SINGLE" | "MULTI") => PlanDetails };
 
 // Restrained enter/exit: fade + slight lift/scale; disabled under prefers-reduced-motion.
 const overlayCls =
@@ -19,12 +19,14 @@ export function EnrollDialog({
   error,
   onCancel,
   onConfirm,
+  onStartTrial,
 }: {
   plan: EnrollPlan | null;
-  busy: boolean;
+  busy: "trial" | "paid" | null;
   error: string | null;
   onCancel: () => void;
   onConfirm: (scope: "SINGLE" | "MULTI") => void;
+  onStartTrial: (scope: "SINGLE" | "MULTI") => void;
 }) {
   const [scope, setScope] = useState<"SINGLE" | "MULTI">("SINGLE");
   const [shown, setShown] = useState<EnrollPlan | null>(plan);
@@ -57,16 +59,14 @@ export function EnrollDialog({
           {shown && d && (
             <>
               <DialogPrimitive.Title className="text-lg font-semibold">Confirm Enrollment</DialogPrimitive.Title>
-              <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
-                Review the plan before continuing to Razorpay Test Mode checkout.
-              </DialogPrimitive.Description>
+              <DialogPrimitive.Description className="sr-only">Plan details for {shown.name}</DialogPrimitive.Description>
               <div className="mt-4 flex-1 space-y-3 overflow-y-auto">
                 <div>
                   <p className="font-medium">{shown.name}</p>
                   <p className="text-xl font-semibold">
                     {d.price} <span className="text-sm font-normal text-muted-foreground">/ month</span>
                   </p>
-                  {d.trial && (
+                  {d.trial && shown.trialAvailable && (
                     <div className="mt-1">
                       <StatusBadge tone="info">{d.trial}</StatusBadge>
                     </div>
@@ -84,7 +84,7 @@ export function EnrollDialog({
                         type="button"
                         role="radio"
                         aria-checked={scope === s}
-                        disabled={busy}
+                        disabled={!!busy}
                         onClick={() => setScope(s)}
                         className={`rounded px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${scope === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                       >
@@ -111,9 +111,9 @@ export function EnrollDialog({
                     </li>
                   ))}
                 </ul>
-                {d.trial && (
+                {d.trial && shown.trialAvailable && (
                   <p className="text-xs text-muted-foreground">
-                    The free trial isn't started from here yet; checkout sets up the paid subscription.
+                    Free trial: {d.trial}, no payment now. Clinic access ends when the trial ends unless you continue to the full plan. One trial per clinic and account.
                   </p>
                 )}
                 {error && (
@@ -126,18 +126,16 @@ export function EnrollDialog({
                 )}
               </div>
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
+                <Button type="button" variant="outline" disabled={!!busy} onClick={onCancel}>
                   Cancel
                 </Button>
-                <Button type="button" disabled={busy} onClick={() => onConfirm(scope)}>
-                  {busy ? (
-                    <>
-                      <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
-                      Preparing checkout…
-                    </>
-                  ) : (
-                    "Confirm Full-Plan"
-                  )}
+                {shown.trialAvailable && (
+                  <Button type="button" variant="secondary" disabled={!!busy} onClick={() => onStartTrial(scope)}>
+                    {busy === "trial" ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Starting trial…</> : "Start Free Trial"}
+                  </Button>
+                )}
+                <Button type="button" disabled={!!busy} onClick={() => onConfirm(scope)}>
+                  {busy === "paid" ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Preparing checkout…</> : "Confirm Full Plan"}
                 </Button>
               </div>
             </>

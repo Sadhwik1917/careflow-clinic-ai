@@ -41,11 +41,19 @@ export function statusForEvent(event: string): SubStatus | null {
   }
 }
 
-/** Ended subscriptions never come back to life from a later or replayed event. */
+const ALLOWED_FROM: Record<SubStatus, string[]> = {
+  ACTIVE: ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE", "TRIAL_ACTIVE", "TRIAL_EXPIRED"],
+  PAST_DUE: ["ACTIVE", "PAST_DUE"],
+  CANCELLED: ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE"],
+  EXPIRED: ["ACTIVE", "PAST_DUE"],
+  PENDING_PAYMENT: [],
+};
+/**
+ * Delayed, duplicated or out-of-order events can't revive ended rows: CANCELLED, EXPIRED and TRIAL_CANCELLED are final.
+ * An expired trial may still become ACTIVE when its own checkout's payment is verified late.
+ */
 export function canTransition(from: string, to: SubStatus): boolean {
-  if (from === to) return true;
-  if (from === "CANCELLED" || from === "EXPIRED") return false;
-  return ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE"].includes(from);
+  return ALLOWED_FROM[to].includes(from);
 }
 
 export function parseCheckoutResult(body: unknown): { paymentId: string; subscriptionId: string; signature: string } {

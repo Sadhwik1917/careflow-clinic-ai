@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Building2, ChevronRight, LogOut, ShieldCheck, X } from "lucide-react";
@@ -9,9 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 
+/** Presentation-only label overrides keyed by path (e.g. "Upgrade Plan" once a clinic has a plan). */
+export const NavTitleOverrides = createContext<Record<string, string>>({});
+function useNavItems(role: AppRole) {
+  const o = useContext(NavTitleOverrides);
+  return navigation[role].map(i => (o[i.path] ? { ...i, title: o[i.path]! } : i));
+}
+
 function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: AppRole; pathname: string; contextLabel: string; clinicName: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const items = navigation[role];
+  const items = useNavItems(role);
   return <Sidebar collapsible="icon" className="border-sidebar-border">
     <SidebarHeader className="gap-6 px-4 py-6 group-data-[collapsible=icon]:px-1.5">
       <div className="flex items-center justify-between"><CareflowBrand compact={state === "collapsed" && !isMobile} clinicName={clinicName} />{isMobile && <Button size="icon" variant="ghost" aria-label="Close navigation" onClick={() => setOpenMobile(false)}><X /></Button>}</div>
@@ -34,12 +42,13 @@ function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: 
 export function ApplicationShell({ role, access, membership, children }: { role: AppRole; access: UserAccess; membership: AccessMembership | null; children: ReactNode }) {
   const pathname = useRouterState({ select: state => state.location.pathname });
   const navigate = useNavigate();
+  const navItems = useNavItems(role);
   const signOut = useSignOut();
   const workspaces = availableWorkspaces(access);
   const clinicName = role === "PLATFORM_ADMIN" ? null : membership?.clinic?.display_name ?? null;
   const currentKey = role === "PLATFORM_ADMIN" ? "admin" : membership?.id ?? "";
   const contextLabel = role === "PLATFORM_ADMIN" ? "Platform administration" : membership?.clinic?.display_name || membership?.clinic?.name || "Clinic";
-  const currentPage = navigation[role].find(item => pathname === item.path || pathname.startsWith(`${item.path}/`))?.title ?? "Dashboard";
+  const currentPage = navItems.find(item => pathname === item.path || pathname.startsWith(`${item.path}/`))?.title ?? "Dashboard";
   const name = access.profile?.display_name || access.email || "Signed in";
   return <SidebarProvider><a href="#main-content" className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a><WorkspaceSidebar role={role} pathname={pathname} contextLabel={contextLabel} clinicName={clinicName} /><div className="flex min-w-0 flex-1 flex-col">
     <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 md:px-8">
