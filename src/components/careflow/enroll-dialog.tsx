@@ -136,7 +136,7 @@ export function EnrollDialog({
                       Preparing checkout…
                     </>
                   ) : (
-                    "Confirm Enrollment"
+                    "Confirm Full-Plan"
                   )}
                 </Button>
               </div>
