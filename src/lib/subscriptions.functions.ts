@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, trialTiming, beforeCancelCutoff, type OpenSub } from "@/lib/subscription-rules";
+import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, trialTiming, beforeCancelCutoff, isTrialUsed, type OpenSub } from "@/lib/subscription-rules";
 import { parseCheckoutResult, verifyCheckoutSignature } from "@/lib/razorpay-verify";
 import { cancelAtRazorpay, openSubsForClinic, razorpayAuth, supersede } from "@/lib/subscriptions.server";
 
@@ -132,10 +132,11 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
     const cur = subs.find(s => s.status === "ACTIVE" || s.status === "PAST_DUE" || (s.status === "TRIAL_ACTIVE" && s.trial_end_date && new Date(s.trial_end_date).getTime() > now));
     // Mirrors start_clinic_trial: one trial per clinic and per owner, ever (trial rows keep trial_start_date).
     const [byClinic, byOwner] = await Promise.all([
-      supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
-      supabaseAdmin.from("clinic_subscriptions").select("id").eq("owner_user_id", context.userId).not("trial_start_date", "is", null).limit(1),
+      supabaseAdmin.from("trial_events").select("id, subscription:clinic_subscriptions!inner(owner_user_id)").eq("event_type", "TRIAL_STARTED")
+        .or(`clinic_id.eq.${data.clinicId},owner_user_id.eq.${context.userId}`, { referencedTable: undefined }).limit(1),
+      supabaseAdmin.from("clinic_subscriptions").select("mandate_status, status, subscription_type").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL"),
     ]);
-    const trialUsed = !!byClinic.error || !!byOwner.error || !!byClinic.data?.length || !!byOwner.data?.length;
+    const trialUsed = isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: !!byClinic.error || !!byOwner.error });
     return {
       current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount) } : null,
       trialUsed,
@@ -190,7 +191,7 @@ export const startClinicTrial = createServerFn({ method: "POST" })
     if (r.error || !r.data) {
       console.error("[subscriptions] trial enrollment refused", r.error?.message);
       await cancelAtRazorpay(rzBody.id);
-      return { ok: false, error: trialErrorMessage(r.error?.message) };
+      return { ok: false, error: trialErrorMessage(r.error?.message, "enroll") };
     }
     return { ok: true, subscriptionId: r.data, razorpaySubscriptionId: rzBody.id, keyId, trialEnd };
   });
