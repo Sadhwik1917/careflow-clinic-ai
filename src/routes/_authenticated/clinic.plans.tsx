@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/clinic/plans")({
 
 const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
 
-export function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
+function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
   const flexible = p.clinic_mode === "SINGLE_OR_MULTI";
   const mode = flexible ? scope : p.clinic_mode;
   const clinics = mode === "SINGLE" ? 1 : p.max_clinics;
