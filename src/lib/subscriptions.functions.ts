@@ -132,8 +132,8 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
     const cur = subs.find(s => s.status === "ACTIVE" || s.status === "PAST_DUE" || (s.status === "TRIAL_ACTIVE" && s.trial_end_date && new Date(s.trial_end_date).getTime() > now));
     // Mirrors start_clinic_trial: one trial per clinic and per owner, ever (trial rows keep trial_start_date).
     const [byClinic, byOwner] = await Promise.all([
-      supabaseAdmin.from("trial_events").select("id, subscription:clinic_subscriptions!inner(owner_user_id)").eq("event_type", "TRIAL_STARTED")
-        .or(`clinic_id.eq.${data.clinicId},owner_user_id.eq.${context.userId}`, { referencedTable: undefined }).limit(1),
+      // Owner-level use is covered by the owner's own started/authorized trial rows below.
+      supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
       supabaseAdmin.from("clinic_subscriptions").select("mandate_status, status, subscription_type").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL"),
     ]);
     const trialUsed = isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: !!byClinic.error || !!byOwner.error });
