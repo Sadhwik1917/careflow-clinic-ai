@@ -1,0 +1,1 @@
+CREATE POLICY "No app access to webhook events" ON public.razorpay_webhook_events FOR ALL TO authenticated, anon USING (false) WITH CHECK (false);
