@@ -130,15 +130,12 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
     const subs = await openSubsForClinic(supabaseAdmin, data.clinicId);
     const now = Date.now();
     const cur = subs.find(s => s.status === "ACTIVE" || s.status === "PAST_DUE" || (s.status === "TRIAL_ACTIVE" && s.trial_end_date && new Date(s.trial_end_date).getTime() > now));
-    const trials = await supabaseAdmin.from("trial_events").select("id, subscription:clinic_subscriptions!inner(owner_user_id)")
-      .eq("event_type", "TRIAL_STARTED").or(`clinic_id.eq.${data.clinicId},owner_user_id.eq.${context.userId}`, { referencedTable: undefined }).limit(1);
-    let trialUsed = !!trials.data?.length;
-    if (trials.error) {
-      // Fallback: check by clinic, then by owner.
-      const a = await supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1);
-      const ownSubs = await supabaseAdmin.from("clinic_subscriptions").select("id").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL").limit(1);
-      trialUsed = !!a.data?.length || !!ownSubs.data?.length || subs.some(s => s.subscription_type === "TRIAL");
-    }
+    // Mirrors start_clinic_trial: one trial per clinic and per owner, ever (trial rows keep trial_start_date).
+    const [byClinic, byOwner] = await Promise.all([
+      supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
+      supabaseAdmin.from("clinic_subscriptions").select("id").eq("owner_user_id", context.userId).not("trial_start_date", "is", null).limit(1),
+    ]);
+    const trialUsed = !!byClinic.error || !!byOwner.error || !!byClinic.data?.length || !!byOwner.data?.length;
     return {
       current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id } : null,
       trialUsed,
