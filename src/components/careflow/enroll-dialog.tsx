@@ -56,7 +56,7 @@ export function EnrollDialog({
         >
           {shown && d && (
             <>
-              <DialogPrimitive.Title className="text-lg font-semibold">Confirm Full-Plan</DialogPrimitive.Title>
+              <DialogPrimitive.Title className="text-lg font-semibold">Confirm Enrollment</DialogPrimitive.Title>
               <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
                 Review the plan before continuing to Razorpay Test Mode checkout.
               </DialogPrimitive.Description>
