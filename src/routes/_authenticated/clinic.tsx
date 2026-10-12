@@ -3,6 +3,9 @@ import { AreaError, AreaLayout, AreaPending } from "@/components/careflow/area-l
 import { supabase } from "@/integrations/supabase/client";
 import { guardArea } from "@/lib/access";
 import { ownerGateRedirect } from "@/lib/verification";
+import { useQuery } from "@tanstack/react-query";
+import { NavTitleOverrides } from "@/components/careflow/application-shell";
+import { planStateQuery } from "@/lib/plan-state";
 
 // Navigation guard only: the database's row-level security remains the authorization boundary.
 export const Route = createFileRoute("/_authenticated/clinic")({
@@ -27,5 +30,7 @@ export const Route = createFileRoute("/_authenticated/clinic")({
 
 function Layout() {
   const { access, membership } = Route.useRouteContext();
-  return <AreaLayout role="OWNER" access={access} membership={membership} />;
+  const plan = useQuery(planStateQuery(membership?.clinic_id ?? ""));
+  const overrides = plan.data?.current ? { "/clinic/plans": "Upgrade Plan" } : {};
+  return <NavTitleOverrides.Provider value={overrides}><AreaLayout role="OWNER" access={access} membership={membership} /></NavTitleOverrides.Provider>;
 }
