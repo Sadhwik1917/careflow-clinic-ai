@@ -13,6 +13,8 @@ const overlayCls =
 const contentCls =
   "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border bg-card p-6 shadow-lg ease-out duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.98] data-[state=closed]:zoom-out-[0.98] data-[state=open]:slide-in-from-bottom-2 data-[state=closed]:slide-out-to-bottom-2 motion-reduce:animate-none";
 
+const trialEndText = () => new Date(Date.now() + 21 * 86_400_000).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
 export function EnrollDialog({
   plan,
   busy,
@@ -29,12 +31,14 @@ export function EnrollDialog({
   onStartTrial: (scope: "SINGLE" | "MULTI") => void;
 }) {
   const [scope, setScope] = useState<"SINGLE" | "MULTI">("SINGLE");
+  const [consent, setConsent] = useState(false);
   const [shown, setShown] = useState<EnrollPlan | null>(plan);
   // Keep the last plan rendered during the exit animation.
   useEffect(() => {
     if (plan) {
       setShown(plan);
       setScope("SINGLE");
+      setConsent(false);
     }
   }, [plan]);
   const d = shown?.describe(scope);
@@ -112,9 +116,19 @@ export function EnrollDialog({
                   ))}
                 </ul>
                 {d.trial && shown.trialAvailable && (
-                  <p className="text-xs text-muted-foreground">
-                    Free trial: {d.trial}, no payment now. Clinic access ends when the trial ends unless you continue to the full plan. One trial per clinic and account.
-                  </p>
+                  <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-xs">
+                    <p className="font-medium text-sm">Free trial with automatic renewal</p>
+                    <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                      <li>{d.trial}. No subscription fee is charged today.</li>
+                      <li>You'll authorize a recurring payment (card or UPI AutoPay) in Razorpay. Razorpay may take a small authorization amount, shown in checkout before you approve; it is refunded.</li>
+                      <li>First charge: {d.price} on {trialEndText()} — exactly 21 days after you start — then {d.price} every month until you cancel.</li>
+                      <li>Cancel any time up to 1 hour before {trialEndText()} using “Cancel Free Trial” and you won't be charged. Cancelling ends clinic access immediately; a trial can be used once per clinic and account.</li>
+                    </ul>
+                    <label className="flex items-start gap-2 text-sm">
+                      <input type="checkbox" className="mt-1" checked={consent} disabled={!!busy} onChange={(e) => setConsent(e.target.checked)} />
+                      <span>I agree to be charged {d.price}/month automatically starting {trialEndText()} unless I cancel before then.</span>
+                    </label>
+                  </div>
                 )}
                 {error && (
                   <p
@@ -130,8 +144,8 @@ export function EnrollDialog({
                   Cancel
                 </Button>
                 {shown.trialAvailable && (
-                  <Button type="button" variant="secondary" disabled={!!busy} onClick={() => onStartTrial(scope)}>
-                    {busy === "trial" ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Starting trial…</> : "Start Free Trial"}
+                  <Button type="button" variant="secondary" disabled={!!busy || !consent} onClick={() => onStartTrial(scope)}>
+                    {busy === "trial" ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Opening authorization…</> : "Start Free Trial"}
                   </Button>
                 )}
                 <Button type="button" disabled={!!busy} onClick={() => onConfirm(scope)}>
