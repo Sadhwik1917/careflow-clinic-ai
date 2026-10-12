@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { supersede } from "@/lib/subscriptions.server";
 import { canTransition, statusForEvent, verifyWebhookSignature } from "@/lib/razorpay-verify";
 
 type RzEntity = { id?: string; status?: string; current_start?: number; current_end?: number; amount?: number; currency?: string; method?: string };
@@ -38,19 +39,37 @@ export const Route = createFileRoute("/api/public/razorpay-webhook")({
         try {
           const to = statusForEvent(type);
           if (!sub?.id || !to) return new Response("Ignored", { status: 200 });
-          const row = await supabaseAdmin.from("clinic_subscriptions").select("id, status, owner_user_id")
+          const row = await supabaseAdmin.from("clinic_subscriptions").select("id, status, owner_user_id, subscription_type")
             .eq("payment_provider", "razorpay").eq("provider_subscription_id", sub.id).maybeSingle();
           if (row.error) throw new Error(row.error.message);
           if (!row.data) return new Response("Unknown subscription", { status: 200 });
           if (!canTransition(row.data.status, to)) return new Response("Ignored", { status: 200 });
 
-          const update: { status: typeof to; next_billing_date?: string; renewal_date?: string; cancelled_at?: string } = { status: to };
+          if (row.data.status === to && to !== "ACTIVE") return new Response("OK", { status: 200 });
+          const update: { status: typeof to; subscription_type?: "PAID"; next_billing_date?: string; renewal_date?: string; cancelled_at?: string } = { status: to };
+          const activating = to === "ACTIVE" && row.data.status !== "ACTIVE";
+          if (activating) update.subscription_type = "PAID";
           if (to === "ACTIVE") {
             if (sub.current_end) { update.next_billing_date = ts(sub.current_end)!; update.renewal_date = ts(sub.current_end)!; }
           }
           if (to === "CANCELLED") update.cancelled_at = new Date().toISOString();
-          const up = await supabaseAdmin.from("clinic_subscriptions").update(update).eq("id", row.data.id);
+          // Conditional on the status we read, so a concurrent event can't be overwritten out of order.
+          const up = await supabaseAdmin.from("clinic_subscriptions").update(update).eq("id", row.data.id).eq("status", row.data.status as never).select("id");
           if (up.error) throw new Error(up.error.message);
+          if (!up.data?.length) throw new Error("status changed concurrently");
+
+          if (activating) {
+            const link = await supabaseAdmin.from("subscription_clinics").select("clinic_id").eq("subscription_id", row.data.id).maybeSingle();
+            const clinicId = link.data?.clinic_id;
+            if (row.data.status.startsWith("TRIAL_"))
+              await supabaseAdmin.from("trial_events").insert({ subscription_id: row.data.id, clinic_id: clinicId ?? null, event_type: "TRIAL_CONVERTED", event_date: new Date().toISOString(), metadata: {} });
+            if (clinicId) {
+              // Upgrade/conversion: the verified plan replaces any other open plan or checkout for this clinic.
+              const others = await supabaseAdmin.from("subscription_clinics").select("subscription:clinic_subscriptions(id, status, provider_subscription_id)").eq("clinic_id", clinicId);
+              const stale = (others.data ?? []).map(o => o.subscription).filter((o): o is NonNullable<typeof o> => !!o && o.id !== row.data!.id && ["PENDING_PAYMENT", "ACTIVE", "PAST_DUE", "TRIAL_ACTIVE"].includes(o.status));
+              await supersede(supabaseAdmin, stale);
+            }
+          }
 
           const pay = evt.payload?.payment?.entity;
           if (type === "subscription.charged" && pay?.id && typeof pay.amount === "number") {
