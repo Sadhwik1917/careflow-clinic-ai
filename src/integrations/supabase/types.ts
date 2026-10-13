@@ -1578,6 +1578,64 @@ export type Database = {
           },
         ]
       }
+      trial_consumptions: {
+        Row: {
+          clinic_id: string
+          consumed_at: string
+          created_at: string
+          id: string
+          needs_review: boolean
+          note: string | null
+          owner_user_id: string
+          registration_key: string | null
+          subscription_id: string
+        }
+        Insert: {
+          clinic_id: string
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          needs_review?: boolean
+          note?: string | null
+          owner_user_id: string
+          registration_key?: string | null
+          subscription_id: string
+        }
+        Update: {
+          clinic_id?: string
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          needs_review?: boolean
+          note?: string | null
+          owner_user_id?: string
+          registration_key?: string | null
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_consumptions_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trial_consumptions_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trial_consumptions_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_events: {
         Row: {
           clinic_id: string | null
