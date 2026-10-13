@@ -20,7 +20,7 @@
 - [x] Final checks: deletion/history rule, revoke private operational helper, full rolled-back dry run (awaiting review).
 
 ## Subscription dialog UX & trial misuse protection
-- [ ] Dialog × close, context-aware cancel, paid "Cancel Subscription"
-- [ ] trial_consumptions (permanent keys, backfill flagged, xact locks, unique indexes, server-only)
-- [ ] Lock registration number after approval (admin-only changes)
-- [ ] Tests + type check + report
+- [x] Dialog × close, context-aware cancel, paid "Cancel Subscription"
+- [x] trial_consumptions (permanent keys, backfill flagged, xact locks, unique indexes, server-only)
+- [x] Lock registration number after approval (admin-only changes)
+- [x] Tests + type check + report
