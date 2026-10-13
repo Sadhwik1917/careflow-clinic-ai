@@ -118,7 +118,7 @@ function PlanCard({ p, state, canEnroll, busy, selectedId, selectedScope, compar
       ) : isCurrent && (cur?.status === "ACTIVE" || cur?.status === "PAST_DUE") ? (
         <div className="mt-4 grid gap-2">
           {d.flexible
-            ? <Button type="button" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>Change scope</Button>
+            ? <Button type="button" title="Choose clinic scope" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>{choiceLabel}</Button>
             : <Button type="button" variant="outline" disabled>Your Current Plan</Button>}
           <Button type="button" variant="outline" disabled={busy} onClick={onCancelPaid}>Cancel Subscription</Button>
         </div>
