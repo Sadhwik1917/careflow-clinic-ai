@@ -40,7 +40,7 @@ const access = (admin: boolean, memberships: AccessMembership[] = []): UserAcces
 });
 
 describe("application shell header", () => {
-  it("shows an Admin breadcrumb instead of the brand in the admin area", () => {
+  it("shows an Admin breadcrumb in the header while keeping the sidebar brand", () => {
     render(
       <ApplicationShell role="PLATFORM_ADMIN" access={access(true)} membership={null}>
         <p>content</p>
@@ -49,7 +49,8 @@ describe("application shell header", () => {
     const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(nav).toHaveTextContent("Admin");
     expect(nav).toHaveTextContent("Dashboard");
-    expect(screen.queryByText("CAREFLOW")).not.toBeInTheDocument();
+    expect(screen.getByRole("banner")).not.toHaveTextContent("CAREFLOW");
+    expect(screen.getByText("CAREFLOW")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /workspace/i })).not.toBeInTheDocument();
   });
 
