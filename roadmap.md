@@ -31,3 +31,9 @@
 - [x] trial_consumptions (permanent keys, backfill flagged, xact locks, unique indexes, server-only)
 - [x] Lock registration number after approval (admin-only changes)
 - [x] Tests + type check + report
+
+## Admin header and side panel branding
+- [x] Admin header shows "Admin / <current page>" breadcrumb instead of the icon and wordmark.
+- [x] Side panel keeps the icon and "CAREFLOW AI" wordmark for admin, like every other area.
+- [x] Plans page no longer shows the Razorpay Test Mode note now that payments run live.
+- [x] 98 tests and type check pass; admin area not opened signed in (external unmanaged Supabase).
