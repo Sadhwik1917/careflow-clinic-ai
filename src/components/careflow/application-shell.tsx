@@ -22,7 +22,7 @@ function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: 
   const items = useNavItems(role);
   return <Sidebar collapsible="icon" className="border-sidebar-border">
     <SidebarHeader className="gap-6 px-4 py-6 group-data-[collapsible=icon]:px-1.5">
-      <div className="flex items-center justify-between"><CareflowBrand compact={state === "collapsed" && !isMobile} clinicName={clinicName} />{isMobile && <Button size="icon" variant="ghost" aria-label="Close navigation" onClick={() => setOpenMobile(false)}><X /></Button>}</div>
+      <div className="flex items-center justify-between"><CareflowBrand compact={state === "collapsed" && !isMobile} />{isMobile && <Button size="icon" variant="ghost" aria-label="Close navigation" onClick={() => setOpenMobile(false)}><X /></Button>}</div>
       <div className="flex items-center gap-3 rounded-md border border-sidebar-border px-3 py-3 group-data-[collapsible=icon]:hidden"><Building2 className="size-5 shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm font-medium">{contextLabel}</p><p className="mt-0.5 text-xs text-muted-foreground">{roleLabels[role]}</p></div></div>
     </SidebarHeader>
     <SidebarContent className="gap-3 px-2 group-data-[collapsible=icon]:px-0">
