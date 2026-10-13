@@ -10,7 +10,7 @@ import { adminClinicsQuery } from "@/lib/admin-data";
 import { pageMetadata } from "@/lib/navigation";
 import { statusLabel, type VerificationStatus } from "@/lib/verification";
 
-export const Route = createFileRoute("/_authenticated/admin/clinics")({
+export const Route = createFileRoute("/_authenticated/admin/clinics/")({
   head: () => pageMetadata("Clinics", "PLATFORM_ADMIN"),
   component: Page,
 });

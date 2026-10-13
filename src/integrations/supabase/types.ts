@@ -1834,6 +1834,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_clinic_action: {
+        Args: { p_action: string; p_clinic: string; p_reason: string }
+        Returns: undefined
+      }
       begin_mandated_trial: {
         Args: {
           p_clinic: string
@@ -1849,9 +1853,27 @@ export type Database = {
         Args: { p_subscription: string; p_user: string }
         Returns: string
       }
+      clinic_ai_enabled: { Args: { p_clinic: string }; Returns: boolean }
       clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
       confirm_trial_mandate: {
         Args: { p_mandate_ref: string; p_provider_id: string }
+        Returns: string
+      }
+      create_additional_clinic: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_clinic_type?: string
+          p_display_name: string
+          p_email?: string
+          p_name: string
+          p_phone?: string
+          p_postal_code?: string
+          p_registration_number?: string
+          p_representative_name?: string
+          p_representative_phone?: string
+          p_state?: string
+        }
         Returns: string
       }
       create_first_clinic: {
@@ -1873,6 +1895,7 @@ export type Database = {
         }
         Returns: string
       }
+      owner_clinic_allowance: { Args: never; Returns: Json }
       register_clinic_document: {
         Args: {
           p_clinic: string
