@@ -5,7 +5,6 @@ import { useRouter } from "@tanstack/react-router";
 import { Check, CreditCard } from "lucide-react";
 import { PageTitle } from "@/components/careflow/page-title";
 import { EmptyState, StatusBadge } from "@/components/careflow/feedback";
-import { FormAlert } from "@/components/careflow/auth-ui";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
