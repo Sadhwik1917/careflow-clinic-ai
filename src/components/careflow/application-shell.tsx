@@ -12,9 +12,12 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
 
 /** Presentation-only label overrides keyed by path (e.g. "Upgrade Plan" once a clinic has a plan). */
 export const NavTitleOverrides = createContext<Record<string, string>>({});
+/** Presentation-only: paths hidden from navigation (e.g. AI assistant on a plan without AI). The database still enforces access. */
+export const NavHiddenPaths = createContext<string[]>([]);
 function useNavItems(role: AppRole) {
   const o = useContext(NavTitleOverrides);
-  return navigation[role].map(i => { const title = o[i.path]; return title ? { ...i, title } : i; });
+  const hidden = useContext(NavHiddenPaths);
+  return navigation[role].filter(i => !hidden.includes(i.path)).map(i => { const title = o[i.path]; return title ? { ...i, title } : i; });
 }
 
 function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: AppRole; pathname: string; contextLabel: string; clinicName: string | null }) {

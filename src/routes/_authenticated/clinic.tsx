@@ -31,6 +31,8 @@ export const Route = createFileRoute("/_authenticated/clinic")({
 function Layout() {
   const { access, membership } = Route.useRouteContext();
   const plan = useQuery(planStateQuery(membership?.clinic_id ?? ""));
+  const ai = useQuery(clinicAiQuery(membership?.clinic_id ?? ""));
   const overrides = plan.data?.current ? { "/clinic/plans": "Upgrade Plan" } : {};
-  return <NavTitleOverrides.Provider value={overrides}><AreaLayout role="OWNER" access={access} membership={membership} /></NavTitleOverrides.Provider>;
+  const hidden = ai.data === true ? [] : ["/clinic/ai"];
+  return <NavTitleOverrides.Provider value={overrides}><NavHiddenPaths.Provider value={hidden}><AreaLayout role="OWNER" access={access} membership={membership} /></NavHiddenPaths.Provider></NavTitleOverrides.Provider>;
 }

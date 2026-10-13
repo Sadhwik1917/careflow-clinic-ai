@@ -27,7 +27,6 @@ import { Route as AuthenticatedSetupClinicRouteImport } from './routes/_authenti
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
-import { Route as AuthenticatedAdminClinicsRouteImport } from './routes/_authenticated/admin.clinics'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminSubscriptionsRouteImport } from './routes/_authenticated/admin.subscriptions'
@@ -64,6 +63,7 @@ import { Route as AuthenticatedStaffPatientsRouteImport } from './routes/_authen
 import { Route as AuthenticatedStaffProfileRouteImport } from './routes/_authenticated/staff.profile'
 import { Route as AuthenticatedStaffQueueRouteImport } from './routes/_authenticated/staff.queue'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
+import { Route as AuthenticatedAdminClinicsIndexRouteImport } from './routes/_authenticated/admin.clinics.index'
 import { Route as AuthenticatedAdminVerificationsIndexRouteImport } from './routes/_authenticated/admin.verifications.index'
 import { Route as AuthenticatedAdminVerificationsClinicIdRouteImport } from './routes/_authenticated/admin.verifications.$clinicId'
 import { Route as AuthenticatedClinicAppointmentsIndexRouteImport } from './routes/_authenticated/clinic.appointments.index'
@@ -164,12 +164,6 @@ const AuthenticatedAdminAnalyticsRoute =
   AuthenticatedAdminAnalyticsRouteImport.update({
     id: '/analytics',
     path: '/analytics',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminClinicsRoute =
-  AuthenticatedAdminClinicsRouteImport.update({
-    id: '/clinics',
-    path: '/clinics',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminDashboardRoute =
@@ -385,6 +379,12 @@ const ApiPublicRazorpayWebhookRoute =
     path: '/api/public/razorpay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedAdminClinicsIndexRoute =
+  AuthenticatedAdminClinicsIndexRouteImport.update({
+    id: '/clinics/',
+    path: '/clinics/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminVerificationsIndexRoute =
   AuthenticatedAdminVerificationsIndexRouteImport.update({
     id: '/verifications/',
@@ -458,7 +458,6 @@ export interface FileRoutesByFullPath {
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/admin/clinics': typeof AuthenticatedAdminClinicsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/subscriptions': typeof AuthenticatedAdminSubscriptionsRoute
@@ -500,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/admin/clinics/': typeof AuthenticatedAdminClinicsIndexRoute
   '/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/clinic/billing/': typeof AuthenticatedClinicBillingIndexRoute
@@ -523,7 +523,6 @@ export interface FileRoutesByTo {
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/admin/clinics': typeof AuthenticatedAdminClinicsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/subscriptions': typeof AuthenticatedAdminSubscriptionsRoute
@@ -562,6 +561,7 @@ export interface FileRoutesByTo {
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/admin/clinics': typeof AuthenticatedAdminClinicsIndexRoute
   '/admin/verifications': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/clinic/billing': typeof AuthenticatedClinicBillingIndexRoute
@@ -587,7 +587,6 @@ export interface FileRoutesById {
   '/_authenticated/staff': typeof AuthenticatedStaffRouteWithChildren
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
-  '/_authenticated/admin/clinics': typeof AuthenticatedAdminClinicsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/subscriptions': typeof AuthenticatedAdminSubscriptionsRoute
@@ -629,6 +628,7 @@ export interface FileRoutesById {
   '/_authenticated/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
   '/_authenticated/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/_authenticated/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/_authenticated/admin/clinics/': typeof AuthenticatedAdminClinicsIndexRoute
   '/_authenticated/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/_authenticated/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
   '/_authenticated/clinic/billing/': typeof AuthenticatedClinicBillingIndexRoute
@@ -654,7 +654,6 @@ export interface FileRouteTypes {
     | '/staff'
     | '/workspace'
     | '/admin/analytics'
-    | '/admin/clinics'
     | '/admin/dashboard'
     | '/admin/settings'
     | '/admin/subscriptions'
@@ -696,6 +695,7 @@ export interface FileRouteTypes {
     | '/clinic/billing/new'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/admin/clinics/'
     | '/admin/verifications/'
     | '/clinic/appointments/'
     | '/clinic/billing/'
@@ -719,7 +719,6 @@ export interface FileRouteTypes {
     | '/staff'
     | '/workspace'
     | '/admin/analytics'
-    | '/admin/clinics'
     | '/admin/dashboard'
     | '/admin/settings'
     | '/admin/subscriptions'
@@ -758,6 +757,7 @@ export interface FileRouteTypes {
     | '/clinic/billing/new'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/admin/clinics'
     | '/admin/verifications'
     | '/clinic/appointments'
     | '/clinic/billing'
@@ -782,7 +782,6 @@ export interface FileRouteTypes {
     | '/_authenticated/staff'
     | '/_authenticated/workspace'
     | '/_authenticated/admin/analytics'
-    | '/_authenticated/admin/clinics'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/subscriptions'
@@ -824,6 +823,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clinic/billing/new'
     | '/_authenticated/clinic/patients/$patientId'
     | '/_authenticated/clinic/patients/new'
+    | '/_authenticated/admin/clinics/'
     | '/_authenticated/admin/verifications/'
     | '/_authenticated/clinic/appointments/'
     | '/_authenticated/clinic/billing/'
@@ -969,13 +969,6 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/admin/analytics'
       preLoaderRoute: typeof AuthenticatedAdminAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/clinics': {
-      id: '/_authenticated/admin/clinics'
-      path: '/clinics'
-      fullPath: '/admin/clinics'
-      preLoaderRoute: typeof AuthenticatedAdminClinicsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/dashboard': {
@@ -1230,6 +1223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/clinics/': {
+      id: '/_authenticated/admin/clinics/'
+      path: '/clinics'
+      fullPath: '/admin/clinics/'
+      preLoaderRoute: typeof AuthenticatedAdminClinicsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/verifications/': {
       id: '/_authenticated/admin/verifications/'
       path: '/verifications'
@@ -1298,24 +1298,24 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
-  AuthenticatedAdminClinicsRoute: typeof AuthenticatedAdminClinicsRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSubscriptionsRoute: typeof AuthenticatedAdminSubscriptionsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminVerificationsClinicIdRoute: typeof AuthenticatedAdminVerificationsClinicIdRoute
+  AuthenticatedAdminClinicsIndexRoute: typeof AuthenticatedAdminClinicsIndexRoute
   AuthenticatedAdminVerificationsIndexRoute: typeof AuthenticatedAdminVerificationsIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
-  AuthenticatedAdminClinicsRoute: AuthenticatedAdminClinicsRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSubscriptionsRoute: AuthenticatedAdminSubscriptionsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminVerificationsClinicIdRoute:
     AuthenticatedAdminVerificationsClinicIdRoute,
+  AuthenticatedAdminClinicsIndexRoute: AuthenticatedAdminClinicsIndexRoute,
   AuthenticatedAdminVerificationsIndexRoute:
     AuthenticatedAdminVerificationsIndexRoute,
 }
