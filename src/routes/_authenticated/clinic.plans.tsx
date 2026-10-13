@@ -5,7 +5,6 @@ import { useRouter } from "@tanstack/react-router";
 import { Check, CreditCard } from "lucide-react";
 import { PageTitle } from "@/components/careflow/page-title";
 import { EmptyState, StatusBadge } from "@/components/careflow/feedback";
-import { FormAlert } from "@/components/careflow/auth-ui";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
@@ -277,8 +276,7 @@ function Page() {
           </div>
         ) : (
           <>
-            {notice ? <div role="status" className={`rounded-md border p-3 text-sm ${tone}`}>{notice.text}</div>
-              : <FormAlert>Payments run in Razorpay Test Mode. A paid plan becomes active only after Razorpay confirms the payment.</FormAlert>}
+            {notice && <div role="status" className={`rounded-md border p-3 text-sm ${tone}`}>{notice.text}</div>}
             {planState.isError && <p role="alert" className="text-sm text-destructive">We couldn't load your current plan. Refresh the page to try again.</p>}
             <p className="text-sm text-muted-foreground">AI-enabled plans include a monthly AI credit allowance. Max AI removes the credit limit and lets you pick single-clinic or multi-clinic scope.</p>
             {data.plans.length === 0 ? (
