@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Building2, ChevronRight, LogOut, ShieldCheck, X } from "lucide-react";
+import { Building2, LogOut, ShieldCheck, X } from "lucide-react";
 import { CareflowBrand } from "./brand";
 import { navigation, roleLabels, type AppRole } from "@/lib/navigation";
 import { availableWorkspaces, dashboardForRole, setSelectedClinicId, type AccessMembership, type UserAccess } from "@/lib/access";

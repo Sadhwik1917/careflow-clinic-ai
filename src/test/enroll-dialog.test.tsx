@@ -20,7 +20,7 @@ describe("enrollment dialog", () => {
   });
   it("has no Cancel button and keeps the full-plan action", () => {
     setup();
-    expect(screen.queryByRole("button", { name: "Cancel", exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Cancel$/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm Full Plan" })).toBeEnabled();
   });
   it("blocks close, Escape and submission while busy", () => {

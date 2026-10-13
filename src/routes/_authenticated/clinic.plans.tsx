@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
@@ -257,13 +257,13 @@ function Page() {
 
   const trialPlan = data.plans.find((p) => p.id === state?.current?.planId);
   const tone = notice?.tone === "ok" ? "border-primary/40 bg-primary/5" : notice?.tone === "error" ? "border-destructive/40 bg-destructive/5 text-destructive" : "bg-muted";
-  const sel: EnrollPlan | null = selected ? {
+  const sel: EnrollPlan | null = useMemo(() => selected ? {
     name: selected.name,
     flexible: selected.clinic_mode === "SINGLE_OR_MULTI",
     trialAvailable: selected.trial_enabled && !state?.current && state?.trialUsed === false && !state?.registrationMissing,
     registrationMissing: selected.trial_enabled && !state?.current && state?.trialUsed === false && !!state?.registrationMissing,
     describe: (s) => describePlan(selected, s),
-  } : null;
+  } : null, [selected, state?.current, state?.trialUsed, state?.registrationMissing]);
   const title = state?.current ? "Upgrade Plan" : "Plans";
   return (
     <>
