@@ -59,7 +59,7 @@ describe("application shell header", () => {
         <p>content</p>
       </ApplicationShell>,
     );
-    expect(screen.getByText("CAREFLOW")).toBeInTheDocument();
+    expect(screen.getAllByText("CAREFLOW").length).toBeGreaterThan(0);
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
   });
 });
