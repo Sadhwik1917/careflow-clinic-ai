@@ -18,3 +18,9 @@
 - [ ] Live upload/review/enrollment tests — blocked: no admin, no accounts, no payment provider.
 - [x] Revised proposal: privilege audit, one-document rule, exact 33 policies, stronger submit, new create_first_clinic signature (awaiting approval).
 - [x] Final checks: deletion/history rule, revoke private operational helper, full rolled-back dry run (awaiting review).
+
+## Subscription dialog UX & trial misuse protection
+- [ ] Dialog × close, context-aware cancel, paid "Cancel Subscription"
+- [ ] trial_consumptions (permanent keys, backfill flagged, xact locks, unique indexes, server-only)
+- [ ] Lock registration number after approval (admin-only changes)
+- [ ] Tests + type check + report
