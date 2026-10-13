@@ -64,6 +64,7 @@ import { Route as AuthenticatedStaffProfileRouteImport } from './routes/_authent
 import { Route as AuthenticatedStaffQueueRouteImport } from './routes/_authenticated/staff.queue'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay-webhook'
 import { Route as AuthenticatedAdminClinicsIndexRouteImport } from './routes/_authenticated/admin.clinics.index'
+import { Route as AuthenticatedAdminClinicsClinicIdRouteImport } from './routes/_authenticated/admin.clinics.$clinicId'
 import { Route as AuthenticatedAdminVerificationsIndexRouteImport } from './routes/_authenticated/admin.verifications.index'
 import { Route as AuthenticatedAdminVerificationsClinicIdRouteImport } from './routes/_authenticated/admin.verifications.$clinicId'
 import { Route as AuthenticatedClinicAppointmentsIndexRouteImport } from './routes/_authenticated/clinic.appointments.index'
@@ -385,6 +386,12 @@ const AuthenticatedAdminClinicsIndexRoute =
     path: '/clinics/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminClinicsClinicIdRoute =
+  AuthenticatedAdminClinicsClinicIdRouteImport.update({
+    id: '/clinics/$clinicId',
+    path: '/clinics/$clinicId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminVerificationsIndexRoute =
   AuthenticatedAdminVerificationsIndexRouteImport.update({
     id: '/verifications/',
@@ -494,6 +501,7 @@ export interface FileRoutesByFullPath {
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/admin/clinics/$clinicId': typeof AuthenticatedAdminClinicsClinicIdRoute
   '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/staff/queue': typeof AuthenticatedStaffQueueRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/admin/clinics/$clinicId': typeof AuthenticatedAdminClinicsClinicIdRoute
   '/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -623,6 +632,7 @@ export interface FileRoutesById {
   '/_authenticated/staff/profile': typeof AuthenticatedStaffProfileRoute
   '/_authenticated/staff/queue': typeof AuthenticatedStaffQueueRoute
   '/api/public/razorpay-webhook': typeof ApiPublicRazorpayWebhookRoute
+  '/_authenticated/admin/clinics/$clinicId': typeof AuthenticatedAdminClinicsClinicIdRoute
   '/_authenticated/admin/verifications/$clinicId': typeof AuthenticatedAdminVerificationsClinicIdRoute
   '/_authenticated/clinic/appointments/new': typeof AuthenticatedClinicAppointmentsNewRoute
   '/_authenticated/clinic/billing/new': typeof AuthenticatedClinicBillingNewRoute
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/staff/profile'
     | '/staff/queue'
     | '/api/public/razorpay-webhook'
+    | '/admin/clinics/$clinicId'
     | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
@@ -752,6 +763,7 @@ export interface FileRouteTypes {
     | '/staff/profile'
     | '/staff/queue'
     | '/api/public/razorpay-webhook'
+    | '/admin/clinics/$clinicId'
     | '/admin/verifications/$clinicId'
     | '/clinic/appointments/new'
     | '/clinic/billing/new'
@@ -818,6 +830,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/profile'
     | '/_authenticated/staff/queue'
     | '/api/public/razorpay-webhook'
+    | '/_authenticated/admin/clinics/$clinicId'
     | '/_authenticated/admin/verifications/$clinicId'
     | '/_authenticated/clinic/appointments/new'
     | '/_authenticated/clinic/billing/new'
@@ -1230,6 +1243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminClinicsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/clinics/$clinicId': {
+      id: '/_authenticated/admin/clinics/$clinicId'
+      path: '/clinics/$clinicId'
+      fullPath: '/admin/clinics/$clinicId'
+      preLoaderRoute: typeof AuthenticatedAdminClinicsClinicIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/verifications/': {
       id: '/_authenticated/admin/verifications/'
       path: '/verifications'
@@ -1302,6 +1322,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminSubscriptionsRoute: typeof AuthenticatedAdminSubscriptionsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminClinicsClinicIdRoute: typeof AuthenticatedAdminClinicsClinicIdRoute
   AuthenticatedAdminVerificationsClinicIdRoute: typeof AuthenticatedAdminVerificationsClinicIdRoute
   AuthenticatedAdminClinicsIndexRoute: typeof AuthenticatedAdminClinicsIndexRoute
   AuthenticatedAdminVerificationsIndexRoute: typeof AuthenticatedAdminVerificationsIndexRoute
@@ -1313,6 +1334,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminSubscriptionsRoute: AuthenticatedAdminSubscriptionsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminClinicsClinicIdRoute:
+    AuthenticatedAdminClinicsClinicIdRoute,
   AuthenticatedAdminVerificationsClinicIdRoute:
     AuthenticatedAdminVerificationsClinicIdRoute,
   AuthenticatedAdminClinicsIndexRoute: AuthenticatedAdminClinicsIndexRoute,
