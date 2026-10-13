@@ -1,0 +1,1 @@
+CREATE POLICY "No client access to trial consumptions" ON public.trial_consumptions AS RESTRICTIVE FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);

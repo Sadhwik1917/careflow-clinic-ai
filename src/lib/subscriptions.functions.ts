@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, trialTiming, beforeCancelCutoff, isTrialUsed, type OpenSub } from "@/lib/subscription-rules";
+import { decideEnrollment, isUuid, OPEN_SUBSCRIPTION_STATUSES, parseCreateSubscriptionInput, pricingFor, resolvePlanScope, trialErrorMessage, trialTiming, beforeCancelCutoff, isTrialUsed, registrationKey, trialDenial, type OpenSub } from "@/lib/subscription-rules";
 import { parseCheckoutResult, verifyCheckoutSignature } from "@/lib/razorpay-verify";
 import { cancelAtRazorpay, openSubsForClinic, razorpayAuth, supersede } from "@/lib/subscriptions.server";
 
@@ -116,8 +116,9 @@ export const verifySubscriptionPayment = createServerFn({ method: "POST" })
 const parseClinic = (b: unknown) => { const c = (b as { clinicId?: unknown } | null)?.clinicId; if (!isUuid(c)) throw new Error("Invalid clinic"); return { clinicId: c }; };
 
 export type PlanState = {
-  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean; mandate: string | null; amount: number } | null;
+  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean; mandate: string | null; amount: number; nextBilling: string | null } | null;
   trialUsed: boolean;
+  registrationMissing: boolean;
 };
 
 // Read-only view of the clinic's current plan for the owner (subscription tables are server-read-only).
@@ -125,21 +126,28 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseClinic)
   .handler(async ({ data, context }): Promise<PlanState> => {
-    if (await assertOwner(context, data.clinicId, false)) return { current: null, trialUsed: true };
+    if (await assertOwner(context, data.clinicId, false)) return { current: null, trialUsed: true, registrationMissing: false };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const subs = await openSubsForClinic(supabaseAdmin, data.clinicId);
     const now = Date.now();
     const cur = subs.find(s => s.status === "ACTIVE" || s.status === "PAST_DUE" || (s.status === "TRIAL_ACTIVE" && s.trial_end_date && new Date(s.trial_end_date).getTime() > now));
-    // Mirrors start_clinic_trial: one trial per clinic and per owner, ever (trial rows keep trial_start_date).
-    const [byClinic, byOwner] = await Promise.all([
-      // Owner-level use is covered by the owner's own started/authorized trial rows below.
+    // Mirrors begin_mandated_trial: one activated trial per owner, clinic and registration number, ever.
+    const clinic = await supabaseAdmin.from("clinics").select("registration_number").eq("id", data.clinicId).maybeSingle();
+    const reg = registrationKey(clinic.data?.registration_number);
+    const filters = [`owner_user_id.eq.${context.userId}`, `clinic_id.eq.${data.clinicId}`, ...(reg ? [`registration_key.eq.${reg}`] : [])].join(",");
+    const [consumed, byClinic, byOwner] = await Promise.all([
+      supabaseAdmin.from("trial_consumptions").select("owner_user_id, clinic_id, registration_key").or(filters),
       supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
       supabaseAdmin.from("clinic_subscriptions").select("mandate_status, status, subscription_type").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL"),
     ]);
-    const trialUsed = isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: !!byClinic.error || !!byOwner.error });
+    const failed = !!clinic.error || !!consumed.error || !!byClinic.error || !!byOwner.error;
+    const denial = failed ? "TRIAL_ALREADY_USED" : trialDenial({ registrationKey: reg, consumed: consumed.data ?? [], ownerId: context.userId, clinicId: data.clinicId });
+    const trialUsed = denial === "TRIAL_ALREADY_USED" || isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: failed });
+    const registrationMissing = !trialUsed && denial === "TRIAL_REGISTRATION_REQUIRED";
     return {
-      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount) } : null,
+      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount), nextBilling: cur.next_billing_date ?? null } : null,
       trialUsed,
+      registrationMissing,
     };
   });
 
@@ -191,6 +199,8 @@ export const startClinicTrial = createServerFn({ method: "POST" })
     if (r.error || !r.data) {
       console.error("[subscriptions] trial enrollment refused", r.error?.message);
       await cancelAtRazorpay(rzBody.id);
+      const code = /TRIAL_[A-Z_]+/.exec(r.error?.message ?? "")?.[0] ?? "UNKNOWN";
+      await supabaseAdmin.from("audit_logs").insert({ clinic_id: data.clinicId, user_id: context.userId, action: "TRIAL_ENROLLMENT_DENIED", entity_type: "clinic", entity_id: data.clinicId, metadata: { reason: code } });
       return { ok: false, error: trialErrorMessage(r.error?.message, "enroll") };
     }
     return { ok: true, subscriptionId: r.data, razorpaySubscriptionId: rzBody.id, keyId, trialEnd };
@@ -213,5 +223,25 @@ export const cancelClinicTrial = createServerFn({ method: "POST" })
       return { ok: false, error: "Razorpay didn't confirm the cancellation, so your trial wasn't changed. Please try again." };
     const r = await supabaseAdmin.rpc("cancel_clinic_trial", { p_user: context.userId, p_subscription: data.subscriptionId });
     if (r.error) return { ok: false, error: trialErrorMessage(r.error.message) };
+    return { ok: true };
+  });
+
+// Cancels the caller's own active paid plan through the same Razorpay cancel helper. Razorpay first; if it refuses, nothing changes.
+export const cancelClinicSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((b: unknown) => { const s = (b as { subscriptionId?: unknown } | null)?.subscriptionId; if (!isUuid(s)) throw new Error("Invalid subscription"); return { subscriptionId: s }; })
+  .handler(async ({ data, context }): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const row = await supabaseAdmin.from("clinic_subscriptions").select("status, subscription_type, provider_subscription_id")
+      .eq("id", data.subscriptionId).eq("owner_user_id", context.userId).maybeSingle();
+    if (row.error || !row.data) return { ok: false, error: "Subscription not found." };
+    if (row.data.status !== "ACTIVE" && row.data.status !== "PAST_DUE") return { ok: false, error: "This subscription isn't active." };
+    if (!(await cancelAtRazorpay(row.data.provider_subscription_id)))
+      return { ok: false, error: "Razorpay didn't confirm the cancellation, so your subscription wasn't changed. Please try again." };
+    const now = new Date().toISOString();
+    const up = await supabaseAdmin.from("clinic_subscriptions").update({ status: "CANCELLED", cancelled_at: now, auto_renew: false })
+      .eq("id", data.subscriptionId).eq("status", row.data.status).select("id");
+    if (up.error || !up.data?.length) { console.error("[subscriptions] local cancel failed", up.error?.message); return { ok: false, error: "Cancelled at Razorpay, but we couldn't update your plan yet. Refresh in a moment." }; }
+    await supabaseAdmin.from("audit_logs").insert({ user_id: context.userId, action: "SUBSCRIPTION_CANCELLED", entity_type: "clinic_subscription", entity_id: data.subscriptionId, metadata: {} });
     return { ok: true };
   });

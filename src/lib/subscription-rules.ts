@@ -81,6 +81,7 @@ const TRIAL_ERRORS: Record<string, string> = {
   TRIAL_SCOPE_MISMATCH: "Clinic scope doesn't match this plan.",
   TRIAL_CLINIC_HAS_SUBSCRIPTION: "This clinic already has a plan or trial.",
   TRIAL_ALREADY_USED: "A free trial has already been used for this clinic or account.",
+  TRIAL_REGISTRATION_REQUIRED: "A free trial needs your clinic's registration number. Add it in clinic settings, or contact CAREFLOW support. Full plans are still available.",
   TRIAL_BAD_TIMING: "The trial timing couldn't be set. Please try again.",
   TRIAL_NOT_FOUND: "Trial not found.",
   TRIAL_NOT_ACTIVE: "This trial is no longer active.",
@@ -106,4 +107,14 @@ export function beforeCancelCutoff(trialEnd: string | null, now: Date): boolean 
 export function isTrialUsed(o: { startedEvents: number; ownerRows: { mandate_status: string | null; status: string; subscription_type: string }[]; lookupFailed: boolean }): boolean {
   if (o.lookupFailed || o.startedEvents > 0) return true;
   return o.ownerRows.some(r => r.subscription_type === "TRIAL" && (r.mandate_status === "AUTHORIZED" || (r.mandate_status == null && r.status.startsWith("TRIAL_"))));
+}
+
+/** Normalised clinic registration key; mirrors private.registration_key in the database. */
+export const registrationKey = (v: string | null | undefined): string | null => { const k = (v ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase(); return k || null; };
+
+/** Server-side reason a trial can't start, or null; mirrors begin_mandated_trial (the database stays authoritative). */
+export function trialDenial(o: { registrationKey: string | null; consumed: { owner_user_id: string; clinic_id: string; registration_key: string | null }[]; ownerId: string; clinicId: string }): "TRIAL_REGISTRATION_REQUIRED" | "TRIAL_ALREADY_USED" | null {
+  if (o.consumed.some(c => c.owner_user_id === o.ownerId || c.clinic_id === o.clinicId || (!!o.registrationKey && c.registration_key === o.registrationKey))) return "TRIAL_ALREADY_USED";
+  if (!o.registrationKey) return "TRIAL_REGISTRATION_REQUIRED";
+  return null;
 }
