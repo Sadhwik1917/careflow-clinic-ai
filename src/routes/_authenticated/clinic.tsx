@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { guardArea } from "@/lib/access";
 import { ownerGateRedirect } from "@/lib/verification";
 import { useQuery } from "@tanstack/react-query";
-import { NavTitleOverrides } from "@/components/careflow/application-shell";
-import { planStateQuery } from "@/lib/plan-state";
+import { NavHiddenPaths, NavTitleOverrides } from "@/components/careflow/application-shell";
+import { clinicAiQuery, planStateQuery } from "@/lib/plan-state";
 
 // Navigation guard only: the database's row-level security remains the authorization boundary.
 export const Route = createFileRoute("/_authenticated/clinic")({

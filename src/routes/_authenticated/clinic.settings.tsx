@@ -37,7 +37,10 @@ function Page() {
     if (busy) return;
     if (!form.displayName.trim() || form.name.trim().length < 2) { setError("Enter a display name and a clinic name."); return; }
     setBusy(true); setError(null);
-    const { data, error: err } = await supabase.rpc("create_additional_clinic", { p_display_name: form.displayName.trim(), p_name: form.name.trim(), p_city: form.city.trim() || undefined, p_state: form.state.trim() || undefined });
+    const args: { p_display_name: string; p_name: string; p_city?: string; p_state?: string } = { p_display_name: form.displayName.trim(), p_name: form.name.trim() };
+    if (form.city.trim()) args.p_city = form.city.trim();
+    if (form.state.trim()) args.p_state = form.state.trim();
+    const { data, error: err } = await supabase.rpc("create_additional_clinic", args);
     setBusy(false);
     if (err || !data) { setError(addClinicErrorMessage(err?.message)); return; }
     setSelectedClinicId(data);
