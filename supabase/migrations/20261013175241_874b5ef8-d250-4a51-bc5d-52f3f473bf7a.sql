@@ -1,0 +1,3 @@
+ALTER TABLE public.verification_events DROP CONSTRAINT verification_events_event_type_check;
+ALTER TABLE public.verification_events ADD CONSTRAINT verification_events_event_type_check
+  CHECK (event_type = ANY (ARRAY['SUBMITTED','APPROVED','CHANGES_REQUESTED','REJECTED','SUSPENDED','REINSTATED','REVOKED_AFTER_APPROVAL']));
