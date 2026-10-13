@@ -116,7 +116,7 @@ export const verifySubscriptionPayment = createServerFn({ method: "POST" })
 const parseClinic = (b: unknown) => { const c = (b as { clinicId?: unknown } | null)?.clinicId; if (!isUuid(c)) throw new Error("Invalid clinic"); return { clinicId: c }; };
 
 export type PlanState = {
-  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean; mandate: string | null; amount: number } | null;
+  current: { id: string; planId: string; scope: string | null; status: string; type: string; trialEnd: string | null; checkoutStarted: boolean; mandate: string | null; amount: number; nextBilling: string | null } | null;
   trialUsed: boolean;
   registrationMissing: boolean;
 };
@@ -145,7 +145,7 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
     const trialUsed = denial === "TRIAL_ALREADY_USED" || isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: failed });
     const registrationMissing = !trialUsed && denial === "TRIAL_REGISTRATION_REQUIRED";
     return {
-      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount) } : null,
+      current: cur ? { id: cur.id, planId: cur.plan_id, scope: cur.clinic_scope, status: cur.status, type: cur.subscription_type, trialEnd: cur.trial_end_date, checkoutStarted: !!cur.provider_subscription_id, mandate: cur.mandate_status ?? null, amount: Number(cur.amount), nextBilling: cur.next_billing_date ?? null } : null,
       trialUsed,
       registrationMissing,
     };

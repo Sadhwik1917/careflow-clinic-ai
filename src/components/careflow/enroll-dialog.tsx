@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/careflow/feedback";
 
 export type PlanDetails = { scopeText: string; ai: string; features: string[]; price: string; trial: string | null };
-export type EnrollPlan = { name: string; flexible: boolean; trialAvailable: boolean; describe: (scope: "SINGLE" | "MULTI") => PlanDetails };
+export type EnrollPlan = { name: string; flexible: boolean; trialAvailable: boolean; registrationMissing?: boolean; describe: (scope: "SINGLE" | "MULTI") => PlanDetails };
 
 // Restrained enter/exit: fade + slight lift/scale; disabled under prefers-reduced-motion.
 const overlayCls =
@@ -62,7 +62,14 @@ export function EnrollDialog({
         >
           {shown && d && (
             <>
-              <DialogPrimitive.Title className="text-lg font-semibold">Confirm Enrollment</DialogPrimitive.Title>
+              {/* Closes the dialog only; it never starts or cancels anything. */}
+              <DialogPrimitive.Close asChild>
+                <button type="button" aria-label="Close" disabled={!!busy}
+                  className="absolute right-3 top-3 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+                  <X className="size-4" aria-hidden />
+                </button>
+              </DialogPrimitive.Close>
+              <DialogPrimitive.Title className="pr-8 text-lg font-semibold">Confirm Enrollment</DialogPrimitive.Title>
               <DialogPrimitive.Description className="sr-only">Plan details for {shown.name}</DialogPrimitive.Description>
               <div className="mt-4 flex-1 space-y-3 overflow-y-auto">
                 <div>
@@ -129,6 +136,11 @@ export function EnrollDialog({
                       <span>I agree to be charged {d.price}/month automatically starting {trialEndText()} unless I cancel before then.</span>
                     </label>
                   </div>
+                )}
+                {shown.registrationMissing && (
+                  <p className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                    A free trial needs your clinic's registration number, so we can make sure each clinic uses one trial. Add it in clinic settings, or contact CAREFLOW support. You can still choose the full plan now.
+                  </p>
                 )}
                 {error && (
                   <p

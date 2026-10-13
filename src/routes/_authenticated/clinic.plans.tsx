@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
 import { useServerFn } from "@tanstack/react-start";
-import { cancelClinicTrial, createClinicSubscription, startClinicTrial, verifySubscriptionPayment } from "@/lib/subscriptions.functions";
+import { cancelClinicSubscription, cancelClinicTrial, createClinicSubscription, startClinicTrial, verifySubscriptionPayment } from "@/lib/subscriptions.functions";
 import { planStateQuery } from "@/lib/plan-state";
 import { trialDaysLeft } from "@/lib/subscription-rules";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -75,9 +75,9 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
 type State = NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<NonNullable<ReturnType<typeof planStateQuery>["queryFn"]>>>>>["data"]>;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTrial }: {
+function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTrial, onCancelPaid }: {
   p: Plan; state: State | undefined; canEnroll: boolean; busy: boolean;
-  onChoose: (p: Plan) => void; onContinue: () => void; onCancelTrial: () => void;
+  onChoose: (p: Plan) => void; onContinue: () => void; onCancelTrial: () => void; onCancelPaid: () => void;
 }) {
   const d = describePlan(p, "SINGLE");
   const cur = state?.current;
@@ -110,6 +110,13 @@ function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTri
             : <Button type="button" disabled={busy} onClick={onContinue}>Continue to Full Plan</Button>}
           <Button type="button" variant="outline" disabled={busy} onClick={onCancelTrial}>Cancel Free Trial</Button>
         </div>
+      ) : isCurrent && (cur?.status === "ACTIVE" || cur?.status === "PAST_DUE") ? (
+        <div className="mt-4 grid gap-2">
+          {d.flexible
+            ? <Button type="button" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>Change scope</Button>
+            : <Button type="button" variant="outline" disabled>Your Current Plan</Button>}
+          <Button type="button" variant="outline" disabled={busy} onClick={onCancelPaid}>Cancel Subscription</Button>
+        </div>
       ) : isCurrent && !d.flexible ? (
         <Button type="button" className="mt-4 w-full" variant="outline" disabled>Your Current Plan</Button>
       ) : (
@@ -139,6 +146,8 @@ function Page() {
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmCancelPaid, setConfirmCancelPaid] = useState(false);
+  const cancelPaid = useServerFn(cancelClinicSubscription);
   const canEnroll = !!membership && membership.role === "OWNER" && data.status === "APPROVED";
   const state = planState.data;
 
@@ -198,7 +207,7 @@ function Page() {
       if (!r.ok) { setDialogError(r.error); return; }
       setSelected(null);
       const outcome = await openSubscriptionCheckout({ keyId: r.keyId, subscriptionId: r.razorpaySubscriptionId, name: "CAREFLOW AI", description: `${plan.name} — 21-day free trial authorization` });
-      if (outcome.kind === "dismissed") { setNotice({ tone: "info", text: "Authorization was closed. Your trial hasn't started and nothing will be charged." }); return; }
+      if (outcome.kind === "dismissed") { setNotice({ tone: "info", text: "Authorization wasn't completed. Your trial hasn't started and nothing has been charged. If you did approve it, the trial starts as soon as Razorpay confirms." }); return; }
       if (outcome.kind === "failed") { setNotice({ tone: "error", text: `Authorization didn't go through${outcome.reason ? `: ${outcome.reason}` : ""}. Your trial hasn't started.` }); return; }
       if (outcome.kind === "load_error") { setNotice({ tone: "error", text: "We couldn't open Razorpay checkout. Check your connection and try again." }); return; }
       const v = await verify({ data: outcome.result });
@@ -226,12 +235,26 @@ function Page() {
     finally { setBusy(null); }
   };
 
+  const runCancelPaid = async () => {
+    const id = state?.current?.id;
+    if (busy || !id) return;
+    setBusy("cancel");
+    try {
+      const r = await cancelPaid({ data: { subscriptionId: id } });
+      setNotice(r.ok ? { tone: "info", text: "Your subscription was cancelled. No further charges will be made and clinic access has ended." } : { tone: "error", text: r.error });
+      setConfirmCancelPaid(false);
+      await refresh();
+    } catch { setNotice({ tone: "error", text: "We couldn't cancel the subscription. Please try again." }); }
+    finally { setBusy(null); }
+  };
+
   const trialPlan = data.plans.find((p) => p.id === state?.current?.planId);
   const tone = notice?.tone === "ok" ? "border-primary/40 bg-primary/5" : notice?.tone === "error" ? "border-destructive/40 bg-destructive/5 text-destructive" : "bg-muted";
   const sel: EnrollPlan | null = selected ? {
     name: selected.name,
     flexible: selected.clinic_mode === "SINGLE_OR_MULTI",
-    trialAvailable: selected.trial_enabled && !state?.current && state?.trialUsed === false,
+    trialAvailable: selected.trial_enabled && !state?.current && state?.trialUsed === false && !state?.registrationMissing,
+    registrationMissing: selected.trial_enabled && !state?.current && state?.trialUsed === false && !!state?.registrationMissing,
     describe: (s) => describePlan(selected, s),
   } : null;
   const title = state?.current ? "Upgrade Plan" : "Plans";
@@ -259,7 +282,7 @@ function Page() {
                   <PlanCard key={p.id} p={p} state={state} canEnroll={canEnroll} busy={!!busy}
                     onChoose={(pl) => { setDialogError(null); setNotice(null); setSelected(pl); }}
                     onContinue={() => trialPlan && void runPaid(trialPlan.id, trialPlan.name, trialPlan.clinic_mode === "SINGLE_OR_MULTI" ? (state?.current?.scope as "SINGLE" | "MULTI") : null)}
-                    onCancelTrial={() => setConfirmCancel(true)} />
+                    onCancelTrial={() => setConfirmCancel(true)} onCancelPaid={() => setConfirmCancelPaid(true)} />
                 ))}
               </ul>
             )}
@@ -279,6 +302,20 @@ function Page() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy === "cancel"}>Keep trial</AlertDialogCancel>
             <AlertDialogAction disabled={busy === "cancel"} onClick={(e) => { e.preventDefault(); void runCancelTrial(); }}>{busy === "cancel" ? "Cancelling…" : "Cancel Free Trial"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={confirmCancelPaid} onOpenChange={(o) => { if (!busy) setConfirmCancelPaid(o); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelling stops all future charges at Razorpay and ends clinic access immediately{state?.current?.nextBilling ? ` (your next charge would have been on ${fmtDate(state.current.nextBilling)})` : ""}. Payments already made aren't refunded automatically. You can choose a plan again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy === "cancel"}>Keep subscription</AlertDialogCancel>
+            <AlertDialogAction disabled={busy === "cancel"} onClick={(e) => { e.preventDefault(); void runCancelPaid(); }}>{busy === "cancel" ? "Cancelling…" : "Cancel Subscription"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
