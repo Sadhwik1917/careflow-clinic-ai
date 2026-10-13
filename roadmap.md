@@ -39,8 +39,8 @@
 - [x] 98 tests and type check pass; admin area not opened signed in (external unmanaged Supabase).
 
 ## Pre-Phase 2 rectifications
-- [ ] Super rejection (suspend / revoke / reinstate-suspended-only) with audit + immediate enforcement
-- [ ] Admin clinic details page
-- [ ] AI access gated by plan ai_enabled (UI + DB check)
-- [ ] Add Clinic for multi-clinic plans, max_clinics enforced atomically
-- [ ] Rolled-back SQL dry run + tests + report
+- [x] Super rejection (suspend / revoke / reinstate-suspended-only) with audit + immediate enforcement
+- [x] Admin clinic details page
+- [x] AI access gated by plan ai_enabled (UI + DB check)
+- [x] Add Clinic for multi-clinic plans, max_clinics enforced atomically
+- [x] Rolled-back SQL dry run + tests + report
