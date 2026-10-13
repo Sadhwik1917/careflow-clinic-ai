@@ -14,7 +14,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
 export const NavTitleOverrides = createContext<Record<string, string>>({});
 function useNavItems(role: AppRole) {
   const o = useContext(NavTitleOverrides);
-  return navigation[role].map(i => (o[i.path] ? { ...i, title: o[i.path]! } : i));
+  return navigation[role].map(i => { const title = o[i.path]; return title ? { ...i, title } : i; });
 }
 
 function WorkspaceSidebar({ role, pathname, contextLabel, clinicName }: { role: AppRole; pathname: string; contextLabel: string; clinicName: string | null }) {
@@ -45,14 +45,15 @@ export function ApplicationShell({ role, access, membership, children }: { role:
   const navItems = useNavItems(role);
   const signOut = useSignOut();
   const workspaces = availableWorkspaces(access);
-  const clinicName = role === "PLATFORM_ADMIN" ? null : membership?.clinic?.display_name ?? null;
+  const clinicName = role === "PLATFORM_ADMIN" ? null : membership?.clinic?.display_name?.trim() || null;
+  const ownerProfileLink = role === "OWNER" && membership?.role === "OWNER";
   const currentKey = role === "PLATFORM_ADMIN" ? "admin" : membership?.id ?? "";
   const contextLabel = role === "PLATFORM_ADMIN" ? "Platform administration" : membership?.clinic?.display_name || membership?.clinic?.name || "Clinic";
   const currentPage = navItems.find(item => pathname === item.path || pathname.startsWith(`${item.path}/`))?.title ?? "Dashboard";
   const name = access.profile?.display_name || access.email || "Signed in";
   return <SidebarProvider><a href="#main-content" className="sr-only z-50 rounded-md bg-primary p-3 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Skip to content</a><WorkspaceSidebar role={role} pathname={pathname} contextLabel={contextLabel} clinicName={clinicName} /><div className="flex min-w-0 flex-1 flex-col">
     <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 md:px-8">
-      <div className="flex min-w-0 items-center gap-3"><SidebarTrigger className="size-10 text-muted-foreground" title="Toggle navigation" /><div className="hidden items-center gap-2 text-sm sm:flex"><span className="max-w-48 truncate text-muted-foreground">{contextLabel}</span><ChevronRight className="size-3 text-muted-foreground" /><span className="font-medium">{currentPage}</span></div><CareflowBrand className="min-w-0 sm:hidden" clinicName={clinicName} /></div>
+      <div className="flex min-w-0 flex-1 items-center gap-3"><SidebarTrigger className="size-10 shrink-0 text-muted-foreground" title="Toggle navigation" /><div className="min-w-0 flex-1"><CareflowBrand className="min-w-0" clinicName={clinicName} ownerProfileLink={ownerProfileLink} /><p className="mt-1 hidden text-xs text-muted-foreground sm:block">{currentPage}</p></div></div>
       <div className="flex items-center gap-2">
         {workspaces.length > 1 && <Select value={currentKey} onValueChange={key => { const w = workspaces.find(x => x.key === key); if (!w) return; setSelectedClinicId(w.clinicId); void navigate({ to: dashboardForRole[w.role] }); }}><SelectTrigger aria-label="Switch workspace" className="w-52 bg-card shadow-none"><SelectValue /></SelectTrigger><SelectContent>{workspaces.map(w => <SelectItem key={w.key} value={w.key}>{w.label} · {roleLabels[w.role]}</SelectItem>)}</SelectContent></Select>}
         <span className="hidden max-w-44 truncate text-sm text-muted-foreground lg:inline" title={name}>{name}</span>

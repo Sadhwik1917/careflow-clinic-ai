@@ -1,4 +1,10 @@
 # Phase 1A
+## Requested UI fixes
+- [ ] Remove enrollment Cancel and verify safe busy/close controls.
+- [ ] Compare plan choices by configured scope prices, returning to active-plan baseline on close.
+- [ ] Show selected clinic display name in the header with an owner-only missing-name link.
+- [ ] Run full tests and check preview diagnostics; report real-account verification limitations.
+
 - [x] Inspect starter and Architecture v1.3 routes.
 - [x] Establish healthcare design tokens and reusable feedback/statistics components.
 - [x] Implement responsive shell and five role navigation configurations without authentication or workflows.

@@ -18,10 +18,19 @@ describe("enrollment dialog", () => {
     expect(f.onConfirm).not.toHaveBeenCalled();
     expect(f.onStartTrial).not.toHaveBeenCalled();
   });
-  it("Cancel before checkout creates no subscription", () => {
-    const f = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(f.onCancel).toHaveBeenCalled();
+  it("has no Cancel button and keeps the full-plan action", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: "Cancel", exact: true })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm Full Plan" })).toBeEnabled();
+  });
+  it("blocks close, Escape and submission while busy", () => {
+    const f = { onCancel: vi.fn(), onConfirm: vi.fn(), onStartTrial: vi.fn() };
+    render(<EnrollDialog plan={plan} busy="paid" error={null} {...f} />);
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: /Preparing checkout/ }));
+    expect(f.onCancel).not.toHaveBeenCalled();
     expect(f.onConfirm).not.toHaveBeenCalled();
   });
   it("trial needs explicit consent", () => {

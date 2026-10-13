@@ -22,6 +22,7 @@ export function EnrollDialog({
   onCancel,
   onConfirm,
   onStartTrial,
+  onScopeChange,
 }: {
   plan: EnrollPlan | null;
   busy: "trial" | "paid" | null;
@@ -29,6 +30,7 @@ export function EnrollDialog({
   onCancel: () => void;
   onConfirm: (scope: "SINGLE" | "MULTI") => void;
   onStartTrial: (scope: "SINGLE" | "MULTI") => void;
+  onScopeChange?: (scope: "SINGLE" | "MULTI") => void;
 }) {
   const [scope, setScope] = useState<"SINGLE" | "MULTI">("SINGLE");
   const [consent, setConsent] = useState(false);
@@ -46,7 +48,7 @@ export function EnrollDialog({
     <DialogPrimitive.Root
       open={!!plan}
       onOpenChange={(o) => {
-        if (!o) onCancel();
+        if (!o && !busy) onCancel();
       }}
     >
       <DialogPrimitive.Portal>
@@ -64,10 +66,10 @@ export function EnrollDialog({
             <>
               {/* Closes the dialog only; it never starts or cancels anything. */}
               <DialogPrimitive.Close asChild>
-                <button type="button" aria-label="Close" disabled={!!busy}
+                <Button type="button" variant="ghost" size="icon" aria-label="Close" title="Close" disabled={!!busy}
                   className="absolute right-3 top-3 rounded-sm p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
                   <X className="size-4" aria-hidden />
-                </button>
+                </Button>
               </DialogPrimitive.Close>
               <DialogPrimitive.Title className="pr-8 text-lg font-semibold">Confirm Enrollment</DialogPrimitive.Title>
               <DialogPrimitive.Description className="sr-only">Plan details for {shown.name}</DialogPrimitive.Description>
@@ -90,17 +92,18 @@ export function EnrollDialog({
                     className="grid grid-cols-2 gap-1 rounded-md border p-1 text-sm"
                   >
                     {(["SINGLE", "MULTI"] as const).map((s) => (
-                      <button
+                      <Button
                         key={s}
                         type="button"
                         role="radio"
                         aria-checked={scope === s}
                         disabled={!!busy}
-                        onClick={() => setScope(s)}
+                        variant="ghost"
+                        onClick={() => { setScope(s); onScopeChange?.(s); }}
                         className={`rounded px-2 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${scope === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                       >
                         {s === "SINGLE" ? "Single clinic" : "Multi-clinic"}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -152,9 +155,6 @@ export function EnrollDialog({
                 )}
               </div>
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button type="button" variant="outline" disabled={!!busy} onClick={onCancel}>
-                  Cancel
-                </Button>
                 {shown.trialAvailable && (
                   <Button type="button" variant="secondary" disabled={!!busy || !consent} onClick={() => onStartTrial(scope)}>
                     {busy === "trial" ? <><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />Opening authorization…</> : "Start Free Trial"}
