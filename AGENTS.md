@@ -10,6 +10,8 @@
 <!-- LOVABLE:END -->
 
 ## Frontend architecture
+- Plan-choice labels use configured scope prices and a temporary enrollment selection, reverting to the active plan when dismissed; this keeps pricing presentation separate from subscription actions.
+- Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only and retain normal dashboard access gates.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
 - Render the application shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`), keeping public and auth pages outside it and each navigation destination a separate leaf route.
 - Role area guards resolve access only from the signed-in user's `profiles` and `clinic_members` rows via `src/lib/access.ts`; they are navigation aids, RLS is the security boundary, and a stored clinic id is honoured only if it matches a verified membership.

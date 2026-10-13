@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { EnrollDialog, type EnrollPlan } from "@/components/careflow/enroll-dialog";
 import { openSubscriptionCheckout } from "@/lib/razorpay-checkout";
 import { canViewPlans, statusLabel } from "@/lib/verification";
+import { monthlyPlanPrice, planChoiceLabel, planComparisonPrice } from "@/lib/plan-selection";
 
 const plansQuery = (clinicId: string) =>
   queryOptions({
@@ -59,7 +60,7 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
         ? "Unlimited AI credits"
         : `${p.ai_credit_limit} AI credits / month${p.clinic_mode === "MULTI" ? " (shared across clinics)" : ""}`;
   const features = Array.isArray(p.features) ? (p.features as string[]) : [];
-  const amount = flexible && mode === "MULTI" && p.multi_price != null ? p.multi_price : p.price;
+  const amount = monthlyPlanPrice(p, scope);
   const price = p.currency === "INR" ? inr(amount) : `${p.currency} ${amount}`;
   return {
     flexible,
@@ -75,20 +76,24 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
 type State = NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<NonNullable<ReturnType<typeof planStateQuery>["queryFn"]>>>>>["data"]>;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTrial, onCancelPaid }: {
+function PlanCard({ p, state, canEnroll, busy, selectedId, selectedScope, comparisonPrice, onChoose, onContinue, onCancelTrial, onCancelPaid }: {
   p: Plan; state: State | undefined; canEnroll: boolean; busy: boolean;
+  selectedId: string | undefined; selectedScope: "SINGLE" | "MULTI"; comparisonPrice: number | null;
   onChoose: (p: Plan) => void; onContinue: () => void; onCancelTrial: () => void; onCancelPaid: () => void;
 }) {
-  const d = describePlan(p, "SINGLE");
   const cur = state?.current;
   const isCurrent = cur?.planId === p.id;
+  const isSelected = selectedId === p.id;
+  const scope = isSelected ? selectedScope : isCurrent && cur?.scope === "MULTI" ? "MULTI" : "SINGLE";
+  const d = describePlan(p, scope);
+  const choiceLabel = planChoiceLabel(monthlyPlanPrice(p, scope), comparisonPrice);
   const trial = isCurrent && cur?.status === "TRIAL_ACTIVE" && cur.trialEnd ? cur.trialEnd : null;
   const curScope = isCurrent && cur?.scope ? describePlan(p, cur.scope as "SINGLE" | "MULTI").scopeText : null;
   return (
-    <li className={`flex flex-col rounded-lg border bg-card p-5 ${isCurrent ? "border-primary ring-1 ring-primary/30" : ""}`}>
+    <li className={`flex flex-col rounded-lg border bg-card p-5 ${isCurrent || isSelected ? "border-primary ring-1 ring-primary/30" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold">{p.name}</h2>
-        {isCurrent ? <StatusBadge tone="success">{trial ? "Current plan · Free trial" : "Current plan"}</StatusBadge>
+        {isSelected ? <StatusBadge tone="info">Selected plan</StatusBadge> : isCurrent ? <StatusBadge tone="success">{trial ? "Current plan · Free trial" : "Current plan"}</StatusBadge>
           : p.ai_credit_type === "UNLIMITED" && <StatusBadge tone="success">Unlimited AI</StatusBadge>}
       </div>
       {p.description && <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>}
@@ -113,7 +118,7 @@ function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTri
       ) : isCurrent && (cur?.status === "ACTIVE" || cur?.status === "PAST_DUE") ? (
         <div className="mt-4 grid gap-2">
           {d.flexible
-            ? <Button type="button" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>Change scope</Button>
+            ? <Button type="button" title="Choose clinic scope" disabled={!canEnroll || busy} onClick={() => onChoose(p)}>{choiceLabel}</Button>
             : <Button type="button" variant="outline" disabled>Your Current Plan</Button>}
           <Button type="button" variant="outline" disabled={busy} onClick={onCancelPaid}>Cancel Subscription</Button>
         </div>
@@ -121,7 +126,7 @@ function PlanCard({ p, state, canEnroll, busy, onChoose, onContinue, onCancelTri
         <Button type="button" className="mt-4 w-full" variant="outline" disabled>Your Current Plan</Button>
       ) : (
         <Button type="button" className="mt-4 w-full" disabled={!canEnroll || busy || !state} onClick={() => onChoose(p)}>
-          {!canEnroll ? "Enrollment unavailable" : isCurrent ? "Your Current Plan · Change scope" : cur ? "Upgrade Now" : "Start Now"}
+          {!canEnroll ? "Enrollment unavailable" : choiceLabel}
         </Button>
       )}
     </li>
@@ -142,6 +147,7 @@ function Page() {
   const startTrial = useServerFn(startClinicTrial);
   const cancelTrial = useServerFn(cancelClinicTrial);
   const [selected, setSelected] = useState<Plan | null>(null);
+  const [selectedScope, setSelectedScope] = useState<"SINGLE" | "MULTI">("SINGLE");
   const [busy, setBusy] = useState<"trial" | "paid" | "cancel" | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -150,6 +156,7 @@ function Page() {
   const cancelPaid = useServerFn(cancelClinicSubscription);
   const canEnroll = !!membership && membership.role === "OWNER" && data.status === "APPROVED";
   const state = planState.data;
+  const comparisonPrice = planComparisonPrice(data.plans, selected, selectedScope, state?.current);
 
   const refresh = async () => { await qc.invalidateQueries({ queryKey: ["plan-state", clinicId] }); await router.invalidate(); };
 
@@ -250,13 +257,13 @@ function Page() {
 
   const trialPlan = data.plans.find((p) => p.id === state?.current?.planId);
   const tone = notice?.tone === "ok" ? "border-primary/40 bg-primary/5" : notice?.tone === "error" ? "border-destructive/40 bg-destructive/5 text-destructive" : "bg-muted";
-  const sel: EnrollPlan | null = selected ? {
+  const sel: EnrollPlan | null = useMemo(() => selected ? {
     name: selected.name,
     flexible: selected.clinic_mode === "SINGLE_OR_MULTI",
     trialAvailable: selected.trial_enabled && !state?.current && state?.trialUsed === false && !state?.registrationMissing,
     registrationMissing: selected.trial_enabled && !state?.current && state?.trialUsed === false && !!state?.registrationMissing,
     describe: (s) => describePlan(selected, s),
-  } : null;
+  } : null, [selected, state?.current, state?.trialUsed, state?.registrationMissing]);
   const title = state?.current ? "Upgrade Plan" : "Plans";
   return (
     <>
@@ -279,8 +286,8 @@ function Page() {
             ) : (
               <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {data.plans.map((p) => (
-                  <PlanCard key={p.id} p={p} state={state} canEnroll={canEnroll} busy={!!busy}
-                    onChoose={(pl) => { setDialogError(null); setNotice(null); setSelected(pl); }}
+                  <PlanCard key={p.id} p={p} state={state} canEnroll={canEnroll} busy={!!busy} selectedId={selected?.id} selectedScope={selectedScope} comparisonPrice={comparisonPrice}
+                    onChoose={(pl) => { setDialogError(null); setNotice(null); setSelectedScope("SINGLE"); setSelected(pl); }}
                     onContinue={() => trialPlan && void runPaid(trialPlan.id, trialPlan.name, trialPlan.clinic_mode === "SINGLE_OR_MULTI" ? (state?.current?.scope as "SINGLE" | "MULTI") : null)}
                     onCancelTrial={() => setConfirmCancel(true)} onCancelPaid={() => setConfirmCancelPaid(true)} />
                 ))}
@@ -290,6 +297,7 @@ function Page() {
         )}
       </div>
       <EnrollDialog plan={sel} busy={busy === "trial" || busy === "paid" ? busy : null} error={dialogError}
+        onScopeChange={setSelectedScope}
         onCancel={() => { if (!busy) setSelected(null); }}
         onConfirm={(scope) => selected && void runPaid(selected.id, selected.name, selected.clinic_mode === "SINGLE_OR_MULTI" ? scope : null)}
         onStartTrial={(scope) => void runTrial(scope)} />
