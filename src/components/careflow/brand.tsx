@@ -13,12 +13,12 @@ export function CareflowBrand({ compact = false, clinicName, ownerProfileLink = 
         aria-hidden="true"
       >
         <Activity className="size-6" strokeWidth={2.2} />
-      </span>
+      {/* </span>
       {!compact && (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="whitespace-nowrap text-xl font-bold">
             CAREFLOW<span className="ml-1 text-xs font-semibold text-primary">AI</span>
-          </span>
+         </span> */}
           {displayName ? <>
             <span aria-label="for" className="shrink-0 text-lg font-medium text-muted-foreground">×</span>
             <span className="min-w-0 max-w-full flex-1 truncate text-base font-semibold" title={displayName}>{displayName}</span>
