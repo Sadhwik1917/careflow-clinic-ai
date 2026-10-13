@@ -1,0 +1,1 @@
+REVOKE ALL ON public.trial_consumptions FROM PUBLIC, anon, authenticated;
