@@ -26,9 +26,9 @@ export function CareflowBrand({
       </span>
       {!compact && (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="whitespace-nowrap text-xl font-bold">
+          {/* <span className="whitespace-nowrap text-xl font-bold">
             CAREFLOW<span className="ml-1 text-xs font-semibold text-primary">AI</span>
-          </span>
+          </span> */}
           {displayName ? (
             <>
               <span aria-label="for" className="shrink-0 text-lg font-medium text-muted-foreground">
