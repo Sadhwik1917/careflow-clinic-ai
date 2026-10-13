@@ -7,7 +7,7 @@ import { subscriptionLabel, type AdminClinic } from "@/lib/admin-data";
 export function AdminClinicRows({ rows, emptyTitle = "No clinics yet", emptyDescription = "Clinics appear here once owners create them." }: { rows: AdminClinic[]; emptyTitle?: string; emptyDescription?: string }) {
   if (rows.length === 0) return <EmptyState icon={Building2} title={emptyTitle} description={emptyDescription} />;
   return <ul className="divide-y">{rows.map(c => <li key={c.id}>
-    <Link to="/admin/verifications/$clinicId" params={{ clinicId: c.id }} aria-label={`View details for ${c.display_name}`} className="grid gap-2 px-5 py-4 hover:bg-muted/50 sm:grid-cols-[1.6fr_1fr_auto] sm:items-center">
+    <Link to="/admin/clinics/$clinicId" params={{ clinicId: c.id }} aria-label={`View details for ${c.display_name}`} className="grid gap-2 px-5 py-4 hover:bg-muted/50 sm:grid-cols-[1.6fr_1fr_auto] sm:items-center">
       <span className="min-w-0"><span className="block truncate font-medium">{c.display_name} <span className="text-muted-foreground">· {c.clinic_code}</span></span>
         <span className="block truncate text-xs text-muted-foreground">{c.name} · {[c.city, c.state].filter(Boolean).join(", ") || "No location"} · Created {new Date(c.created_at).toLocaleDateString()}</span></span>
       <span className="text-sm text-muted-foreground">{c.subscription ? `${c.subscription.plan ?? "Plan"} · ${subscriptionLabel[c.subscription.status]}` : "No subscription"}</span>
