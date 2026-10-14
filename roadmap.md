@@ -44,3 +44,9 @@
 - [x] AI access gated by plan ai_enabled (UI + DB check)
 - [x] Add Clinic for multi-clinic plans, max_clinics enforced atomically
 - [x] Rolled-back SQL dry run + tests + report
+
+## Suspended / revoked clinic owner experience
+- [x] Detect suspension / revocation with the admin's recorded reason
+- [x] Full-screen blurred block with Re-verify Clinic, Switch clinic, Sign out
+- [x] Suspended clinics can resubmit verification (stays suspended until reinstated)
+- [x] Tests + rolled-back database check
