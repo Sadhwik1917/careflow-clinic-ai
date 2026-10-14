@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
@@ -14,7 +14,9 @@ import { subscriptionLabel } from "@/lib/admin-data";
 
 export function SubscriptionDetails({ row, onClose }: { row: SubscriptionRow; onClose: () => void }) {
   const [tab, setTab] = useState("overview");
-  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><MotionDialogContent>
+  const returnFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }, []);
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><MotionDialogContent onCloseAutoFocus={event => { event.preventDefault(); returnFocus.current?.focus(); }}>
     <div className="mb-5 space-y-2 pr-9"><DialogTitle>Subscription details</DialogTitle><DialogDescription>{row.plan?.name ?? "Plan unavailable"}</DialogDescription>
       <p className="break-all font-mono text-xs text-muted-foreground">{row.id}</p></div>
     <Tabs value={tab} onValueChange={setTab}>

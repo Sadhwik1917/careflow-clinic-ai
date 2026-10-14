@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, CreditCard, Search, RefreshCw } from "lucide-react";
@@ -19,10 +19,14 @@ export function AdminSubscriptionsPage({ filters }: { filters: SubscriptionFilte
   const q = useSuspenseQuery(adminSubscriptionsQuery(filters));
   const navigate = useNavigate();
   const [search, setSearch] = useState(filters.search);
+  useEffect(() => setSearch(filters.search), [filters.search]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = q.data.rows.find(r => r.id === selectedId);
   const change = (patch: Partial<SubscriptionFilters>) => navigate({ to: "/admin/subscriptions", search: { ...filters, ...patch } });
   const pages = Math.max(1, Math.ceil(q.data.count / SUBSCRIPTION_PAGE_SIZE));
+  useEffect(() => {
+    if (filters.page >= pages) void navigate({ to: "/admin/subscriptions", search: { ...filters, page: pages - 1 }, replace: true });
+  }, [filters, pages, navigate]);
   return <>
     <PageTitle title="Subscriptions" description="Clinic plans, trials and payment records." />
     <MotionReveal className="space-y-5 border-t px-4 py-6 md:px-6">
