@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { LiquidGauge } from "./liquid-gauge";
 import { BadgeCheck, Building2, ClipboardCheck, CreditCard, FlaskConical, ShieldBan, ShieldOff, Users, LineChart as TrendIcon } from "lucide-react";
 import { PageTitle } from "./page-title";
 import { StatisticsCard } from "./statistics-card";
@@ -57,15 +58,16 @@ export function AdminAnalyticsPage({ range }: { range: AnalyticsRange }) {
           {trendMissing ? <EmptyState icon={TrendIcon} title="Trend couldn't be calculated" description="Some registration counts failed to load. Try again shortly." />
             : trendEmpty ? <EmptyState icon={TrendIcon} title="No registrations in this period" description="Choose a longer time range to see earlier activity." />
             : <ChartContainer config={trendConfig} className="aspect-auto h-72 w-full" role="img" aria-label={`Registrations over the last ${rangeLabel[range]}: ${data.trend.map(t => `${t.label} ${t.users} users, ${t.clinics} clinics`).join("; ")}`}>
-              <LineChart data={data.trend} margin={{ left: -16, right: 8 }}>
+              <AreaChart data={data.trend} margin={{ left: -16, right: 8 }}>
+                <defs>{(["users", "clinics"] as const).map(k => <linearGradient key={k} id={`fill-${k}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={`var(--color-${k})`} stopOpacity={0.3} /><stop offset="95%" stopColor={`var(--color-${k})`} stopOpacity={0.02} /></linearGradient>)}</defs>
                 <CartesianGrid vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={16} />
                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Line dataKey="users" type="monotone" stroke="var(--color-users)" strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line dataKey="clinics" type="monotone" stroke="var(--color-clinics)" strokeWidth={2} dot={false} isAnimationActive={false} />
-              </LineChart>
+                <Area dataKey="users" type="monotone" stroke="var(--color-users)" fill="url(#fill-users)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Area dataKey="clinics" type="monotone" stroke="var(--color-clinics)" fill="url(#fill-clinics)" strokeWidth={2} dot={false} isAnimationActive={false} />
+              </AreaChart>
             </ChartContainer>}
         </CardContent>
       </Card>
@@ -87,5 +89,19 @@ export function AdminAnalyticsPage({ range }: { range: AnalyticsRange }) {
         </CardContent>
       </Card>
     </div>
+
+    <Card className="mt-6 rounded-lg shadow-none">
+      <CardHeader><CardTitle className="text-base">Verification health</CardTitle><CardDescription>Share of registered clinics that are approved and not suspended</CardDescription></CardHeader>
+      <CardContent>
+        {data.approved === null || data.clinics === null ? <EmptyState icon={BadgeCheck} title="Approval rate couldn't be calculated" description="Some clinic counts failed to load." className="min-h-40" />
+          : data.clinics === 0 ? <EmptyState icon={BadgeCheck} title="No clinics yet" description="The approval rate appears once clinics register." className="min-h-40" />
+          : <div className="flex flex-wrap items-center gap-6">
+            <LiquidGauge value={(data.approved / data.clinics) * 100} label="Approved clinics as a share of all clinics" size={112} />
+            <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
+              {[["Approved", data.approved], ["Awaiting review", data.pendingReview], ["Suspended", data.suspended], ["Revoked", data.revoked]].map(([k, v]) => <div key={k as string}><dt className="text-muted-foreground">{k}</dt><dd className="text-lg font-semibold tabular-nums">{v ?? "—"}</dd></div>)}
+            </dl>
+          </div>}
+      </CardContent>
+    </Card>
   </>;
 }

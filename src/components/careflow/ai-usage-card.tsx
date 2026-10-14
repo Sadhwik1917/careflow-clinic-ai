@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { LiquidGauge } from "@/components/careflow/liquid-gauge";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/careflow/feedback";
 import { supabase } from "@/integrations/supabase/client";
 import { parseAiUsage, remaining, usageState } from "@/lib/ai-credits";
@@ -35,8 +35,10 @@ export function AiUsageCard({ clinicId }: { clinicId: string }) {
     {u.creditType === "UNLIMITED"
       ? <p className="text-2xl font-semibold">Unlimited</p>
       : <>
-        <p className="text-2xl font-semibold tabular-nums">{u.used}{u.limit != null && <span className="text-base font-normal text-muted-foreground"> / {u.limit}</span>}</p>
-        {u.limit != null && <Progress value={Math.min(100, (u.used / u.limit) * 100)} aria-label="AI credits used" />}
+        <div className="flex items-center gap-5">
+          {u.limit != null && u.limit > 0 && <LiquidGauge value={(u.used / u.limit) * 100} label="AI credits used" size={84} tone={state === "LIMIT_REACHED" ? "destructive" : "primary"} />}
+          <p className="text-2xl font-semibold tabular-nums">{u.used}{u.limit != null && <span className="text-base font-normal text-muted-foreground"> / {u.limit}</span>}</p>
+        </div>
       </>}
     <p className="text-xs text-muted-foreground">
       {left != null && u.creditType === "LIMITED" && `${left} remaining · `}Resets on {fmt(u.periodEnd)}{u.shared && " · shared by all clinics on your plan"}

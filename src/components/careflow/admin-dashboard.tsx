@@ -5,6 +5,7 @@ import { PageTitle } from "./page-title";
 import { StatisticsCard } from "./statistics-card";
 import { EmptyState, ErrorState, LoadingState } from "./feedback";
 import { AdminClinicRows, ClinicListHeader } from "./admin-clinic-list";
+import { MotionReveal } from "./motion-primitives";
 import { Button } from "@/components/ui/button";
 import { adminActivityQuery, adminClinicsQuery, adminStatsQuery } from "@/lib/admin-data";
 import { navigation } from "@/lib/navigation";
@@ -19,12 +20,12 @@ export function AdminDashboard() {
   const items = navigation.PLATFORM_ADMIN.filter(i => i.group === "Workspace" && i.title !== "Dashboard").slice(0, 3);
   return <>
     <PageTitle title="Platform overview" description="Platform administrator workspace" />
-    <section aria-label="Overview statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <MotionReveal><section aria-label="Overview statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatisticsCard label="Clinics" value={val(stats.data?.clinics)} detail={det(stats.data?.clinics, "All registered clinics")} icon={Building2} />
       <StatisticsCard label="Subscriptions" value={val(stats.data?.subscriptions)} detail={det(stats.data?.subscriptions, "Active paid plans and running trials")} icon={Receipt} />
       <StatisticsCard label="Users" value={val(stats.data?.users)} detail={det(stats.data?.users, "Registered accounts")} icon={Users} />
       <StatisticsCard label="Pending reviews" value={val(stats.data?.pending)} detail={det(stats.data?.pending, "Clinics awaiting verification")} icon={ClipboardCheck} />
-    </section>
+    </section></MotionReveal>
     {stats.isError && <div className="mt-4"><ErrorState title="Statistics couldn't load" onRetry={() => stats.refetch()} /></div>}
     <div className="mt-9 grid gap-8 xl:grid-cols-[1.8fr_1fr]">
       <section><div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-base font-semibold">Clinics</h2><Button asChild variant="ghost" size="sm" className="text-primary"><Link to="/admin/clinics">View all<ArrowUpRight /></Link></Button></div>
