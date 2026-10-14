@@ -20,7 +20,11 @@ export const unreadCount = (list: NotificationRow[]) => list.filter(n => !n.is_r
 export const markRead = (list: NotificationRow[], id: string) => list.map(n => (n.id === id ? { ...n, is_read: true } : n));
 
 /** Where a notification leads. Only existing pages; clinic notices go to the owner's verification page. */
-export function notificationTarget(n: Pick<NotificationRow, "type">, role: AppRole): string | null {
+export function notificationTarget(n: Pick<NotificationRow, "type"> & { clinic_id?: string | null }, role: AppRole): string | null {
+  if (role === "PLATFORM_ADMIN" && n.clinic_id) {
+    if (n.type === "ADMIN_DOCUMENT_UPDATE_SUBMITTED") return `/admin/clinics/${n.clinic_id}`;
+    if (n.type === "ADMIN_REVERIFICATION_SUBMITTED") return `/admin/verifications/${n.clinic_id}`;
+  }
   if (role === "OWNER" && (n.type.startsWith("VERIFICATION_") || n.type.startsWith("REVERIFICATION_"))) return "/clinic/verification";
   if (role === "OWNER" && n.type.startsWith("TRIAL_")) return "/clinic/plans";
   return null;
