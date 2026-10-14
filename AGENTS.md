@@ -31,3 +31,4 @@
 - Admin Users reads profiles/memberships through the caller's RLS client after the admin check; only email lookup uses the service-role auth API, server-side and after that check, because emails live in auth.users.
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` (state in `clinic_reverifications`, notices in `notifications`) and `submit_clinic_verification`, because browser checks can't enforce deadlines.
+- AI credits: 1 per successful request, metered by reserve_ai_credit/finish_ai_credit under a subscription row lock; period anchored on the subscription billing date; every AI feature must run through meteredAi, because UI checks and estimates are not enforcement.
