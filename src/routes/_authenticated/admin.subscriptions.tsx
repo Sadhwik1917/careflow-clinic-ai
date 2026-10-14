@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/navigation";
 
 export const Route = createFileRoute("/_authenticated/admin/subscriptions")({
   head: () => pageMetadata("Subscriptions", "PLATFORM_ADMIN"),
-  validateSearch: (input) => subscriptionFiltersSchema.parse({ ...input, page: Number(input.page ?? 0) }),
+  validateSearch: (input) => subscriptionFiltersSchema.parse({ ...input, page: Number(input['page'] ?? 0) }),
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => { await context.queryClient.ensureQueryData(adminSubscriptionsQuery(deps)); },
   pendingComponent: () => <div className="p-6"><LoadingState label="Loading subscriptions…" /></div>,

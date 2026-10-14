@@ -38,7 +38,7 @@ export function AdminSubscriptionsPage({ filters }: { filters: SubscriptionFilte
       </div>
       {q.isRefetchError && <p role="alert" className="text-sm text-destructive">Refresh failed. Showing the last loaded records.</p>}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span aria-live="polite">{q.data.count} subscription{q.data.count === 1 ? "" : "s"}</span><span>Newest first</span></div>
-      {q.data.rows.length === 0 ? <EmptyState icon={CreditCard} title={filters.search || filters.status !== "ALL" || filters.type !== "ALL" ? "No matching subscriptions" : "No subscriptions recorded"} description={filters.search || filters.status !== "ALL" || filters.type !== "ALL" ? "Try a different search or filter." : undefined} />
+      {q.data.rows.length === 0 ? <EmptyState icon={CreditCard} title={filters.search || filters.status !== "ALL" || filters.type !== "ALL" ? "No matching subscriptions" : "No subscriptions recorded"} {...(filters.search || filters.status !== "ALL" || filters.type !== "ALL" ? { description: "Try a different search or filter." } : {})} />
         : <SubscriptionTable rows={q.data.rows} onDetails={r => setSelectedId(r.id)} />}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm"><span className="text-muted-foreground">Page {filters.page + 1} of {pages}</span><div className="flex gap-2">
         <Button size="sm" variant="outline" aria-label="Previous page" disabled={filters.page === 0} onClick={() => void change({ page: filters.page - 1 })}><ChevronLeft />Previous</Button>

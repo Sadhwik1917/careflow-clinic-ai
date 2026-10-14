@@ -1,5 +1,5 @@
 import { forwardRef, type ComponentProps, type ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, type MotionProps } from "motion/react";
 import { DialogPortal, DialogOverlay, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ export function MotionReveal({ children, className }: { children: ReactNode; cla
 const MotionContent = motion.create(DialogPrimitive.Content);
 // Radix owns presence, focus trapping/restoration, Escape, outside click, and accessible naming.
 // A short exit keeps the focus trap intact until Radix unmounts the dialog.
-export const MotionDialogContent = forwardRef<HTMLDivElement, ComponentProps<typeof DialogPrimitive.Content>>(({ children, className, ...props }, ref) => {
+export const MotionDialogContent = forwardRef<HTMLDivElement, Omit<ComponentProps<typeof DialogPrimitive.Content>, keyof MotionProps> & { children?: ReactNode }>(({ children, className, ...props }, ref) => {
   const reduced = useReducedMotion();
   return <DialogPortal><DialogOverlay className="bg-foreground/40 motion-reduce:animate-none" />
     <MotionContent ref={ref} {...props} initial={reduced ? false : { opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}

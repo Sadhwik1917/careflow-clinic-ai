@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SmoothTabs } from "./smooth-tabs";
 import { MotionDialogContent, MotionReveal, DialogTitle, DialogDescription } from "./motion-primitives";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "./feedback";
 import { adminSubscriptionHistoryQuery } from "@/lib/admin-subscriptions";
@@ -17,7 +18,7 @@ export function SubscriptionDetails({ row, onClose }: { row: SubscriptionRow; on
     <div className="mb-5 space-y-2 pr-9"><DialogTitle>Subscription details</DialogTitle><DialogDescription>{row.plan?.name ?? "Plan unavailable"}</DialogDescription>
       <p className="break-all font-mono text-xs text-muted-foreground">{row.id}</p></div>
     <Tabs value={tab} onValueChange={setTab}>
-      <TabsList aria-label="Subscription details" className="mb-4"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="payments">Payments</TabsTrigger><TabsTrigger value="trials">Trial history</TabsTrigger></TabsList>
+      <SmoothTabs value={tab} label="Subscription details" items={[{ value: "overview", label: "Overview" }, { value: "payments", label: "Payments" }, { value: "trials", label: "Trial history" }]} />
       <TabsContent value="overview"><MotionReveal key="overview"><dl className="grid grid-cols-1 gap-x-5 gap-y-4 text-sm sm:grid-cols-2">
         {[
           ["Status", subscriptionLabel[row.status]], ["Billing", `${moneyLabel(Number(row.amount), row.currency)} / ${row.billing_cycle}`],
