@@ -1,4 +1,11 @@
 # Phase 1A
+## Phase 2A — Admin Subscriptions
+- [x] Inspect real schema, RLS, payment lifecycle, and compatible UI libraries.
+- [x] Implement searchable, filtered, paginated subscription records and read-only details/history.
+- [x] Establish reusable accessible motion patterns without changing completed pages.
+- [x] Run focused and regression tests, inspect preview diagnostics, report verification limitations.
+- [ ] Signed-in real-data browser flow and desktop/mobile dialog checks — blocked: external unmanaged Supabase cannot supply a test session.
+
 ## Requested UI fixes
 - [x] Remove enrollment Cancel and verify safe busy/close controls.
 - [x] Compare plan choices by configured scope prices, returning to active-plan baseline on close.
