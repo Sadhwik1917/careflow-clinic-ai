@@ -21,7 +21,7 @@ describe("clinic activity", () => {
   it("keeps actor, reason and resulting status; never invents an actor", () => {
     const [s, t] = mergeClinicActivity(ver, audit);
     expect(s).toMatchObject({ label: "Clinic suspended", actor: "Admin", reason: "Expired licence", result: "Suspended" });
-    expect(t.actor).toBeNull();
+    expect(t?.actor).toBeNull();
   });
   it("renders the empty state", () => {
     render(<ClinicActivityList items={[]} />);
@@ -29,7 +29,7 @@ describe("clinic activity", () => {
   });
   it("dashboard rows link only to the recorded clinic", () => {
     const r = toDashboardActivity([{ id: "x", action: "CLINIC_SUSPEND", entity_type: "clinic", created_at: "", clinic: { id: "c1", display_name: "A", clinic_code: "CF-1" } }, { id: "y", action: "SUBSCRIPTION_CANCELLED", entity_type: "s", created_at: "", clinic: null }]);
-    expect(r[0].clinic?.id).toBe("c1");
-    expect(r[1].clinic).toBeNull();
+    expect(r[0]?.clinic?.id).toBe("c1");
+    expect(r[1]?.clinic).toBeNull();
   });
 });
