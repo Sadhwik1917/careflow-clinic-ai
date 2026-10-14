@@ -57,3 +57,7 @@
 - [x] Full-screen blurred block with Re-verify Clinic, Switch clinic, Sign out
 - [x] Suspended clinics can resubmit verification (stays suspended until reinstated)
 - [x] Tests + rolled-back database check
+
+## Phase 2C — Admin Analytics
+- [x] Real count-based metrics, registration trends, status distribution, range filter, tests.
+- [ ] Signed-in browser check — blocked: no test session for external Supabase.
