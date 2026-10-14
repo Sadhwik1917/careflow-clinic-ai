@@ -21,6 +21,8 @@ export const activityLabel: Record<string, string> = {
   REVOKED_AFTER_APPROVAL: "Approval revoked", CLINIC_ADDED: "Clinic added to plan", TRIAL_ACTIVATED: "Free trial started",
   SUBSCRIPTION_CANCELLED: "Subscription cancelled", CLINIC_SUSPEND: "Clinic suspended", CLINIC_REVOKE: "Approval revoked",
   CLINIC_REINSTATE: "Suspension lifted", REVERIFICATION_REQUESTED: "Reverification requested",
+  DOCUMENT_UPDATE_SUBMITTED: "Document update submitted", DOCUMENT_UPDATE_ACCEPTED: "Document update accepted",
+  DOCUMENT_UPDATE_NEEDS_REPLACEMENT: "Another document replacement requested",
 };
 export const labelFor = (code: string) => activityLabel[code] ?? code.toLowerCase().replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
 
@@ -34,8 +36,8 @@ export function mergeClinicActivity(ver: VRow[], audit: ARow[], limit = ACTIVITY
     reason: e.reason, result: e.event_type === "SUSPENDED" ? "Suspended" : e.event_type === "REINSTATED" ? "Active" : statusLabel[e.to_status] ?? null,
   }));
   const a: ClinicActivity[] = audit.filter(r => !DUPLICATE_AUDIT_ACTIONS.has(r.action)).map(r => {
-    const reason = (r.metadata as { reason?: unknown } | null)?.reason;
-    return { id: `a-${r.id}`, source: "audit", label: labelFor(r.action), actor: name(r.actor), created_at: r.created_at, reason: typeof reason === "string" ? reason : null, result: null };
+    const md = r.metadata as { reason?: unknown; document?: unknown } | null;
+    return { id: `a-${r.id}`, source: "audit", label: labelFor(r.action), actor: name(r.actor), created_at: r.created_at, reason: typeof md?.reason === "string" ? md.reason : null, result: typeof md?.document === "string" ? md.document : null };
   });
   return [...v, ...a].sort((x, y) => y.created_at.localeCompare(x.created_at)).slice(0, limit);
 }

@@ -241,6 +241,105 @@ export type Database = {
           },
         ]
       }
+      clinic_document_updates: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          document_id: string | null
+          id: string
+          mime_type: string
+          new_file_name: string
+          new_path: string
+          previous_file_name: string | null
+          previous_path: string | null
+          reason: string
+          requirement_id: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          size_bytes: number
+          status: string
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          mime_type: string
+          new_file_name: string
+          new_path: string
+          previous_file_name?: string | null
+          previous_path?: string | null
+          reason: string
+          requirement_id: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size_bytes: number
+          status?: string
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          mime_type?: string
+          new_file_name?: string
+          new_path?: string
+          previous_file_name?: string | null
+          previous_path?: string | null
+          reason?: string
+          requirement_id?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          size_bytes?: number
+          status?: string
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_document_updates_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_document_updates_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_document_updates_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "document_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_document_updates_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_document_updates_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_documents: {
         Row: {
           clinic_id: string
@@ -1988,6 +2087,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      review_document_update: {
+        Args: { p_note: string; p_status: string; p_update: string }
+        Returns: undefined
+      }
       start_clinic_trial: {
         Args: {
           p_clinic: string
@@ -2000,6 +2103,16 @@ export type Database = {
       submit_clinic_verification: {
         Args: { p_clinic: string }
         Returns: undefined
+      }
+      submit_document_update: {
+        Args: {
+          p_clinic: string
+          p_file_name: string
+          p_path: string
+          p_reason: string
+          p_requirement: string
+        }
+        Returns: string
       }
     }
     Enums: {
