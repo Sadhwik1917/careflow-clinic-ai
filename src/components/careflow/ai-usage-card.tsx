@@ -30,14 +30,18 @@ export function AiUsageCard({ clinicId }: { clinicId: string }) {
   return <Card className="rounded-lg shadow-none"><CardContent className="space-y-3 p-5">
     <div className="flex items-center justify-between gap-3">
       <span className="flex items-center gap-2 text-sm font-medium"><Sparkles aria-hidden="true" className="size-4 text-primary" />AI credits this month</span>
-      {state === "LIMIT_REACHED" ? <StatusBadge tone="danger">Limit reached</StatusBadge> : state === "THROTTLED" ? <StatusBadge tone="warning">Slower responses</StatusBadge> : <StatusBadge tone="success">Available</StatusBadge>}
+      {state === "LIMIT_REACHED" ? <StatusBadge tone="danger">Limit reached</StatusBadge> : u.creditType === "UNLIMITED" ? <StatusBadge tone="success">Unlimited</StatusBadge> : <StatusBadge tone="success">Available</StatusBadge>}
     </div>
-    <p className="text-2xl font-semibold tabular-nums">{u.used}{u.limit != null && <span className="text-base font-normal text-muted-foreground"> / {u.limit}</span>}</p>
-    {u.limit != null && <Progress value={Math.min(100, (u.used / u.limit) * 100)} aria-label="AI credits used" />}
+    {u.creditType === "UNLIMITED"
+      ? <p className="text-2xl font-semibold">Unlimited</p>
+      : <>
+        <p className="text-2xl font-semibold tabular-nums">{u.used}{u.limit != null && <span className="text-base font-normal text-muted-foreground"> / {u.limit}</span>}</p>
+        {u.limit != null && <Progress value={Math.min(100, (u.used / u.limit) * 100)} aria-label="AI credits used" />}
+      </>}
     <p className="text-xs text-muted-foreground">
       {left != null && u.creditType === "LIMITED" && `${left} remaining · `}Resets on {fmt(u.periodEnd)}{u.shared && " · shared by all clinics on your plan"}
     </p>
     {state === "LIMIT_REACHED" && <p className="text-sm text-destructive">You've used this month's AI credits. AI requests are paused until the reset date, or upgrade your plan.</p>}
-    {state === "THROTTLED" && <p className="text-sm text-muted-foreground">You've passed {u.limit} credits this month. AI keeps working, but responses are slower until the reset date.</p>}
+    {state === "THROTTLED" && <p className="text-sm text-muted-foreground">Response may delay due to over credit usage.</p>}
   </CardContent></Card>;
 }
