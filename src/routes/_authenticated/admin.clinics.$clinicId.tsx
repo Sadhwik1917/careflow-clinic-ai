@@ -14,6 +14,7 @@ import { subscriptionLabel } from "@/lib/admin-data";
 import { actionHelp, actionLabel, actionProblem, adminActionErrorMessage, availableActions, type AdminClinicAction } from "@/lib/entitlements";
 import { effectiveStatusBadge } from "@/lib/clinic-restriction";
 import { ClinicActivityHistory } from "@/components/careflow/clinic-activity-history";
+import { AdminAiUsage } from "@/components/careflow/admin-ai-usage";
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 
@@ -96,6 +97,7 @@ function Page() {
             <div className="flex flex-wrap gap-2"><Button variant={action === "REINSTATE" ? "default" : "destructive"} disabled={busy || !reason.trim()} onClick={() => void confirm()}>{busy && <Loader2 className="animate-spin" />}Confirm</Button><Button variant="ghost" disabled={busy} onClick={() => setAction(null)}>Back</Button></div>
           </div>}
       </section>
+      <AdminAiUsage clinicId={clinicId} />
       <ClinicActivityHistory clinicId={clinicId} />
     </div>
   </>;
