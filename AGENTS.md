@@ -31,3 +31,4 @@
 - Admin Users reads profiles/memberships through the caller's RLS client after the admin check; only email lookup uses the service-role auth API, server-side and after that check, because emails live in auth.users.
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` (state in `clinic_reverifications`, notices in `notifications`) and `submit_clinic_verification`, because browser checks can't enforce deadlines.
+- Notifications are inserted only by trusted database code (e.g. the verification_events trigger, maintenance jobs); clients may only read their own rows and set is_read, and the header bell uses Realtime with polling fallback, because clients must not forge system notices.
