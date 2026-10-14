@@ -12,6 +12,7 @@ import { pageMetadata } from "@/lib/navigation";
 import { clinicTypes, statusLabel, statusTone, type VerificationStatus } from "@/lib/verification";
 import { subscriptionLabel } from "@/lib/admin-data";
 import { actionHelp, actionLabel, actionProblem, adminActionErrorMessage, availableActions, type AdminClinicAction } from "@/lib/entitlements";
+import { effectiveStatusBadge } from "@/lib/clinic-restriction";
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 
@@ -19,7 +20,7 @@ export const clinicDetailQuery = (clinicId: string) => queryOptions({
   queryKey: ["admin-verifications", "clinic", clinicId],
   queryFn: async () => {
     const { data, error } = await supabase.from("clinics")
-      .select("id, name, display_name, clinic_code, clinic_type, status, phone, email, address, city, state, postal_code, country, latitude, longitude, registration_number, representative_name, representative_phone, created_at, owner:profiles(display_name, phone), verification:clinic_verifications(status, cycle, decided_at, decision_reason), links:subscription_clinics(subscription:clinic_subscriptions(status, clinic_scope, amount, currency, next_billing_date, trial_end_date, plan:plans(name)))")
+      .select("id, name, display_name, clinic_code, clinic_type, status, phone, email, address, city, state, postal_code, country, latitude, longitude, registration_number, representative_name, representative_phone, created_at, owner:profiles(display_name, phone), verification:clinic_verifications(status, cycle, decided_at, decision_reason), events:verification_events(event_type, reason, created_at), links:subscription_clinics(subscription:clinic_subscriptions(status, clinic_scope, amount, currency, next_billing_date, trial_end_date, plan:plans(name)))")
       .eq("id", clinicId).maybeSingle();
     if (error) throw new Error("We couldn't load this clinic.");
     return data as any;
@@ -68,10 +69,9 @@ function Page() {
     <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm md:grid-cols-2">{rows.map(([k, v]) => <div key={k} className="flex gap-2"><dt className="w-40 shrink-0 text-muted-foreground">{k}</dt><dd className="min-w-0 break-words">{v === null || v === undefined || v === "" ? "—" : String(v)}</dd></div>)}</dl>
   </section>;
 
+  const badge = effectiveStatusBadge(c.status, vs, c.events ?? [], statusLabel, statusTone);
   return <>
-    <PageTitle title={c.display_name} description={`${c.name} · ${c.clinic_code}`} actions={<div className="flex flex-wrap gap-2">
-      {c.status !== "ACTIVE" && <StatusBadge tone="danger">{c.status === "SUSPENDED" ? "Suspended" : "Inactive"}</StatusBadge>}
-      <StatusBadge tone={vs ? statusTone[vs] : "neutral"}>{vs ? statusLabel[vs] : "Not submitted"}</StatusBadge></div>} />
+    <PageTitle title={c.display_name} description={`${c.name} · ${c.clinic_code}`} actions={<StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>} />
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
       <div className="flex flex-wrap items-center justify-between gap-2">{back}<Button variant="outline" size="sm" asChild><Link to="/admin/verifications/$clinicId" params={{ clinicId }}>View verification application</Link></Button></div>
       {msg && <FormAlert tone={msg.ok ? "success" : "error"}>{msg.text}</FormAlert>}

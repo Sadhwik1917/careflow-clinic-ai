@@ -36,6 +36,15 @@ export const clinicRestrictionQuery = (clinicId: string) => queryOptions({
   refetchOnWindowFocus: true,
 });
 
+/** One badge for the clinic's real state: Suspended / Revoked override the verification label. */
+export function effectiveStatusBadge(clinicStatus: string | null | undefined, verification: VerificationStatus | null | undefined, events: Event[], labels: Record<VerificationStatus, string>, tones: Record<VerificationStatus, "success" | "warning" | "danger" | "neutral" | "info">) {
+  const r = restrictionFrom(clinicStatus, verification, events);
+  if (r?.kind === "SUSPENDED") return { label: "Suspended", tone: "danger" as const };
+  if (r?.kind === "REVOKED") return { label: "Revoked", tone: "danger" as const };
+  if (!verification) return { label: "Not submitted", tone: "neutral" as const };
+  return { label: labels[verification], tone: tones[verification] };
+}
+
 /** The only owner page reachable while restricted (plus sign-out, which lives outside the area). */
 export const RESTRICTED_ALLOWED_PATH = "/clinic/verification";
 export function restrictionBlocks(pathname: string, r: ClinicRestriction) {

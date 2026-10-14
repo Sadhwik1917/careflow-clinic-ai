@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Building2 } from "lucide-react";
 import { EmptyState, StatusBadge } from "./feedback";
 import { statusLabel, statusTone } from "@/lib/verification";
+import { effectiveStatusBadge } from "@/lib/clinic-restriction";
 import { subscriptionLabel, type AdminClinic } from "@/lib/admin-data";
 
 export function AdminClinicRows({ rows, emptyTitle = "No clinics yet", emptyDescription = "Clinics appear here once owners create them." }: { rows: AdminClinic[]; emptyTitle?: string; emptyDescription?: string }) {
@@ -11,7 +12,7 @@ export function AdminClinicRows({ rows, emptyTitle = "No clinics yet", emptyDesc
       <span className="min-w-0"><span className="block truncate font-medium">{c.display_name} <span className="text-muted-foreground">· {c.clinic_code}</span></span>
         <span className="block truncate text-xs text-muted-foreground">{c.name} · {[c.city, c.state].filter(Boolean).join(", ") || "No location"} · Created {new Date(c.created_at).toLocaleDateString()}</span></span>
       <span className="text-sm text-muted-foreground">{c.subscription ? `${c.subscription.plan ?? "Plan"} · ${subscriptionLabel[c.subscription.status]}` : "No subscription"}</span>
-      {c.verification ? <StatusBadge tone={statusTone[c.verification]}>{statusLabel[c.verification]}</StatusBadge> : <StatusBadge>Not submitted</StatusBadge>}
+      {(() => { const b = effectiveStatusBadge(c.clinic_status, c.verification, c.events ?? [], statusLabel, statusTone); return <StatusBadge tone={b.tone}>{b.label}</StatusBadge>; })()}
     </Link></li>)}</ul>;
 }
 

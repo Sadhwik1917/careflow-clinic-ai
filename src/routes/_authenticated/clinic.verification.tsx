@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
 import { BUCKET, clinicTypes, documentPath, fileProblem, isEditable, statusLabel, statusTone, submissionProblems, uploadErrorMessage, verificationErrorMessage, type ClinicDocument, type Requirement } from "@/lib/verification";
+import { effectiveStatusBadge } from "@/lib/clinic-restriction";
 
 const verificationQuery = (clinicId: string) => queryOptions({
   queryKey: ["verification", clinicId],
@@ -107,7 +108,7 @@ function Page() {
   const disabled = !editable || busy !== null;
 
   return <>
-    <PageTitle title="Clinic verification" description="Submit your clinic's details and documents for review by CAREFLOW." actions={<StatusBadge tone={status ? statusTone[status] : "neutral"}>{status ? statusLabel[status] : "Not started"}</StatusBadge>} />
+    <PageTitle title="Clinic verification" description="Submit your clinic's details and documents for review by CAREFLOW." actions={(() => { const b = effectiveStatusBadge(data.clinic.status, status, data.events, statusLabel, statusTone); return <StatusBadge tone={b.tone}>{status || suspended ? b.label : "Not started"}</StatusBadge>; })()} />
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
       {status === "PENDING_REVIEW" && <FormAlert tone="success">Your application is under review. Details and documents are locked until a decision is made.</FormAlert>}
       {status === "CHANGES_REQUESTED" && <FormAlert>Changes requested: {data.verification?.decision_reason}. Update the details or documents below and resubmit.</FormAlert>}

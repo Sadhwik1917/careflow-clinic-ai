@@ -9,6 +9,7 @@ type SubStatus = Database["public"]["Enums"]["subscription_status"];
 export type AdminClinic = {
   id: string; name: string; display_name: string; clinic_code: string; city: string | null; state: string | null;
   created_at: string; verification: VerificationStatus | null; subscription: { status: SubStatus; plan: string | null } | null;
+  clinic_status?: string; events?: { event_type: string; reason: string | null; created_at: string }[];
 };
 
 /** Subscriptions counted as "active": paid ACTIVE plus running trials. */
@@ -29,11 +30,12 @@ export const adminClinicsQuery = queryOptions({
   queryKey: ["admin-verifications", "clinics"],
   queryFn: async (): Promise<AdminClinic[]> => {
     const { data, error } = await supabase.from("clinics")
-      .select("id, name, display_name, clinic_code, city, state, created_at, verification:clinic_verifications(status), links:subscription_clinics(subscription:clinic_subscriptions(status, plan:plans(name)))")
+      .select("id, name, display_name, clinic_code, city, state, created_at, status, verification:clinic_verifications(status), events:verification_events(event_type, reason, created_at), links:subscription_clinics(subscription:clinic_subscriptions(status, plan:plans(name)))")
       .order("created_at", { ascending: false });
     if (error) throw new Error("We couldn't load clinics.");
     return (data ?? []).map((c: any) => ({
       id: c.id, name: c.name, display_name: c.display_name, clinic_code: c.clinic_code, city: c.city, state: c.state, created_at: c.created_at,
+      clinic_status: c.status, events: c.events ?? [],
       verification: one<{ status: VerificationStatus }>(c.verification)?.status ?? null,
       subscription: pickSubscription(((c.links ?? []) as any[]).map(l => one<any>(l.subscription)).filter(Boolean).map((s: any) => ({ status: s.status, plan: one<{ name: string }>(s.plan)?.name ?? null }))),
     }));
