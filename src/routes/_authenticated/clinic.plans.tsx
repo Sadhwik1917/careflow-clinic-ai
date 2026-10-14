@@ -56,7 +56,7 @@ function describePlan(p: Plan, scope: "SINGLE" | "MULTI") {
     !p.ai_enabled || p.ai_credit_type === "NONE"
       ? "No AI features"
       : p.ai_credit_type === "UNLIMITED"
-        ? "Unlimited AI credits"
+        ? (p.ai_credit_limit ? `${p.ai_credit_limit} AI credits / month, then slower responses` : "Unlimited AI credits")
         : `${p.ai_credit_limit} AI credits / month${p.clinic_mode === "MULTI" ? " (shared across clinics)" : ""}`;
   const features = Array.isArray(p.features) ? (p.features as string[]) : [];
   const amount = monthlyPlanPrice(p, scope);
