@@ -44,8 +44,9 @@ function Page() {
   const { data } = useSuspenseQuery(verificationQuery(clinicId));
   const status = data.verification?.status ?? null;
   const suspended = data.clinic.status === "SUSPENDED";
-  // Mirrors private.verification_editable: a suspended clinic may resubmit; access still needs admin approval + reinstatement.
-  const editable = isEditable(status) || (suspended && status === "APPROVED");
+  // Mirrors private.verification_editable: suspended or reverification-due clinics may resubmit; the database decides.
+  const rev = data.reverification;
+  const editable = isEditable(status) || (status === "APPROVED" && (suspended || rev?.status === "OPEN"));
   const revoked = status === "REJECTED" && data.events.find(e => ["APPROVED", "CHANGES_REQUESTED", "REJECTED", "REVOKED_AFTER_APPROVAL", "REINSTATED", "SUSPENDED"].includes(e.event_type))?.event_type === "REVOKED_AFTER_APPROVAL";
   const c = data.clinic;
   const [form, setForm] = useState<Details>({ clinic_type: c.clinic_type ?? "", address: c.address ?? "", city: c.city ?? "", state: c.state ?? "", postal_code: c.postal_code ?? "", registration_number: c.registration_number ?? "", representative_name: c.representative_name ?? "", representative_phone: c.representative_phone ?? "", latitude: c.latitude?.toString() ?? "", longitude: c.longitude?.toString() ?? "" });
@@ -117,7 +118,9 @@ function Page() {
       {suspended && <FormAlert>Your clinic has been suspended by the platform administrator. Review your details and documents below and resubmit them for review. Access returns only after the administrator approves it and lifts the suspension.</FormAlert>}
       {revoked && <FormAlert>Your clinic approval was revoked: {data.verification?.decision_reason}. Update your details or documents below and resubmit for review.</FormAlert>}
       {status === "REJECTED" && !revoked && <FormAlert>Application rejected: {data.verification?.decision_reason}. You can correct it and apply again.</FormAlert>}
-      {status === "APPROVED" && !suspended && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
+      {rev?.status === "OPEN" && !suspended && <FormAlert>Six-monthly document reverification is due. Upload each required document again and resubmit by <strong>{new Date(rev.deadline_at).toLocaleString()}</strong>, or your clinic will be suspended. Your clinic keeps working while the administrator reviews it.</FormAlert>}
+      {rev?.status === "RESPONDED" && <FormAlert tone="success">Reverification documents received. Your clinic keeps working while the administrator reviews them.</FormAlert>}
+      {status === "APPROVED" && !suspended && !rev && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
       {message && <FormAlert tone={message.ok ? "success" : "error"}>{message.text}</FormAlert>}
 
       <section className="rounded-lg border bg-card p-5">
