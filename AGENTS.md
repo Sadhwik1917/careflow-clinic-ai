@@ -10,6 +10,9 @@
 <!-- LOVABLE:END -->
 
 ## Frontend architecture
+- New interactions reuse shadcn primitives with the reduced-motion-aware `motion-primitives` wrappers; keep Radix responsible for focus, dismissal and keyboard behavior so animation never replaces accessibility.
+- Admin Subscriptions uses authenticated read-only server functions with the caller's RLS client, paged subscription/history queries and projected fields only; admin cancellation is not exposed because the existing provider cancellation workflow authorizes owners only.
+- Verify Kokonut, bklit and v0 source/dependencies before adapting any component, and add Anime.js only for justified decorative effects; this avoids speculative dependencies and a second visual language.
 - Plan-choice labels use configured scope prices and a temporary enrollment selection, reverting to the active plan when dismissed; this keeps pricing presentation separate from subscription actions.
 - Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only and retain normal dashboard access gates.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
