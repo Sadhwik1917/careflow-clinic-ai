@@ -8,7 +8,7 @@ export const actionLabel: Record<AdminClinicAction, string> = { SUSPEND: "Suspen
 export const actionHelp: Record<AdminClinicAction, string> = {
   SUSPEND: "Blocks all clinic access immediately. Records are kept and the suspension can be lifted later.",
   REVOKE: "Super rejection of an approved clinic: approval is withdrawn and the owner must go through verification again.",
-  REINSTATE: "Restores access for a suspended clinic that is still approved and has an active plan.",
+  REINSTATE: "Lifts the suspension of an approved clinic. If the clinic has no active plan, the owner will be asked to choose one before using CAREFLOW.",
 };
 
 /** Client mirror of admin_clinic_action's rules; the database re-checks everything and authorises only platform admins. */
