@@ -1,27 +1,46 @@
-# Pre-Phase 2 Rectifications
+# Database function permissions audit
 
-## What I found (inspection)
-- Verification status lives only in `clinic_verifications` (+ append-only `verification_events`). `review_clinic_verification` only acts on PENDING_REVIEW, so an approved clinic cannot currently be acted on.
-- Clinic access is enforced by `clinic_is_operational` (approved verification + active/trial subscription), used by the owner gate and the 33 restrictive RLS policies. It ignores `clinics.status` (ACTIVE / INACTIVE / SUSPENDED), and owners can edit their own clinic row, so `clinics.status` is not safe to use alone.
-- Plans already carry entitlement fields: `ai_enabled` / `ai_credit_type`, `clinic_mode` (SINGLE / MULTI / SINGLE_OR_MULTI) and `max_clinics`. These will be the source of truth (no plan names).
-- AI assistant is a placeholder page; no AI server code exists yet. Clinic Settings is also a placeholder; no Add Clinic flow exists.
-- `create_first_clinic` refuses anyone who already owns a clinic, so a second clinic is impossible today.
+## What the audit found
 
-## Minimum database changes (one migration)
-1. `admin_clinic_action(p_clinic, p_action 'SUSPEND' | 'REVOKE' | 'REINSTATE', p_reason)` — trusted function, platform admin only, reason required, only on APPROVED (or suspended) clinics.
-   - SUSPEND: sets `clinics.status = SUSPENDED` (reversible).
-   - REVOKE (super rejection): moves verification APPROVED -> REJECTED with event type `REVOKED_AFTER_APPROVAL`, distinct from initial `REJECTED`.
-   - Every action appends a `verification_events` row and an `audit_logs` row (admin, clinic, reason, time). No history is overwritten; no clinic, patient or billing rows are deleted.
-2. `private.clinic_is_operational` also requires `clinics.status = 'ACTIVE'`, so suspension takes effect immediately in every existing RLS policy and the owner gate.
-3. Trigger on `clinics` blocking non-trusted changes to `status` (owners cannot un-suspend themselves).
-4. `clinic_ai_enabled(p_clinic)` — member/admin-only check: operational + effective subscription plan has `ai_enabled`.
-5. `create_additional_clinic(...)` — owner-only: caller must own an operational clinic whose effective plan is MULTI / SINGLE_OR_MULTI (Max AI only when on the multi scope), and owned clinics < `max_clinics`. Reuses the existing clinic insert, OWNER membership and DRAFT verification logic; the new clinic still needs its own verification and must be linked to the subscription per existing rules.
+Every database action the app calls was checked against who is allowed to run it.
 
-## App changes
-- New `/admin/clinics/$clinicId` details page (identity, contact/location, registration, representative, verification status, subscription), with loading/error/not-found states, a "View verification application" link, and Suspend / Revoke approval / Reinstate actions with required reason and confirm step. Clinic list rows link here instead.
-- Owner area: AI assistant nav item and page hidden/locked when `clinic_ai_enabled` is false; route guard redirects. Future AI server functions must call the same check (helper added now).
-- Clinic Settings: Add Clinic + verification entry shown only for eligible multi-clinic plans; form calls `create_additional_clinic`.
-- Tests: action authorization rules, details page rendering, AI entitlement, multi-clinic eligibility, plus a rolled-back SQL dry run proving direct calls by non-admins / single-clinic owners are refused.
+Correct today (kept as is):
+- Admin actions (suspend / revoke / lift suspension, reviewing applications and documents) can be started by any signed-in user, but each one checks inside that the caller is the platform admin and refuses otherwise. The browser needs to call them, so the permission stays.
+- Owner actions (create clinic, add clinic, upload/remove documents, submit verification) check that the caller is the clinic owner.
+- Plan/AI checks (is the clinic operational, does the plan include AI, how many clinics are allowed) only answer for the caller's own clinics, or for the admin.
+- Trial and payment steps (start mandated trial, cancel trial, confirm mandate) can only be run by the app's server and the signed Razorpay webhook, not from the browser. Correct.
+- The old direct "start trial" action has no outside access at all. Correct.
 
-## Open question
-Switching the active clinic for an owner with several clinics already uses the existing clinic chooser; no change planned there.
+Unnecessary access to remove:
+1. The automatic "updated at" timestamp helper can be run by anyone, including signed-out visitors. It is only meant to run on its own when records change.
+2. Three automatic background checks (new-user profile creation, the clinic-status guard and the admin-role guard) are still open to everyone by default. They only need to run on their own.
+3. The app's server key can run eleven owner/admin actions it never uses. These actions depend on a signed-in person, so the server key has no reason to run them.
+
+## Changes (one database update)
+
+- Turn off outside access to the timestamp helper and the three background checks. They keep working on their own as before.
+- Remove the unused server-key access from the owner/admin actions.
+- Keep signed-in access to every action the app's pages call, and keep server-key access to the three trial/payment steps.
+- Nothing else changes: same rules inside each action, same access rules for data, Razorpay Live Mode, prices and every page untouched.
+
+## Verification
+
+- Practice run that is rolled back first: confirm signed-out visitors and signed-in non-admins are still refused admin actions, the admin can still suspend / lift / review, owners can still submit, and the timestamp and guard checks still fire on updates.
+- Then apply for real, re-read the permissions list, run the security scan and the tests.
+- Remaining scan warnings for "signed-in users can run protected actions" are expected: those actions must be callable from the browser and each one checks the caller. I will mark them as reviewed with that reason. Leaked-password protection stays a setting for you to turn on.
+
+## Technical details
+
+```text
+REVOKE EXECUTE ON FUNCTION public.set_updated_at() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION private.handle_new_user(), private.protect_clinic_status(),
+  private.protect_platform_role() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.admin_clinic_action, clinic_ai_enabled, clinic_is_operational,
+  create_additional_clinic, create_first_clinic, owner_clinic_allowance, register_clinic_document,
+  remove_clinic_document, review_clinic_document, review_clinic_verification,
+  submit_clinic_verification FROM service_role;
+-- also REVOKE ... FROM PUBLIC, anon on all public SECURITY DEFINER functions (defensive)
+-- kept: authenticated on the above; service_role on begin_mandated_trial,
+--       cancel_clinic_trial, confirm_trial_mandate
+```
+Triggers run as the table owner, so revoking EXECUTE does not stop them.
