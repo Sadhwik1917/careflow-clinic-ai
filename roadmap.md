@@ -1,4 +1,10 @@
 # Phase 1A
+## Phase 2A — Admin Subscriptions
+- [ ] Inspect real schema, RLS, payment lifecycle, and compatible UI libraries.
+- [ ] Implement searchable, filtered, paginated subscription records and read-only details/history.
+- [ ] Establish reusable accessible motion patterns without changing completed pages.
+- [ ] Run focused and regression tests, inspect preview diagnostics, report verification limitations.
+
 ## Requested UI fixes
 - [x] Remove enrollment Cancel and verify safe busy/close controls.
 - [x] Compare plan choices by configured scope prices, returning to active-plan baseline on close.
