@@ -10,15 +10,14 @@
 <!-- LOVABLE:END -->
 
 ## Frontend architecture
-- Colors use semantic CSS tokens; new interactions reuse shadcn primitives with the reduced-motion-aware `motion-primitives` wrappers; keep Radix responsible for focus, dismissal and keyboard behavior so animation never replaces accessibility.
+- Semantic color tokens; new interactions reuse shadcn + reduced-motion `motion-primitives`, Radix owns focus/dismissal; verify Kokonut/bklit/v0 sources before adapting, no speculative deps, so animation never replaces accessibility.
 - Admin Subscriptions uses authenticated read-only server functions with the caller's RLS client, paged subscription/history queries and projected fields only; admin cancellation is not exposed because the existing provider cancellation workflow authorizes owners only.
-- Verify Kokonut/bklit/v0 sources before adapting; Anime.js only for justified decorative effects, to avoid speculative dependencies.
-- Plan-choice labels use configured scope prices and a temporary enrollment selection, reverting to the active plan when dismissed; this keeps pricing presentation separate from subscription actions.
+- Plan-choice labels use configured scope prices and a temporary enrollment selection, reverting to the active plan when dismissed, keeping pricing display separate from subscription actions.
 - Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only and retain normal dashboard access gates.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
 - Render the application shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`), keeping public and auth pages outside it and each navigation destination a separate leaf route.
 - Role area guards resolve access only from the signed-in user's `profiles` and `clinic_members` rows via `src/lib/access.ts`; they are navigation aids, RLS is the security boundary, and a stored clinic id is honoured only if it matches a verified membership.
-- Workspace pages still show disconnected states and null statistics until each module is built, because no fabricated clinic records are allowed.
+- Unbuilt workspace modules show disconnected states and null stats, because fabricated records aren't allowed.
 - Clinics are created only through the database function `create_first_clinic`, which derives the owner from the session and enforces eligibility; never insert clinics or OWNER memberships from the client, because the owner-protection trigger only trusts that function.
 - Clinic verification status lives only in `clinic_verifications`/`verification_events` and changes only through the submit/review database functions; owner area pages stay locked by `ownerGateRedirect` and restrictive RLS until `clinic_is_operational`, because owners can edit their own clinic row.
 - Razorpay subscriptions are created only by `createClinicSubscription` (price/plan id from `plans`, stored PENDING_PAYMENT) and become ACTIVE only via the signed Razorpay webhook (`/api/public/razorpay-webhook`, deduped by event id in `razorpay_webhook_events`); the browser checkout callback only verifies the signature, because client callbacks are untrusted.
@@ -31,4 +30,4 @@
 - Admin Users reads profiles/memberships through the caller's RLS client after the admin check; only email lookup uses the service-role auth API, server-side and after that check, because emails live in auth.users.
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` (state in `clinic_reverifications`, notices in `notifications`) and `submit_clinic_verification`, because browser checks can't enforce deadlines.
-- Notifications are inserted only by trusted database code (e.g. the verification_events trigger, maintenance jobs); clients may only read their own rows and set is_read, and the header bell uses Realtime with polling fallback, because clients must not forge system notices.
+- Notifications are inserted only by trusted database code (verification_events trigger, cron jobs); clients only read own rows and set is_read; bell uses Realtime + polling fallback, so notices can't be forged.
