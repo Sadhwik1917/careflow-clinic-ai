@@ -1904,6 +1904,7 @@ export type Database = {
         Returns: string
       }
       clinic_ai_enabled: { Args: { p_clinic: string }; Returns: boolean }
+      clinic_ai_usage: { Args: { p_clinic: string }; Returns: Json }
       clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
       confirm_trial_mandate: {
         Args: { p_mandate_ref: string; p_provider_id: string }
@@ -1945,6 +1946,10 @@ export type Database = {
         }
         Returns: string
       }
+      finish_ai_credit: {
+        Args: { p_request: string; p_success: boolean }
+        Returns: string
+      }
       owner_clinic_allowance: { Args: never; Returns: Json }
       register_clinic_document: {
         Args: {
@@ -1956,6 +1961,10 @@ export type Database = {
         Returns: string
       }
       remove_clinic_document: { Args: { p_document: string }; Returns: string }
+      reserve_ai_credit: {
+        Args: { p_clinic: string; p_feature: string; p_request: string }
+        Returns: Json
+      }
       review_clinic_document: {
         Args: {
           p_document: string
