@@ -404,6 +404,56 @@ export type Database = {
           },
         ]
       }
+      clinic_reverifications: {
+        Row: {
+          basis_approved_at: string
+          clinic_id: string
+          closed_at: string | null
+          created_at: string
+          deadline_at: string
+          id: string
+          reminder_sent_at: string | null
+          requested_at: string
+          responded_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          basis_approved_at: string
+          clinic_id: string
+          closed_at?: string | null
+          created_at?: string
+          deadline_at: string
+          id?: string
+          reminder_sent_at?: string | null
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          basis_approved_at?: string
+          clinic_id?: string
+          closed_at?: string | null
+          created_at?: string
+          deadline_at?: string
+          id?: string
+          reminder_sent_at?: string | null
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_reverifications_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_subscriptions: {
         Row: {
           amount: number
@@ -1683,7 +1733,7 @@ export type Database = {
       }
       verification_events: {
         Row: {
-          actor_user_id: string
+          actor_user_id: string | null
           clinic_id: string
           created_at: string
           cycle: number
@@ -1694,7 +1744,7 @@ export type Database = {
           to_status: Database["public"]["Enums"]["verification_status"]
         }
         Insert: {
-          actor_user_id: string
+          actor_user_id?: string | null
           clinic_id: string
           created_at?: string
           cycle: number
@@ -1707,7 +1757,7 @@ export type Database = {
           to_status: Database["public"]["Enums"]["verification_status"]
         }
         Update: {
-          actor_user_id?: string
+          actor_user_id?: string | null
           clinic_id?: string
           created_at?: string
           cycle?: number
