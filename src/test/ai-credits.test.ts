@@ -60,3 +60,15 @@ describe("metered AI requests", () => {
     expect(sleep).toHaveBeenCalledOnce();
   });
 });
+
+import { describe as d2, it as i2, expect as e2 } from "vitest";
+import { parseAiUsage as p2, usageState as s2 } from "@/lib/ai-credits";
+d2("hidden Max AI threshold", () => {
+  i2("clinic members get no limit but still see throttling from the server flag", () => {
+    const u = p2({ included: true, credit_type: "UNLIMITED", limit: null, throttled: true, used: 2100, period_end: "2026-11-01" });
+    if (!u.included) throw new Error();
+    e2(u.limit).toBeNull();
+    e2(s2(u)).toBe("THROTTLED");
+    e2(s2({ ...u, throttled: false })).toBe("OK");
+  });
+});

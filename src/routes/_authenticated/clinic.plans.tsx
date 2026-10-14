@@ -26,15 +26,20 @@ const plansQuery = (clinicId: string) =>
       if (ver.error) throw new Error("We couldn't load your verification status.");
       const status = ver.data?.status ?? null;
       if (!canViewPlans(status)) return { status, plans: [] };
-      const plans = await supabase
-        .from("plans")
-        .select(
-          "id, name, description, price, currency, billing_cycle, trial_enabled, trial_duration_days, multi_price, clinic_mode, ai_enabled, ai_credit_type, ai_credit_limit, max_clinics, features",
-        )
-        .eq("is_active", true)
-        .order("price");
-      if (plans.error) throw new Error("We couldn't load plans.");
-      return { status, plans: plans.data ?? [] };
+      const [plans, limits] = await Promise.all([
+        supabase
+          .from("plans")
+          .select(
+            "id, name, description, price, currency, billing_cycle, trial_enabled, trial_duration_days, multi_price, clinic_mode, ai_enabled, ai_credit_type, max_clinics, features",
+          )
+          .eq("is_active", true)
+          .order("price"),
+        // Only published allowances come back; internal thresholds stay admin-only in the database.
+        (supabase.rpc as unknown as (f: string) => PromiseLike<{ data: { plan_id: string; ai_credit_limit: number | null }[] | null; error: unknown }>)("plan_ai_credit_limits"),
+      ]);
+      if (plans.error || limits.error) throw new Error("We couldn't load plans.");
+      const byId = new Map((limits.data ?? []).map(l => [l.plan_id, l.ai_credit_limit]));
+      return { status, plans: (plans.data ?? []).map(p => ({ ...p, ai_credit_limit: byId.get(p.id) ?? null })) };
     },
   });
 

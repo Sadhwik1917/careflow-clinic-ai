@@ -1951,6 +1951,13 @@ export type Database = {
         Returns: string
       }
       owner_clinic_allowance: { Args: never; Returns: Json }
+      plan_ai_credit_limits: {
+        Args: never
+        Returns: {
+          ai_credit_limit: number
+          plan_id: string
+        }[]
+      }
       register_clinic_document: {
         Args: {
           p_clinic: string
