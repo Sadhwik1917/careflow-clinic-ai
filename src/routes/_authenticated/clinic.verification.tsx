@@ -11,20 +11,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
 import { BUCKET, clinicTypes, documentPath, fileProblem, isEditable, statusLabel, statusTone, submissionProblems, uploadErrorMessage, verificationErrorMessage, type ClinicDocument, type Requirement } from "@/lib/verification";
 import { effectiveStatusBadge } from "@/lib/clinic-restriction";
+import { openReverification, type Reverification } from "@/lib/reverification";
 
 const verificationQuery = (clinicId: string) => queryOptions({
   queryKey: ["verification", clinicId],
   queryFn: async () => {
-    const [clinic, ver, reqs, docs, events] = await Promise.all([
+    const [clinic, ver, reqs, docs, events, rev] = await Promise.all([
       supabase.from("clinics").select("id, name, display_name, status, clinic_type, address, city, state, postal_code, latitude, longitude, registration_number, representative_name, representative_phone").eq("id", clinicId).single(),
       supabase.from("clinic_verifications").select("status, cycle, submitted_at, decided_at, decision_reason").eq("clinic_id", clinicId).maybeSingle(),
       supabase.from("document_requirements").select("id, clinic_type, doc_key, label, description, is_required, allowed_mime_types, max_size_bytes, provisional, sort_order").eq("is_active", true).order("sort_order"),
       supabase.from("clinic_documents").select("id, requirement_id, storage_path, file_name, mime_type, size_bytes, review_status, review_note, created_at").eq("clinic_id", clinicId),
       supabase.from("verification_events").select("id, cycle, event_type, reason, created_at").eq("clinic_id", clinicId).order("created_at", { ascending: false }),
+      supabase.from("clinic_reverifications").select("id, requested_at, deadline_at, reminder_sent_at, responded_at, status").eq("clinic_id", clinicId).in("status", ["OPEN", "RESPONDED"]).limit(1),
     ]);
-    const err = clinic.error ?? ver.error ?? reqs.error ?? docs.error ?? events.error;
+    const err = clinic.error ?? ver.error ?? reqs.error ?? docs.error ?? events.error ?? rev.error;
     if (err || !clinic.data) throw new Error("We couldn't load your verification. Please try again.");
-    return { clinic: clinic.data!, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [] };
+    return { clinic: clinic.data!, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [], reverification: openReverification((rev.data ?? []) as Reverification[]) };
   },
 });
 
