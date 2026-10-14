@@ -11,8 +11,8 @@
 
 ## Frontend architecture
 - Semantic color tokens; new interactions reuse shadcn + reduced-motion `motion-primitives`, Radix owns focus/dismissal; verify Kokonut/bklit/v0 sources before adapting, no speculative deps, so animation never replaces accessibility.
-- Admin Subscriptions uses authenticated read-only server functions with the caller's RLS client, paged subscription/history queries and projected fields only; admin cancellation is not exposed because the existing provider cancellation workflow authorizes owners only.
-- Plan-choice labels use configured scope prices and a temporary enrollment selection, reverting to the active plan when dismissed, keeping pricing display separate from subscription actions.
+- Admin Subscriptions: read-only authed server functions, caller's RLS client, paged projected queries; no admin cancellation because the provider workflow authorizes owners only.
+- Plan-choice labels use configured scope prices and a temporary selection that reverts when dismissed, keeping pricing display separate from subscription actions.
 - Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only and retain normal dashboard access gates.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
 - Render the application shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`), keeping public and auth pages outside it and each navigation destination a separate leaf route.
@@ -29,6 +29,6 @@
 - Suspended or revoked clinics are blocked in the owner area layout (`clinic-restriction.ts` + `RestrictionGate`, fresh read every navigation); only the verification page stays reachable, and resubmitting never restores access without admin approval/reinstatement.
 - Admin Users reads profiles/memberships through the caller's RLS client after the admin check; only email lookup uses the service-role auth API, server-side and after that check, because emails live in auth.users.
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
-- Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` (state in `clinic_reverifications`, notices in `notifications`) and `submit_clinic_verification`, because browser checks can't enforce deadlines.
+- Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` and `submit_clinic_verification`, because browser checks can't enforce deadlines.
 - Notifications are inserted only by trusted database code (verification_events trigger, cron jobs); clients only read own rows and set is_read; bell uses Realtime + polling fallback, so notices can't be forged.
-- Post-approval document replacements go only through `submit_document_update`/`review_document_update` into append-only-by-app `clinic_document_updates` (old and new paths kept); they never change clinic or verification status, and are unavailable during an open reverification, because reverification has its own enforced workflow.
+- Post-approval document replacements go only through `submit_document_update`/`review_document_update` (`clinic_document_updates` keeps old/new paths); they never change clinic/verification status and are off during open reverification, which has its own enforced workflow.
