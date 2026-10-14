@@ -28,6 +28,12 @@ describe("notifications", () => {
     expect(notificationTarget({ type: "TRIAL_EXPIRY_REMINDER" }, "OWNER")).toBe("/clinic/plans");
     expect(notificationTarget({ type: "VERIFICATION_APPROVED" }, "STAFF")).toBeNull();
   });
+  it("routes admin submission notices to the clinic's admin pages, admins only", () => {
+    expect(notificationTarget({ type: "ADMIN_DOCUMENT_UPDATE_SUBMITTED", clinic_id: "c1" }, "PLATFORM_ADMIN")).toBe("/admin/clinics/c1");
+    expect(notificationTarget({ type: "ADMIN_REVERIFICATION_SUBMITTED", clinic_id: "c1" }, "PLATFORM_ADMIN")).toBe("/admin/verifications/c1");
+    expect(notificationTarget({ type: "ADMIN_DOCUMENT_UPDATE_SUBMITTED", clinic_id: "c1" }, "OWNER")).toBeNull();
+    expect(notificationTarget({ type: "ADMIN_REVERIFICATION_SUBMITTED", clinic_id: null }, "PLATFORM_ADMIN")).toBeNull();
+  });
   it("formats time", () => {
     const now = Date.parse("2026-10-14T12:00:00Z");
     expect(timeLabel("2026-10-14T11:59:30Z", now)).toBe("Just now");
