@@ -11,20 +11,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { pageMetadata } from "@/lib/navigation";
 import { BUCKET, clinicTypes, documentPath, fileProblem, isEditable, statusLabel, statusTone, submissionProblems, uploadErrorMessage, verificationErrorMessage, type ClinicDocument, type Requirement } from "@/lib/verification";
 import { effectiveStatusBadge } from "@/lib/clinic-restriction";
+import { openReverification, type Reverification } from "@/lib/reverification";
 
 const verificationQuery = (clinicId: string) => queryOptions({
   queryKey: ["verification", clinicId],
   queryFn: async () => {
-    const [clinic, ver, reqs, docs, events] = await Promise.all([
+    const [clinic, ver, reqs, docs, events, rev] = await Promise.all([
       supabase.from("clinics").select("id, name, display_name, status, clinic_type, address, city, state, postal_code, latitude, longitude, registration_number, representative_name, representative_phone").eq("id", clinicId).single(),
       supabase.from("clinic_verifications").select("status, cycle, submitted_at, decided_at, decision_reason").eq("clinic_id", clinicId).maybeSingle(),
       supabase.from("document_requirements").select("id, clinic_type, doc_key, label, description, is_required, allowed_mime_types, max_size_bytes, provisional, sort_order").eq("is_active", true).order("sort_order"),
       supabase.from("clinic_documents").select("id, requirement_id, storage_path, file_name, mime_type, size_bytes, review_status, review_note, created_at").eq("clinic_id", clinicId),
       supabase.from("verification_events").select("id, cycle, event_type, reason, created_at").eq("clinic_id", clinicId).order("created_at", { ascending: false }),
+      supabase.from("clinic_reverifications").select("id, requested_at, deadline_at, reminder_sent_at, responded_at, status").eq("clinic_id", clinicId).in("status", ["OPEN", "RESPONDED"]).limit(1),
     ]);
-    const err = clinic.error ?? ver.error ?? reqs.error ?? docs.error ?? events.error;
+    const err = clinic.error ?? ver.error ?? reqs.error ?? docs.error ?? events.error ?? rev.error;
     if (err || !clinic.data) throw new Error("We couldn't load your verification. Please try again.");
-    return { clinic: clinic.data!, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [] };
+    return { clinic: clinic.data!, verification: ver.data, reqs: (reqs.data ?? []) as Requirement[], docs: (docs.data ?? []) as ClinicDocument[], events: events.data ?? [], reverification: openReverification((rev.data ?? []) as Reverification[]) };
   },
 });
 
@@ -42,8 +44,9 @@ function Page() {
   const { data } = useSuspenseQuery(verificationQuery(clinicId));
   const status = data.verification?.status ?? null;
   const suspended = data.clinic.status === "SUSPENDED";
-  // Mirrors private.verification_editable: a suspended clinic may resubmit; access still needs admin approval + reinstatement.
-  const editable = isEditable(status) || (suspended && status === "APPROVED");
+  // Mirrors private.verification_editable: suspended or reverification-due clinics may resubmit; the database decides.
+  const rev = data.reverification;
+  const editable = isEditable(status) || (status === "APPROVED" && (suspended || rev?.status === "OPEN"));
   const revoked = status === "REJECTED" && data.events.find(e => ["APPROVED", "CHANGES_REQUESTED", "REJECTED", "REVOKED_AFTER_APPROVAL", "REINSTATED", "SUSPENDED"].includes(e.event_type))?.event_type === "REVOKED_AFTER_APPROVAL";
   const c = data.clinic;
   const [form, setForm] = useState<Details>({ clinic_type: c.clinic_type ?? "", address: c.address ?? "", city: c.city ?? "", state: c.state ?? "", postal_code: c.postal_code ?? "", registration_number: c.registration_number ?? "", representative_name: c.representative_name ?? "", representative_phone: c.representative_phone ?? "", latitude: c.latitude?.toString() ?? "", longitude: c.longitude?.toString() ?? "" });
@@ -115,7 +118,9 @@ function Page() {
       {suspended && <FormAlert>Your clinic has been suspended by the platform administrator. Review your details and documents below and resubmit them for review. Access returns only after the administrator approves it and lifts the suspension.</FormAlert>}
       {revoked && <FormAlert>Your clinic approval was revoked: {data.verification?.decision_reason}. Update your details or documents below and resubmit for review.</FormAlert>}
       {status === "REJECTED" && !revoked && <FormAlert>Application rejected: {data.verification?.decision_reason}. You can correct it and apply again.</FormAlert>}
-      {status === "APPROVED" && !suspended && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
+      {rev?.status === "OPEN" && !suspended && <FormAlert>Six-monthly document reverification is due. Upload each required document again and resubmit by <strong>{new Date(rev.deadline_at).toLocaleString()}</strong>, or your clinic will be suspended. Your clinic keeps working while the administrator reviews it.</FormAlert>}
+      {rev?.status === "RESPONDED" && <FormAlert tone="success">Reverification documents received. Your clinic keeps working while the administrator reviews them.</FormAlert>}
+      {status === "APPROVED" && !suspended && !rev && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
       {message && <FormAlert tone={message.ok ? "success" : "error"}>{message.text}</FormAlert>}
 
       <section className="rounded-lg border bg-card p-5">
