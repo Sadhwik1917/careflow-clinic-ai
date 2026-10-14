@@ -15,7 +15,7 @@ const verificationQuery = (clinicId: string) => queryOptions({
   queryKey: ["verification", clinicId],
   queryFn: async () => {
     const [clinic, ver, reqs, docs, events] = await Promise.all([
-      supabase.from("clinics").select("id, name, display_name, clinic_type, address, city, state, postal_code, latitude, longitude, registration_number, representative_name, representative_phone").eq("id", clinicId).single(),
+      supabase.from("clinics").select("id, name, display_name, status, clinic_type, address, city, state, postal_code, latitude, longitude, registration_number, representative_name, representative_phone").eq("id", clinicId).single(),
       supabase.from("clinic_verifications").select("status, cycle, submitted_at, decided_at, decision_reason").eq("clinic_id", clinicId).maybeSingle(),
       supabase.from("document_requirements").select("id, clinic_type, doc_key, label, description, is_required, allowed_mime_types, max_size_bytes, provisional, sort_order").eq("is_active", true).order("sort_order"),
       supabase.from("clinic_documents").select("id, requirement_id, storage_path, file_name, mime_type, size_bytes, review_status, review_note, created_at").eq("clinic_id", clinicId),
@@ -40,7 +40,10 @@ function Page() {
   const qc = useQueryClient();
   const { data } = useSuspenseQuery(verificationQuery(clinicId));
   const status = data.verification?.status ?? null;
-  const editable = isEditable(status);
+  const suspended = data.clinic.status === "SUSPENDED";
+  // Mirrors private.verification_editable: a suspended clinic may resubmit; access still needs admin approval + reinstatement.
+  const editable = isEditable(status) || (suspended && status === "APPROVED");
+  const revoked = status === "REJECTED" && data.events.find(e => ["APPROVED", "CHANGES_REQUESTED", "REJECTED", "REVOKED_AFTER_APPROVAL", "REINSTATED", "SUSPENDED"].includes(e.event_type))?.event_type === "REVOKED_AFTER_APPROVAL";
   const c = data.clinic;
   const [form, setForm] = useState<Details>({ clinic_type: c.clinic_type ?? "", address: c.address ?? "", city: c.city ?? "", state: c.state ?? "", postal_code: c.postal_code ?? "", registration_number: c.registration_number ?? "", representative_name: c.representative_name ?? "", representative_phone: c.representative_phone ?? "", latitude: c.latitude?.toString() ?? "", longitude: c.longitude?.toString() ?? "" });
   const [busy, setBusy] = useState<string | null>(null);
@@ -108,8 +111,10 @@ function Page() {
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
       {status === "PENDING_REVIEW" && <FormAlert tone="success">Your application is under review. Details and documents are locked until a decision is made.</FormAlert>}
       {status === "CHANGES_REQUESTED" && <FormAlert>Changes requested: {data.verification?.decision_reason}. Update the details or documents below and resubmit.</FormAlert>}
-      {status === "REJECTED" && <FormAlert>Application rejected: {data.verification?.decision_reason}. You can correct it and apply again.</FormAlert>}
-      {status === "APPROVED" && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
+      {suspended && <FormAlert>Your clinic has been suspended by the platform administrator. Review your details and documents below and resubmit them for review. Access returns only after the administrator approves it and lifts the suspension.</FormAlert>}
+      {revoked && <FormAlert>Your clinic approval was revoked: {data.verification?.decision_reason}. Update your details or documents below and resubmit for review.</FormAlert>}
+      {status === "REJECTED" && !revoked && <FormAlert>Application rejected: {data.verification?.decision_reason}. You can correct it and apply again.</FormAlert>}
+      {status === "APPROVED" && !suspended && <FormAlert tone="success">Your clinic is approved. <Link to="/clinic/plans" className="underline">Choose a plan</Link> to start using CAREFLOW.</FormAlert>}
       {message && <FormAlert tone={message.ok ? "success" : "error"}>{message.text}</FormAlert>}
 
       <section className="rounded-lg border bg-card p-5">
