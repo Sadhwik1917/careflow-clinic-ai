@@ -64,6 +64,6 @@ export function ApplicationShell({ role, access, membership, children }: { role:
       </div>
     </header>
     <main id="main-content" className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-7 md:px-8 md:py-9" tabIndex={-1}>{children}</main>
-    <footer className="flex flex-wrap justify-between gap-2 border-t px-4 py-4 text-[11px] text-muted-foreground md:px-8"><span>© CAREFLOW AI</span><span>Clinic records are not connected yet</span></footer>
+    <footer className="flex flex-wrap justify-between gap-2 border-t px-4 py-4 text-[11px] text-muted-foreground md:px-8"><span>© CAREFLOW AI</footer>
   </div></SidebarProvider>;
 }
