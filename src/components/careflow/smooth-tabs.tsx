@@ -10,7 +10,7 @@ export function SmoothTabs({ value, items, label }: { value: string; items: { va
   const reduced = useReducedMotion();
   return <LayoutGroup id={id}><TabsList aria-label={label} className="mb-4">
     {items.map(item => <TabsTrigger key={item.value} value={item.value} className="relative isolate data-[state=active]:bg-transparent data-[state=active]:shadow-none">
-      {value === item.value && <motion.span aria-hidden="true" layoutId={reduced ? undefined : "active-tab"} transition={{ duration: reduced ? 0 : 0.16 }} className="absolute inset-0 -z-10 rounded-md bg-background shadow-sm" />}
+      {value === item.value && <motion.span aria-hidden="true" {...(reduced ? {} : { layoutId: "active-tab" })} transition={{ duration: reduced ? 0 : 0.16 }} className="absolute inset-0 -z-10 rounded-md bg-background shadow-sm" />}
       {item.label}
     </TabsTrigger>)}
   </TabsList></LayoutGroup>;

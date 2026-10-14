@@ -19,7 +19,7 @@ export type SubscriptionRow = Pick<Database["public"]["Tables"]["clinic_subscrip
   };
 export type PaymentHistory = Pick<Database["public"]["Tables"]["platform_payments"]["Row"], "id" | "amount" | "currency" | "status" | "paid_at" | "created_at" | "payment_method">;
 export type TrialHistory = Pick<Database["public"]["Tables"]["trial_events"]["Row"], "id" | "event_type" | "event_date">;
-export function searchTerm(value: string) { return value.replace(/[^\p{L}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " "); }
+export function searchTerm(value: string) { return value.replace(/[^\p{L}\p{M}\p{N}\s-]/gu, " ").trim().replace(/\s+/g, " "); }
 export function dateLabel(value: string | null) { return value ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"; }
 export function moneyLabel(amount: number, currency: string) { return new Intl.NumberFormat("en-IN", { style: "currency", currency, maximumFractionDigits: 2 }).format(amount); }
 export function trialLabel(row: Pick<SubscriptionRow, "subscription_type" | "status" | "trial_end_date">, now = Date.now()) {
