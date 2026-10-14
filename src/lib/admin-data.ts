@@ -62,11 +62,18 @@ export const adminStatsQuery = queryOptions({
   },
 });
 
+export type DashboardActivity = { id: string; action: string; entity_type: string; created_at: string; clinic: { id: string; display_name: string; clinic_code: string } | null };
+
+/** Maps audit rows to dashboard items, attaching the affected clinic only when the row records it. */
+export function toDashboardActivity(rows: any[]): DashboardActivity[] {
+  return rows.map(r => ({ id: r.id, action: r.action, entity_type: r.entity_type, created_at: r.created_at, clinic: one<any>(r.clinic) ?? null }));
+}
+
 export const adminActivityQuery = queryOptions({
   queryKey: ["admin-verifications", "activity"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("audit_logs").select("id, action, entity_type, created_at").order("created_at", { ascending: false }).limit(8);
+    const { data, error } = await supabase.from("audit_logs").select("id, action, entity_type, created_at, clinic:clinics(id, display_name, clinic_code)").order("created_at", { ascending: false }).limit(8);
     if (error) throw new Error("We couldn't load platform activity.");
-    return data ?? [];
+    return toDashboardActivity(data ?? []);
   },
 });

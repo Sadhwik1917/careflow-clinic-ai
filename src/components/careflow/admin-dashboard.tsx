@@ -8,6 +8,7 @@ import { AdminClinicRows, ClinicListHeader } from "./admin-clinic-list";
 import { Button } from "@/components/ui/button";
 import { adminActivityQuery, adminClinicsQuery, adminStatsQuery } from "@/lib/admin-data";
 import { navigation } from "@/lib/navigation";
+import { labelFor } from "@/lib/clinic-activity";
 
 export function AdminDashboard() {
   const stats = useQuery(adminStatsQuery);
@@ -37,7 +38,9 @@ export function AdminDashboard() {
           {activity.isPending ? <LoadingState label="Loading activity…" />
             : activity.isError ? <ErrorState title="Activity couldn't load" onRetry={() => activity.refetch()} />
             : activity.data.length === 0 ? <EmptyState icon={ListOrdered} title="No activity recorded" description="Audit events will appear here as they are logged." />
-            : <ul className="divide-y">{activity.data.map(a => <li key={a.id} className="py-3 text-sm"><span className="block font-medium">{a.action}</span><span className="text-xs text-muted-foreground">{a.entity_type} · {new Date(a.created_at).toLocaleString()}</span></li>)}</ul>}
+            : <ul className="divide-y">{activity.data.map(a => <li key={a.id} className="py-3 text-sm"><span className="block font-medium">{labelFor(a.action)}</span>
+              {a.clinic && <Link to="/admin/clinics/$clinicId" params={{ clinicId: a.clinic.id }} className="block text-primary hover:underline">{a.clinic.display_name} · {a.clinic.clinic_code}</Link>}
+              <span className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleString()}</span></li>)}</ul>}
         </div></section>
     </div>
     <section className="mt-9"><h2 className="mb-4 text-base font-semibold">Workspace</h2><div className="grid gap-4 md:grid-cols-3">{items.map(item => <Button key={item.path} asChild variant="outline" className="h-auto justify-start gap-4 whitespace-normal bg-card p-5 text-left shadow-none"><Link to={item.path}><span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-secondary text-primary"><item.icon className="size-5" strokeWidth={1.6} /></span><span className="flex-1 font-medium">{item.title}</span><ArrowUpRight className="text-muted-foreground" /></Link></Button>)}</div></section>
