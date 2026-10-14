@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-router", () => ({
     select({ location: { pathname: "/admin/dashboard" } }),
 }));
 vi.mock("@/lib/auth", () => ({ useSignOut: () => async () => {} }));
+vi.mock("@/components/careflow/notification-bell", () => ({ NotificationBell: () => <button type="button" aria-label="Notifications" /> }));
 
 const membership: AccessMembership = {
   id: "m1",

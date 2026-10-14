@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Building2, LogOut, ShieldCheck, X } from "lucide-react";
 import { CareflowBrand } from "./brand";
+import { NotificationBell } from "./notification-bell";
 import { navigation, roleLabels, type AppRole } from "@/lib/navigation";
 import {
   availableWorkspaces,
@@ -200,6 +201,7 @@ export function ApplicationShell({
                 </SelectContent>
               </Select>
             )}
+            <NotificationBell userId={access.userId} role={role} />
             <span className="hidden max-w-44 truncate text-sm text-muted-foreground lg:inline" title={name}>
               {name}
             </span>
