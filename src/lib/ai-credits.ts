@@ -7,7 +7,7 @@ export type AiUsage =
   | { included: true; creditType: "LIMITED" | "UNLIMITED"; limit: number | null; used: number; shared: boolean; periodStart: string; periodEnd: string };
 
 export function parseAiUsage(v: unknown): AiUsage {
-  const o = (v ?? {}) as Record<string, unknown>;
+  const o = (v ?? {}) as { included?: unknown; credit_type?: unknown; limit?: unknown; used?: unknown; shared?: unknown; period_start?: unknown; period_end?: unknown };
   if (o.included !== true) return { included: false };
   return {
     included: true,
