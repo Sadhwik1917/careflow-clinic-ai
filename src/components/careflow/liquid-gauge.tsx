@@ -21,7 +21,7 @@ export function LiquidGauge({ value, label, size = 96, tone = "primary", classNa
       <g clipPath={`url(#g${id})`}>
         <motion.g initial={reduced ? false : { y: 100 }} animate={{ y: level }} transition={{ duration: reduced ? 0 : 0.9, ease: "easeOut" }}>
           <motion.path d={wave} fill={fill} opacity={0.85}
-            animate={reduced ? undefined : { x: [0, -50] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} />
+            animate={reduced ? { x: 0 } : { x: [0, -50] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} />
         </motion.g>
       </g>
     </svg>
