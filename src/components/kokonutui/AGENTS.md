@@ -1,0 +1,1 @@
+- These are vendored official Kokonut UI files; change only colours (semantic tokens) and strict-type fixes, so they stay faithful to upstream.
