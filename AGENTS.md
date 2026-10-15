@@ -32,3 +32,4 @@
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` and `submit_clinic_verification`, because browser checks can't enforce deadlines.
 - Notifications are inserted only by trusted database code (verification_events trigger, cron jobs); clients only read own rows and set is_read; bell uses Realtime + polling fallback, so notices can't be forged.
 - Post-approval document replacements go only through `submit_document_update`/`review_document_update` (`clinic_document_updates` keeps old/new paths); they never change clinic/verification status and are off during open reverification, which has its own enforced workflow.
+- AI chat UI reuses the vendored Kokonut components in `src/components/kokonutui` (colours swapped to semantic tokens only); assistant replies go only through `askAssistant` → `meteredAi`, with models/efforts/attachments whitelisted in `src/lib/assistant.ts`, because browser choices are untrusted.
