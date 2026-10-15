@@ -94,7 +94,7 @@ export function AiAssistant({ clinicId }: { clinicId: string }) {
         ) : (
           <div key={t.id} className="max-w-full text-sm">
             {t.status === "pending" ? <AITextLoading className="justify-start text-sm font-medium text-muted-foreground" label="Assistant is replying" texts={["Thinking...", "Writing..."]} interval={2000} />
-              : t.status === "done" ? <div className="prose prose-sm max-w-none break-words text-foreground dark:prose-invert [&_a]:text-primary"><ReactMarkdown>{t.text}</ReactMarkdown></div>
+              : t.status === "done" ? <div className="max-w-none break-words leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:mt-3 [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5"><ReactMarkdown>{t.text}</ReactMarkdown></div>
               : <p className={cn(t.status === "error" ? "text-destructive" : "text-muted-foreground")}>{t.text}</p>}
           </div>
         ))}

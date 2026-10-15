@@ -147,7 +147,7 @@ function useDemoRun(
       return {
         ...step,
         status: "running",
-        detail: step.detail?.slice(0, position.line),
+        detail: step.detail?.slice(0, position.line) ?? [],
       };
     }
     return { ...step, status: "pending" };
