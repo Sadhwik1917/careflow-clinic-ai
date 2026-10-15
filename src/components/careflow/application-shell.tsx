@@ -1,9 +1,10 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Building2, LogOut, ShieldCheck, X } from "lucide-react";
+import { Building2, ShieldCheck, X } from "lucide-react";
 import { CareflowBrand } from "./brand";
 import { NotificationBell } from "./notification-bell";
+import { UserMenu } from "./user-menu";
 import { navigation, roleLabels, type AppRole } from "@/lib/navigation";
 import {
   availableWorkspaces,
@@ -202,13 +203,7 @@ export function ApplicationShell({
               </Select>
             )}
             <NotificationBell userId={access.userId} role={role} />
-            <span className="hidden max-w-44 truncate text-sm text-muted-foreground lg:inline" title={name}>
-              {name}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => void signOut()}>
-              <LogOut />
-              Sign out
-            </Button>
+            <UserMenu name={name} email={access.email ?? null} onSignOut={() => void signOut()} />
           </div>
         </header>
         <main
