@@ -88,7 +88,7 @@ const advanceDemo = ({ step, line }: DemoPosition): DemoPosition => {
   if (step >= DEMO_STEPS.length) {
     return { step: 0, line: 0 };
   }
-  const lineCount = DEMO_STEPS[step].detail?.length ?? 0;
+  const lineCount = DEMO_STEPS[step]?.detail?.length ?? 0;
   return line < lineCount
     ? { step, line: line + 1 }
     : { step: step + 1, line: 0 };
@@ -111,7 +111,7 @@ function useDemoRun(
       return;
     }
     const observer = new IntersectionObserver(([entry]) =>
-      setIsVisible(entry.isIntersecting)
+      setIsVisible(entry?.isIntersecting ?? false)
     );
     observer.observe(element);
     return () => observer.disconnect();
@@ -373,7 +373,7 @@ function useStepTimes(steps: AgentStep[]) {
       }
       starts[step.id] ??= now;
       if (step.status === "done" || step.status === "error") {
-        finished[step.id] = times[step.id] ?? now - starts[step.id];
+        finished[step.id] = times[step.id] ?? now - (starts[step.id] ?? now);
         changed ||= !(step.id in times);
       }
     }

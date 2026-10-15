@@ -884,7 +884,8 @@ export default function AI_Prompt({
     }
     if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
-      pickCommand(matches[activeIndex]);
+      const picked = matches[activeIndex];
+      if (picked) pickCommand(picked);
       return true;
     }
     if (e.key === "Escape") {
@@ -1050,7 +1051,7 @@ export default function AI_Prompt({
           </AnimatePresence>
           <Textarea
             aria-activedescendant={
-              menuOpen ? `${menuId}-${matches[activeIndex].id}` : undefined
+              menuOpen ? `${menuId}-${matches[activeIndex]?.id}` : undefined
             }
             aria-autocomplete="list"
             aria-controls={menuOpen ? menuId : undefined}

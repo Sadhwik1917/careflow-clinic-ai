@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { WorkspacePage } from "@/components/careflow/workspace-page";
+import { AiAssistant } from "@/components/careflow/ai-assistant";
 import { EmptyState, LoadingState } from "@/components/careflow/feedback";
 import { PageTitle } from "@/components/careflow/page-title";
 import { Button } from "@/components/ui/button";
