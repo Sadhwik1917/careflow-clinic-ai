@@ -268,7 +268,7 @@ function AttachmentChip({
   return (
     <motion.li
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      className="flex h-11 max-w-52 items-center gap-2 rounded-xl bg-black/[0.03] py-1 pr-1.5 pl-1 ring-1 ring-black/5 dark:bg-white/5 dark:ring-white/10"
+      className="flex h-11 max-w-52 items-center gap-2 rounded-xl bg-foreground/[0.03] py-1 pr-1.5 pl-1 ring-1 ring-foreground/5 dark:bg-foreground/5 dark:ring-foreground/10"
       exit={{
         opacity: 0,
         filter: "blur(2px)",
@@ -278,7 +278,7 @@ function AttachmentChip({
       layout="position"
       transition={{ duration: 0.2, ease: EASE_OUT }}
     >
-      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/5 text-black/50 dark:bg-white/10 dark:text-white/60">
+      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-foreground/5 text-foreground/50 dark:bg-foreground/10 dark:text-foreground/60">
         {previewUrl ? (
           // biome-ignore lint/performance/noImgElement: object URL preview, nothing to optimise
           <img
@@ -293,16 +293,16 @@ function AttachmentChip({
         )}
       </span>
       <span className="min-w-0 flex-1 leading-tight">
-        <span className="block truncate text-black text-xs dark:text-white">
+        <span className="block truncate text-foreground text-xs dark:text-foreground">
           {file.name}
         </span>
-        <span className="block text-[10px] text-black/50 tabular-nums dark:text-white/50">
+        <span className="block text-[10px] text-foreground/50 tabular-nums dark:text-foreground/50">
           {formatSize(file.size)}
         </span>
       </span>
       <button
         aria-label={`Remove ${file.name}`}
-        className="flex size-6 shrink-0 items-center justify-center rounded-md text-black/40 transition-colors duration-150 hover:bg-black/5 hover:text-black focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-blue-500 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
+        className="flex size-6 shrink-0 items-center justify-center rounded-md text-foreground/40 transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring dark:text-foreground/40 dark:hover:bg-foreground/10 dark:hover:text-foreground"
         onClick={onRemove}
         type="button"
       >
@@ -322,7 +322,7 @@ function MatchedLabel({ label, query }: { label: string; query: string }) {
   return (
     <>
       {label.slice(0, start)}
-      <span className="font-medium text-black dark:text-white">
+      <span className="font-medium text-foreground dark:text-foreground">
         {label.slice(start, end)}
       </span>
       {label.slice(end)}
@@ -332,7 +332,7 @@ function MatchedLabel({ label, query }: { label: string; query: string }) {
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-black/5 px-1 font-sans text-[10px] text-black/60 dark:bg-white/10 dark:text-white/60">
+    <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded bg-foreground/5 px-1 font-sans text-[10px] text-foreground/60 dark:bg-foreground/10 dark:text-foreground/60">
       {children}
     </kbd>
   );
@@ -358,7 +358,7 @@ function CommandMenu({
   return (
     <motion.div
       animate={{ opacity: 1 }}
-      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl bg-white p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] ring-1 ring-black/10 dark:bg-zinc-900 dark:ring-white/10"
+      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl bg-foreground p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] ring-1 ring-foreground/10 bg-popover text-popover-foreground dark:ring-foreground/10"
       exit={{ opacity: 0, transition: { duration: 0.08 } }}
       initial={{ opacity: 0 }}
       transition={{ duration: 0.12, ease: EASE_OUT }}
@@ -371,7 +371,7 @@ function CommandMenu({
             aria-selected={i === activeIndex}
             className={cn(
               "flex h-9 cursor-pointer items-center gap-2 rounded-lg px-2",
-              i === activeIndex && "bg-black/5 dark:bg-white/10"
+              i === activeIndex && "bg-foreground/5 dark:bg-foreground/10"
             )}
             id={`${id}-${command.id}`}
             key={command.id}
@@ -381,21 +381,21 @@ function CommandMenu({
             role="option"
             tabIndex={-1}
           >
-            <span className="flex size-6 shrink-0 items-center justify-center text-black/50 dark:text-white/60 [&_svg]:size-4">
+            <span className="flex size-6 shrink-0 items-center justify-center text-foreground/50 dark:text-foreground/60 [&_svg]:size-4">
               {command.icon ?? <Slash />}
             </span>
-            <span className="shrink-0 text-black/80 text-sm dark:text-white/80">
+            <span className="shrink-0 text-foreground/80 text-sm dark:text-foreground/80">
               <MatchedLabel label={command.label} query={query ?? ""} />
             </span>
             {command.description && (
-              <span className="min-w-0 truncate text-black/40 text-xs dark:text-white/40">
+              <span className="min-w-0 truncate text-foreground/40 text-xs dark:text-foreground/40">
                 {command.description}
               </span>
             )}
           </div>
         ))}
       </div>
-      <div className="mt-1 flex items-center gap-3 border-black/5 border-t px-2 pt-1.5 pb-1 text-[11px] text-black/40 dark:border-white/5 dark:text-white/40">
+      <div className="mt-1 flex items-center gap-3 border-foreground/5 border-t px-2 pt-1.5 pb-1 text-[11px] text-foreground/40 dark:border-foreground/5 dark:text-foreground/40">
         <span className="flex items-center gap-1">
           <Kbd>↑</Kbd>
           <Kbd>↓</Kbd>
@@ -424,7 +424,7 @@ function CommandPill({
   return (
     <motion.li
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      className="flex h-11 items-center gap-1.5 rounded-xl bg-blue-500/10 pr-1.5 pl-2.5 text-blue-600 text-sm dark:text-blue-400"
+      className="flex h-11 items-center gap-1.5 rounded-xl bg-primary/10 pr-1.5 pl-2.5 text-primary text-sm "
       exit={{
         opacity: 0,
         filter: "blur(2px)",
@@ -440,7 +440,7 @@ function CommandPill({
       {command.label}
       <button
         aria-label={`Remove ${command.label} command`}
-        className="flex size-6 items-center justify-center rounded-md transition-colors duration-150 hover:bg-blue-500/10 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-blue-500"
+        className="flex size-6 items-center justify-center rounded-md transition-colors duration-150 hover:bg-primary/10 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
         onClick={onRemove}
         type="button"
       >
@@ -470,13 +470,13 @@ function SendButton({
       aria-label={responding ? "Stop response" : "Send message"}
       className={cn(
         "relative size-8 shrink-0 rounded-full",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/60",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/60",
         "transition-[background-color,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
         // Fills in once there is something to send, so the button says
         // "ready" before it is pressed. Stop keeps the same fill.
         responding || canSend
-          ? "bg-black text-white hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/85"
-          : "bg-black/5 text-black/30 dark:bg-white/10 dark:text-white/30"
+          ? "bg-primary text-primary-foreground hover:bg-primary/85"
+          : "bg-foreground/5 text-foreground/30 dark:bg-foreground/10 dark:text-foreground/30"
       )}
       disabled={!(responding || canSend)}
       onClick={responding ? onStop : onSend}
@@ -522,10 +522,10 @@ function PromoHeader({
 }) {
   return (
     <div className="flex h-9 items-center gap-2 pr-1.5 pl-3 text-xs">
-      <span className="flex size-3.5 shrink-0 items-center justify-center text-black dark:text-white [&_svg]:size-3.5">
+      <span className="flex size-3.5 shrink-0 items-center justify-center text-foreground dark:text-foreground [&_svg]:size-3.5">
         {getModelIcon(model)}
       </span>
-      <p className="min-w-0 flex-1 truncate text-black/60 dark:text-white/60">
+      <p className="min-w-0 flex-1 truncate text-foreground/60 dark:text-foreground/60">
         {text}
       </p>
       {action && canSwitch && (
@@ -533,10 +533,10 @@ function PromoHeader({
           className={cn(
             "flex h-6 shrink-0 items-center gap-1 rounded-md px-2 font-medium",
             "transition-[background-color,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
-            "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-blue-500",
+            "focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring",
             inUse
-              ? "text-black/40 dark:text-white/40"
-              : "text-black hover:bg-black/5 dark:text-white dark:hover:bg-white/10"
+              ? "text-foreground/40 dark:text-foreground/40"
+              : "text-foreground hover:bg-foreground/5 dark:text-foreground dark:hover:bg-foreground/10"
           )}
           disabled={inUse}
           onClick={onAction}
@@ -565,8 +565,8 @@ function EffortBars({ count, level }: { count: number; level: number }) {
           className={cn(
             "w-[3px] rounded-[1px] transition-colors duration-200",
             i <= level
-              ? "bg-black/80 dark:bg-white/85"
-              : "bg-black/15 dark:bg-white/20"
+              ? "bg-foreground/80 dark:bg-foreground/85"
+              : "bg-foreground/15 dark:bg-foreground/20"
           )}
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed bars, never reordered
           key={i}
@@ -578,15 +578,15 @@ function EffortBars({ count, level }: { count: number; level: number }) {
 }
 
 const ghostButton = cn(
-  "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-black/70 text-xs dark:text-white/70",
-  "hover:bg-black/5 hover:text-black data-[state=open]:bg-black/5 data-[state=open]:text-black",
-  "dark:data-[state=open]:bg-white/10 dark:data-[state=open]:text-white dark:hover:bg-white/10 dark:hover:text-white",
+  "flex h-8 items-center gap-1.5 rounded-full px-2.5 text-foreground/70 text-xs dark:text-foreground/70",
+  "hover:bg-foreground/5 hover:text-foreground data-[state=open]:bg-foreground/5 data-[state=open]:text-foreground",
+  "dark:data-[state=open]:bg-foreground/10 dark:data-[state=open]:text-foreground dark:hover:bg-foreground/10 dark:hover:text-foreground",
   "transition-[background-color,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500/60"
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/60"
 );
 
 const menuPanel =
-  "origin-(--radix-dropdown-menu-content-transform-origin) rounded-xl border-black/10 p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] dark:border-white/10 dark:bg-zinc-900";
+  "origin-(--radix-dropdown-menu-content-transform-origin) rounded-xl border-foreground/10 p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] dark:border-foreground/10 bg-popover text-popover-foreground";
 
 function ModelMenu({
   models,
@@ -633,7 +633,7 @@ function ModelMenu({
         side="top"
         sideOffset={8}
       >
-        <DropdownMenuLabel className="px-2 pt-1.5 pb-1 font-normal text-[11px] text-black/40 dark:text-white/40">
+        <DropdownMenuLabel className="px-2 pt-1.5 pb-1 font-normal text-[11px] text-foreground/40 dark:text-foreground/40">
           Model
         </DropdownMenuLabel>
         {models.map((model) => (
@@ -646,11 +646,11 @@ function ModelMenu({
               {getModelIcon(model.name)}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-black text-xs dark:text-white">
+              <span className="block text-foreground text-xs dark:text-foreground">
                 {model.name}
               </span>
               {model.description && (
-                <span className="block truncate text-[11px] text-black/45 dark:text-white/45">
+                <span className="block truncate text-[11px] text-foreground/45 dark:text-foreground/45">
                   {model.description}
                 </span>
               )}
@@ -658,7 +658,7 @@ function ModelMenu({
             <Check
               aria-hidden="true"
               className={cn(
-                "size-3.5 shrink-0 text-black dark:text-white",
+                "size-3.5 shrink-0 text-foreground dark:text-foreground",
                 model.name !== selected && "invisible"
               )}
             />
@@ -701,7 +701,7 @@ function EffortMenu({
         side="top"
         sideOffset={8}
       >
-        <DropdownMenuLabel className="px-2 pt-1.5 pb-1 font-normal text-[11px] text-black/40 dark:text-white/40">
+        <DropdownMenuLabel className="px-2 pt-1.5 pb-1 font-normal text-[11px] text-foreground/40 dark:text-foreground/40">
           Effort
         </DropdownMenuLabel>
         {/* Highest first, so the list reads like the bars: up is more. */}
@@ -716,11 +716,11 @@ function EffortMenu({
               >
                 <EffortBars count={efforts.length} level={index} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-black text-xs dark:text-white">
+                  <span className="block text-foreground text-xs dark:text-foreground">
                     {effort}
                   </span>
                   {EFFORT_HINTS[effort] && (
-                    <span className="block truncate text-[11px] text-black/45 dark:text-white/45">
+                    <span className="block truncate text-[11px] text-foreground/45 dark:text-foreground/45">
                       {EFFORT_HINTS[effort]}
                     </span>
                   )}
@@ -728,7 +728,7 @@ function EffortMenu({
                 <Check
                   aria-hidden="true"
                   className={cn(
-                    "size-3.5 shrink-0 text-black dark:text-white",
+                    "size-3.5 shrink-0 text-foreground dark:text-foreground",
                     effort !== value && "invisible"
                   )}
                 />
@@ -943,7 +943,7 @@ export default function AI_Prompt({
 
   return (
     <div className={cn("w-full max-w-lg py-4", className)}>
-      <div className="rounded-[22px] bg-black/[0.04] p-1 dark:bg-white/[0.04]">
+      <div className="rounded-[22px] bg-foreground/[0.04] p-1 dark:bg-foreground/[0.04]">
         {headerText && (
           <PromoHeader
             action={headerAction}
@@ -963,10 +963,10 @@ export default function AI_Prompt({
         {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: drop target for files; keyboard users have the attach button */}
         <div
           className={cn(
-            "relative flex flex-col rounded-[18px] bg-white ring-1 ring-black/[0.08] dark:bg-zinc-900 dark:ring-white/10",
+            "relative flex flex-col rounded-[18px] bg-foreground ring-1 ring-foreground/[0.08] bg-popover text-popover-foreground dark:ring-foreground/10",
             "shadow-[0_1px_2px_rgb(0_0_0/0.04),0_6px_20px_-10px_rgb(0_0_0/0.12)]",
-            "transition-shadow duration-150 has-[textarea:focus-visible]:ring-black/20 dark:has-[textarea:focus-visible]:ring-white/25",
-            isDragging && "ring-blue-500/60 dark:ring-blue-400/60"
+            "transition-shadow duration-150 has-[textarea:focus-visible]:ring-foreground/20 dark:has-[textarea:focus-visible]:ring-foreground/25",
+            isDragging && "ring-ring/60 dark:ring-ring/60"
           )}
           onDragLeave={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
@@ -1049,7 +1049,7 @@ export default function AI_Prompt({
             aria-autocomplete="list"
             aria-controls={menuOpen ? menuId : undefined}
             aria-expanded={menuOpen}
-            className="min-h-[56px] w-full resize-none rounded-none border-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] text-black leading-relaxed placeholder:text-black/35 focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent dark:text-white dark:placeholder:text-white/35"
+            className="min-h-[56px] w-full resize-none rounded-none border-none bg-transparent px-4 pt-3.5 pb-1 text-[15px] text-foreground leading-relaxed placeholder:text-foreground/35 focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-transparent dark:text-foreground dark:placeholder:text-foreground/35"
             id={textareaId}
             onBlur={() => setMenuDismissed(true)}
             onChange={(e) => {
@@ -1076,9 +1076,9 @@ export default function AI_Prompt({
           <div className="flex items-center gap-1 px-2.5 pt-1 pb-2.5">
             <label
               className={cn(
-                "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full ring-1 ring-black/10 dark:ring-white/15",
-                "text-black/60 hover:bg-black/5 hover:text-black dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white",
-                "has-focus-visible:ring-2 has-focus-visible:ring-blue-500/60",
+                "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full ring-1 ring-foreground/10 dark:ring-foreground/15",
+                "text-foreground/60 hover:bg-foreground/5 hover:text-foreground dark:text-foreground/60 dark:hover:bg-foreground/10 dark:hover:text-foreground",
+                "has-focus-visible:ring-2 has-focus-visible:ring-ring/60",
                 "transition-[background-color,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
               )}
               title="Attach files, or drop or paste them"
@@ -1123,7 +1123,7 @@ export default function AI_Prompt({
           <div
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute inset-0 flex items-center justify-center rounded-[18px] border border-blue-500/50 border-dashed bg-white/85 text-blue-600 text-xs transition-opacity duration-150 dark:bg-zinc-900/85 dark:text-blue-400",
+              "pointer-events-none absolute inset-0 flex items-center justify-center rounded-[18px] border border-primary/50 border-dashed bg-foreground/85 text-primary text-xs transition-opacity duration-150 bg-popover text-popover-foreground/85 ",
               isDragging ? "opacity-100" : "opacity-0"
             )}
           >

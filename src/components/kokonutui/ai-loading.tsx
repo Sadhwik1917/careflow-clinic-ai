@@ -167,7 +167,7 @@ function StepIcon({ status }: { status: AgentStepStatus }) {
           transition={{ duration: 0.18, ease: EASE_OUT }}
         >
           {status === "pending" && (
-            <span className="size-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
+            <span className="size-1.5 rounded-full bg-muted-foreground/40" />
           )}
           {status === "running" && (
             <svg
@@ -178,14 +178,14 @@ function StepIcon({ status }: { status: AgentStepStatus }) {
               viewBox="0 0 16 16"
             >
               <circle
-                className="stroke-gray-200 dark:stroke-gray-700"
+                className="stroke-border"
                 cx="8"
                 cy="8"
                 r="6.25"
                 strokeWidth="1.5"
               />
               <path
-                className="stroke-gray-700 dark:stroke-gray-200"
+                className="stroke-primary"
                 d="M8 1.75a6.25 6.25 0 0 1 6.25 6.25"
                 strokeLinecap="round"
                 strokeWidth="1.5"
@@ -195,7 +195,7 @@ function StepIcon({ status }: { status: AgentStepStatus }) {
           {status === "done" && (
             <svg
               aria-hidden="true"
-              className="size-3.5 text-gray-700 dark:text-gray-200"
+              className="size-3.5 text-primary"
               fill="none"
               viewBox="0 0 16 16"
             >
@@ -215,7 +215,7 @@ function StepIcon({ status }: { status: AgentStepStatus }) {
           {status === "error" && (
             <svg
               aria-hidden="true"
-              className="size-3.5 text-red-500"
+              className="size-3.5 text-destructive"
               fill="none"
               viewBox="0 0 16 16"
             >
@@ -260,13 +260,13 @@ function StepLog({ lines }: { lines: string[] }) {
         {lines.map((line, index) => (
           <motion.div
             animate={{ opacity: 1 }}
-            className="flex items-center gap-2 text-gray-500 dark:text-gray-400"
+            className="flex items-center gap-2 text-muted-foreground"
             initial={{ opacity: 0 }}
             key={`${index}-${line}`}
             style={{ height: LINE_HEIGHT }}
             transition={{ duration: 0.2, ease: EASE_OUT }}
           >
-            <span className="w-4 select-none text-right text-gray-300 tabular-nums dark:text-gray-600">
+            <span className="w-4 select-none text-right text-muted-foreground/50 tabular-nums">
               {index + 1}
             </span>
             <span className="truncate">{line}</span>
@@ -388,7 +388,7 @@ function useStepTimes(steps: AgentStep[]) {
 const LABEL_COLORS: Record<AgentStepStatus, string> = {
   pending: "text-gray-400 dark:text-gray-500",
   running: "text-gray-900 dark:text-gray-100",
-  done: "text-gray-500 dark:text-gray-400",
+  done: "text-muted-foreground",
   error: "text-red-600 dark:text-red-400",
 };
 
