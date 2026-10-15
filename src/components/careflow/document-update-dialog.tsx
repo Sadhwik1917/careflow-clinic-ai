@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileText, Loader2, Upload } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { MotionDialogContent } from "@/components/careflow/motion-primitives";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -38,7 +39,7 @@ export function DocumentUpdateDialog({ open, onOpenChange, clinicId, req, doc, l
   }
 
   return <Dialog open={open} onOpenChange={o => { if (!busy) onOpenChange(o); }}>
-    <DialogContent className="sm:max-w-lg">
+    <MotionDialogContent className="space-y-4 sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Update {req.label}</DialogTitle>
         <DialogDescription>The administrator reviews the new file. Your current document stays in use until it's accepted.</DialogDescription>
@@ -66,6 +67,6 @@ export function DocumentUpdateDialog({ open, onOpenChange, clinicId, req, doc, l
           <div className="flex justify-end"><Button onClick={() => void submit()} disabled={busy}>{busy && <Loader2 className="animate-spin" />}Send for review</Button></div>
         </>}
       </div>
-    </DialogContent>
+    </MotionDialogContent>
   </Dialog>;
 }
