@@ -152,7 +152,7 @@ export default function AITextLoading({
       {showElapsed && (
         <span
           aria-hidden="true"
-          className="font-medium text-base text-neutral-400 tabular-nums dark:text-neutral-500"
+          className="font-medium text-base text-muted-foreground tabular-nums"
         >
           {seconds}s
         </span>

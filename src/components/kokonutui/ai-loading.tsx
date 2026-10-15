@@ -386,8 +386,8 @@ function useStepTimes(steps: AgentStep[]) {
 }
 
 const LABEL_COLORS: Record<AgentStepStatus, string> = {
-  pending: "text-gray-400 dark:text-gray-500",
-  running: "text-gray-900 dark:text-gray-100",
+  pending: "text-muted-foreground",
+  running: "text-foreground",
   done: "text-muted-foreground",
   error: "text-red-600 dark:text-red-400",
 };
@@ -407,11 +407,11 @@ function StepRow({
       {!isLast && (
         <span
           aria-hidden="true"
-          className="absolute top-[34px] bottom-[-10px] left-[7.5px] w-px overflow-hidden bg-gray-200 dark:bg-gray-800"
+          className="absolute top-[34px] bottom-[-10px] left-[7.5px] w-px overflow-hidden bg-border"
         >
           <span
             className={cn(
-              "block h-full w-full origin-top bg-gray-400 transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] dark:bg-gray-500",
+              "block h-full w-full origin-top bg-primary transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]",
               step.status === "done" ? "scale-y-100" : "scale-y-0"
             )}
           />
@@ -440,7 +440,7 @@ function StepRow({
           {time !== undefined && (
             <motion.span
               animate={{ opacity: 1 }}
-              className="ml-auto shrink-0 text-gray-400 text-xs tabular-nums dark:text-gray-500"
+              className="ml-auto shrink-0 text-muted-foreground text-xs tabular-nums"
               initial={{ opacity: 0 }}
               transition={{ duration: 0.2, ease: EASE_OUT }}
             >
@@ -502,7 +502,7 @@ export default function AILoadingState({
           <button
             aria-controls={listId}
             aria-expanded={isOpen}
-            className="group/header flex w-full items-center gap-2 rounded-md py-1 text-left font-medium text-gray-600 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-gray-400/40 dark:text-gray-300"
+            className="group/header flex w-full items-center gap-2 rounded-md py-1 text-left font-medium text-foreground/80 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
             onClick={() => setIsOpen((open) => !open)}
             type="button"
           >
@@ -515,14 +515,14 @@ export default function AILoadingState({
               </span>
             )}
             {isDone && (
-              <span className="text-gray-400 dark:text-gray-500">
+              <span className="text-muted-foreground">
                 · {steps.length} steps
               </span>
             )}
             <ChevronDown
               aria-hidden="true"
               className={cn(
-                "ml-auto size-4 text-gray-400 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/header:text-gray-600 dark:group-hover/header:text-gray-300",
+                "ml-auto size-4 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/header:text-foreground",
                 isOpen && "rotate-180"
               )}
             />
