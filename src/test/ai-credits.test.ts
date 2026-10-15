@@ -24,7 +24,7 @@ function fakeDb(reserve: unknown, aiEnabled = true) {
   }) };
 }
 const id = "00000000-0000-0000-0000-000000000001";
-const two = <T,>(d: T) => [d, d] as const;
+const m2 = <T,>(db: ReturnType<typeof fakeDb>, ...a: [string, string, string, string, () => Promise<T>, ((ms: number) => Promise<void>)?]) => meteredAi(db, db, ...a);
 
 
 describe("metered AI requests", () => {
@@ -43,11 +43,11 @@ describe("metered AI requests", () => {
     expect(run).not.toHaveBeenCalled(); expect(db.calls.map(c => c[0])).toEqual(["clinic_ai_enabled"]);
   });
   it("unauthorised clinic (database refuses) is denied", async () => {
-    await expect(meteredAi(...two(fakeDb(new Error("Not authorised"))), id, id, "x", id, vi.fn())).rejects.toThrow("AI_NOT_INCLUDED");
+    await expect(m2((fakeDb(new Error("Not authorised"))), id, id, "x", id, vi.fn())).rejects.toThrow("AI_NOT_INCLUDED");
   });
   it("limit reached blocks the work", async () => {
     const run = vi.fn();
-    await expect(meteredAi(...two(fakeDb({ allowed: false, reason: "LIMIT_REACHED" })), id, id, "x", id, run)).rejects.toThrow("AI_LIMIT_REACHED");
+    await expect(m2((fakeDb({ allowed: false, reason: "LIMIT_REACHED" })), id, id, "x", id, run)).rejects.toThrow("AI_LIMIT_REACHED");
     expect(run).not.toHaveBeenCalled();
   });
   it("success settles as charged", async () => {
@@ -67,7 +67,7 @@ describe("metered AI requests", () => {
   });
   it("Max AI over threshold waits, then runs", async () => {
     const sleep = vi.fn(async () => {});
-    expect(await meteredAi(...two(fakeDb({ allowed: true, throttled: true })), id, id, "x", id, async () => 1, sleep)).toBe(1);
+    expect(await m2((fakeDb({ allowed: true, throttled: true })), id, id, "x", id, async () => 1, sleep)).toBe(1);
     expect(sleep).toHaveBeenCalledOnce();
   });
 });
