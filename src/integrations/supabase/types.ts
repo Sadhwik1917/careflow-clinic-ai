@@ -1987,6 +1987,19 @@ export type Database = {
         Args: { p_action: string; p_clinic: string; p_reason: string }
         Returns: undefined
       }
+      ai_finish_credit_as: {
+        Args: { p_request: string; p_success: boolean; p_user: string }
+        Returns: string
+      }
+      ai_reserve_credit_as: {
+        Args: {
+          p_clinic: string
+          p_feature: string
+          p_request: string
+          p_user: string
+        }
+        Returns: Json
+      }
       begin_mandated_trial: {
         Args: {
           p_clinic: string
