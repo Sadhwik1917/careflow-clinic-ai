@@ -510,7 +510,7 @@ export default function AILoadingState({
                 is announced as it changes. */}
             <output className="min-w-0 truncate">{title}</output>
             {isActive && (
-              <span className="text-gray-400 tabular-nums dark:text-gray-500">
+              <span className="text-muted-foreground tabular-nums">
                 {formatDuration(seconds)}
               </span>
             )}

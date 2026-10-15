@@ -358,7 +358,7 @@ function CommandMenu({
   return (
     <motion.div
       animate={{ opacity: 1 }}
-      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl bg-foreground p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] ring-1 ring-foreground/10 bg-popover text-popover-foreground dark:ring-foreground/10"
+      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-xl p-1 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.18)] ring-1 ring-foreground/10 bg-popover text-popover-foreground dark:ring-foreground/10"
       exit={{ opacity: 0, transition: { duration: 0.08 } }}
       initial={{ opacity: 0 }}
       transition={{ duration: 0.12, ease: EASE_OUT }}
@@ -424,7 +424,7 @@ function CommandPill({
   return (
     <motion.li
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-      className="flex h-11 items-center gap-1.5 rounded-xl bg-primary/10 pr-1.5 pl-2.5 text-primary text-sm "
+      className="flex h-11 items-center gap-1.5 rounded-xl bg-primary/10 text-primary pr-1.5 pl-2.5 text-primary text-sm "
       exit={{
         opacity: 0,
         filter: "blur(2px)",
@@ -963,7 +963,7 @@ export default function AI_Prompt({
         {/* biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: drop target for files; keyboard users have the attach button */}
         <div
           className={cn(
-            "relative flex flex-col rounded-[18px] bg-foreground ring-1 ring-foreground/[0.08] bg-popover text-popover-foreground dark:ring-foreground/10",
+            "relative flex flex-col rounded-[18px] ring-1 ring-foreground/[0.08] bg-popover text-popover-foreground dark:ring-foreground/10",
             "shadow-[0_1px_2px_rgb(0_0_0/0.04),0_6px_20px_-10px_rgb(0_0_0/0.12)]",
             "transition-shadow duration-150 has-[textarea:focus-visible]:ring-foreground/20 dark:has-[textarea:focus-visible]:ring-foreground/25",
             isDragging && "ring-ring/60 dark:ring-ring/60"
