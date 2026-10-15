@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function initials(name: string) {
-  const base = name.includes("@") ? name.split("@")[0] : name;
+  const base = (name.includes("@") ? name.split("@")[0] : name) ?? "";
   const parts = base.trim().split(/[\s._-]+/).filter(Boolean);
-  if (!parts.length) return "?";
-  const chars = parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0];
+  const first = parts[0] ?? "";
+  const last = parts[parts.length - 1] ?? "";
+  if (!first) return "?";
+  const chars = parts.length === 1 ? first.slice(0, 2) : (first[0] ?? "") + (last[0] ?? "");
   return chars.toUpperCase();
 }
 
