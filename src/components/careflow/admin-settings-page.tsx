@@ -5,6 +5,7 @@ import { z } from "zod";
 import { PageTitle } from "./page-title";
 import { MotionReveal } from "./motion-primitives";
 import { FormAlert, FormField, PasswordInput } from "./auth-ui";
+import { ThemeSelector } from "./theme-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,6 +87,9 @@ export function AdminSettingsPage({ access }: { access: UserAccess }) {
         {wMsg && <FormAlert tone={wMsg.tone}>{wMsg.text}</FormAlert>}
         <Button type="submit" disabled={wBusy}>{wBusy && <LoaderCircle className="animate-spin" />}Update password</Button>
       </form>
+    </Section>
+    <Section title="Appearance" description="Light, dark, or follow your device. Saved on this browser.">
+      <ThemeSelector />
     </Section>
   </MotionReveal>;
 }

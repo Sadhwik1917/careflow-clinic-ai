@@ -13,6 +13,7 @@ import { pageMetadata } from "@/lib/navigation";
 import { clinicAllowanceQuery } from "@/lib/plan-state";
 import { addClinicErrorMessage } from "@/lib/entitlements";
 import { setSelectedClinicId } from "@/lib/access";
+import { ThemeSelector } from "@/components/careflow/theme-selector";
 
 export const Route = createFileRoute("/_authenticated/clinic/settings")({
   head: () => pageMetadata("Settings", "OWNER"),
@@ -51,6 +52,11 @@ function Page() {
   return <>
     <PageTitle title="Settings" description="Manage your clinics." />
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
+      <section className="rounded-lg border bg-card p-5">
+        <h2 className="text-base font-semibold">Appearance</h2>
+        <p className="mt-1 mb-3 text-sm text-muted-foreground">Light, dark, or follow your device. Saved on this browser.</p>
+        <ThemeSelector />
+      </section>
       <section className="rounded-lg border bg-card p-5">
         <h2 className="text-base font-semibold">Clinics</h2>
         {allowance.isPending ? <LoadingState label="Checking your plan…" />
