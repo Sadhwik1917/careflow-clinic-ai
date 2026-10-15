@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
-import { WorkspacePage } from "@/components/careflow/workspace-page";
+import { AiAssistant } from "@/components/careflow/ai-assistant";
 import { EmptyState, LoadingState } from "@/components/careflow/feedback";
 import { PageTitle } from "@/components/careflow/page-title";
 import { Button } from "@/components/ui/button";
@@ -22,5 +22,5 @@ function Page() {
     <PageTitle title="AI assistant" />
     <div className="border-t px-4 py-6 md:px-6"><EmptyState icon={Sparkles} title="AI isn't included in your plan" description="Upgrade to a plan with AI to use the AI assistant." action={<Button asChild><Link to="/clinic/plans">View plans</Link></Button>} /></div>
   </>;
-  return <><div className="px-4 pt-6 md:px-6"><AiUsageCard clinicId={membership?.clinic_id ?? ""} /></div><WorkspacePage role="OWNER" title="AI assistant" /></>;
+  return <><PageTitle title="AI assistant" description="Ask questions, draft messages and summarise notes." /><div className="space-y-4 px-4 pb-6 md:px-6"><AiUsageCard clinicId={membership?.clinic_id ?? ""} /><AiAssistant clinicId={membership?.clinic_id ?? ""} /></div></>;
 }
