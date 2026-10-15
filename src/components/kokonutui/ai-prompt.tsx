@@ -97,6 +97,10 @@ interface AIPromptProps {
   onStop?: () => void;
   /** Called with the files picked, dropped or pasted into the prompt. */
   onAttach?: (files: FileList | File[]) => void;
+  /** CAREFLOW: file types offered by the picker (input `accept`). */
+  accept?: string;
+  /** CAREFLOW: files failing this check are not attached; it can report why. */
+  acceptFile?: (file: File) => boolean;
   className?: string;
 }
 
@@ -751,6 +755,8 @@ export default function AI_Prompt({
   onSubmit,
   onStop,
   onAttach,
+  accept,
+  acceptFile,
   commands = DEFAULT_COMMANDS,
   className,
 }: AIPromptProps) {
@@ -789,11 +795,11 @@ export default function AI_Prompt({
   };
 
   const addFiles = (files: FileList | File[]) => {
-    const list = Array.from(files);
+    const list = Array.from(files).filter((f) => acceptFile?.(f) ?? true);
     if (list.length === 0) {
       return;
     }
-    onAttach?.(files);
+    onAttach?.(list);
     setAttachments((current) => [
       ...current,
       ...list.map((file) => {
@@ -1084,6 +1090,7 @@ export default function AI_Prompt({
               title="Attach files, or drop or paste them"
             >
               <input
+                accept={accept}
                 aria-label="Attach files"
                 className="sr-only"
                 multiple
