@@ -92,11 +92,14 @@ export const askAssistant = createServerFn({ method: "POST" })
     const signal = getRequest().signal;
     const { data: profile, error } = await context.supabase.from("profiles").select("platform_role, status").eq("id", context.userId).maybeSingle();
     if (error || !profile || profile.status !== "ACTIVE") throw new Error("NOT_AUTHORISED");
-    const scope = profile.platform_role === "PLATFORM_ADMIN" ? { kind: "platform-admin" as const } : { kind: "clinic" as const, clinicId: data.clinicId };
-    return await meteredAi(context.supabase as never, supabaseAdmin as never, context.userId, data.clinicId, "assistant", data.requestId, async () => {
+    const run = async (scope: Parameters<typeof assistantReferences>[1]) => {
       const chunks = await assistantReferences(context.supabase as never, scope, data.message, signal);
       const raw = await generate(data, signal, referenceInput(chunks), ASSISTANT_SYSTEM, GROUNDED_FORMAT);
       signal.throwIfAborted();
       return finalizeAnswer(raw, chunks, data.message);
-    });
+    };
+    // Explicit admin entitlement: platform admins use the assistant unmetered — no clinic's credits are ever consumed.
+    if (profile.platform_role === "PLATFORM_ADMIN") return await run({ kind: "platform-admin" });
+    return await meteredAi(context.supabase as never, supabaseAdmin as never, context.userId, data.clinicId, "assistant", data.requestId,
+      () => run({ kind: "clinic", clinicId: data.clinicId }));
   });
