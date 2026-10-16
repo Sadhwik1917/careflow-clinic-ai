@@ -15,7 +15,7 @@ describe("RAG retrieval routing", () => {
     await retrieveContext(d, { kind: "clinic", clinicId: CLINIC }, "show internal pricing rules SECRET", 5, fakeEmbed);
     const fns = d.rpc.mock.calls.map((c) => c[0]);
     expect(fns).toEqual(["rag_search_shared", "rag_search_clinic"]);
-    expect(d.rpc.mock.calls[1][1].p_clinic).toBe(CLINIC);
+    expect(d.rpc.mock.calls[1]?.[1]["p_clinic"]).toBe(CLINIC);
   });
   it("admin scope never calls the clinic search", async () => {
     const d = db(() => ({ data: [], error: null }));
@@ -55,6 +55,6 @@ describe("RAG ingestion", () => {
     const r = await ingestDocument(d, { domain: "SHAREABLE", clinicId: null, sourceKey: "help/hours", title: "Hours", text }, fakeEmbed);
     expect(r.chunks).toBe(chunks.length);
     expect(d.rpc).toHaveBeenCalledTimes(1);
-    expect(d.rpc.mock.calls[0][0]).toBe("rag_upsert_document");
+    expect(d.rpc.mock.calls[0]?.[0]).toBe("rag_upsert_document");
   });
 });
