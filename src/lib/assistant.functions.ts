@@ -24,10 +24,8 @@ function validate(i: Input): Input {
   return i;
 }
 
-const SYSTEM = "You are CareFlow's assistant for clinic teams in India. Help with clinic administration, patient communication and general health information. You can't see the clinic's records, appointments or patients unless the user pastes or attaches them. Don't diagnose or prescribe; for clinical decisions, remind the user that a qualified doctor must decide. Reply in clear Markdown.";
-
 /** Streams the gateway's SSE response server-side and returns the final text. */
-async function generate(i: Input, signal: AbortSignal) {
+async function generate(i: Input, signal: AbortSignal, references: string, instructions: string, format: Record<string, unknown>) {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("AI_UNAVAILABLE");
   const cmd = ASSISTANT_COMMANDS.find((c) => c.id === i.command);
@@ -38,6 +36,7 @@ async function generate(i: Input, signal: AbortSignal) {
   }
   const input = [
     ...i.history.map((t) => ({ role: t.role, content: [{ type: t.role === "user" ? "input_text" : "output_text", text: t.text }] })),
+    { role: "user", content: [{ type: "input_text", text: references }] },
     { role: "user", content },
   ];
   const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
@@ -46,11 +45,12 @@ async function generate(i: Input, signal: AbortSignal) {
     headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch" },
     body: JSON.stringify({
       model: ASSISTANT_MODELS[i.model].id,
-      instructions: SYSTEM,
+      instructions,
       input,
       stream: true,
       store: false,
       reasoning: { effort: i.effort.toLowerCase() },
+      text: { format },
     }),
   });
   if (!res.ok || !res.body) {
@@ -88,7 +88,15 @@ export const askAssistant = createServerFn({ method: "POST" })
   .inputValidator(validate)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { assistantReferences, referenceInput, finalizeAnswer, ASSISTANT_SYSTEM, GROUNDED_FORMAT } = await import("@/lib/assistant-rag.server");
     const signal = getRequest().signal;
-    const reply = await meteredAi(context.supabase as never, supabaseAdmin as never, context.userId, data.clinicId, "assistant", data.requestId, () => generate(data, signal));
-    return { reply };
+    const { data: profile, error } = await context.supabase.from("profiles").select("platform_role, status").eq("id", context.userId).maybeSingle();
+    if (error || !profile || profile.status !== "ACTIVE") throw new Error("NOT_AUTHORISED");
+    const scope = profile.platform_role === "PLATFORM_ADMIN" ? { kind: "platform-admin" as const } : { kind: "clinic" as const, clinicId: data.clinicId };
+    return await meteredAi(context.supabase as never, supabaseAdmin as never, context.userId, data.clinicId, "assistant", data.requestId, async () => {
+      const chunks = await assistantReferences(context.supabase as never, scope, data.message, signal);
+      const raw = await generate(data, signal, referenceInput(chunks), ASSISTANT_SYSTEM, GROUNDED_FORMAT);
+      signal.throwIfAborted();
+      return finalizeAnswer(raw, chunks, data.message);
+    });
   });

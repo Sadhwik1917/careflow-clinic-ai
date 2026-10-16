@@ -15,7 +15,7 @@ const icons = { summarize: <AlignLeft className="size-4" />, explain: <Lightbulb
 const commands = ASSISTANT_COMMANDS.map((c) => ({ id: c.id, label: c.label, description: c.description, icon: icons[c.id] }));
 const models: PromptModel[] = (Object.keys(ASSISTANT_MODELS) as AssistantModel[]).map((name) => ({ name, description: ASSISTANT_MODELS[name].description, efforts: [...ASSISTANT_EFFORTS], defaultEffort: name === "Fast" ? "Low" : "Medium" }));
 
-type Turn = { id: string; role: "user" | "assistant"; text: string; files?: string[]; status?: "pending" | "done" | "error" | "stopped" };
+type Turn = { id: string; role: "user" | "assistant"; text: string; files?: string[]; sources?: { id: string; title: string; sourceKey: string }[]; status?: "pending" | "done" | "error" | "stopped" };
 
 async function readFile(f: File): Promise<AssistantFile> {
   const c = checkFile(f);
@@ -63,9 +63,9 @@ export function AiAssistant({ clinicId }: { clinicId: string }) {
         setStep("files", { status: "done" });
       }
       current = "reply"; setStep("reply", { status: "running", detail: [`${model} · ${effort} effort`] });
-      const { reply } = await ask({ data: { clinicId, requestId: crypto.randomUUID(), model: model as AssistantModel, effort, command: (o.command?.id ?? null) as AssistantCommandId | null, message: value, history, files }, signal: o.signal });
+      const { reply, sources } = await ask({ data: { clinicId, requestId: crypto.randomUUID(), model: model as AssistantModel, effort, command: (o.command?.id ?? null) as AssistantCommandId | null, message: value, history, files }, signal: o.signal });
       setStep("reply", { status: "done" });
-      setAssistant(botId, { text: reply, status: "done" });
+      setAssistant(botId, { text: reply, sources, status: "done" });
     } catch (e) {
       if (o.signal.aborted) { setStep(current, { status: "error", detail: ["Stopped"] }); setAssistant(botId, { text: "Stopped.", status: "stopped" }); }
       else { setStep(current, { status: "error" }); setAssistant(botId, { text: assistantErrorMessage(e), status: "error" }); }
@@ -83,7 +83,7 @@ export function AiAssistant({ clinicId }: { clinicId: string }) {
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <span className="flex size-11 items-center justify-center rounded-full bg-secondary text-primary"><Stethoscope className="size-5" aria-hidden="true" /></span>
             <h2 className="text-base font-semibold">Ask CareFlow</h2>
-            <p className="max-w-md text-sm text-muted-foreground">Draft patient messages, summarise notes or explain terms. Each reply uses 1 AI credit. The assistant can't see clinic records unless you paste or attach them, and it doesn't replace a doctor's judgement.</p>
+            <p className="max-w-md text-sm text-muted-foreground">Each reply uses 1 AI credit. Answers may use permitted knowledge documents, not patient records. The assistant doesn't replace a doctor's judgement.</p>
           </div>
         )}
         {turns.map((t) => t.role === "user" ? (
@@ -96,6 +96,7 @@ export function AiAssistant({ clinicId }: { clinicId: string }) {
             {t.status === "pending" ? <AITextLoading className="justify-start text-sm font-medium text-muted-foreground" label="Assistant is replying" texts={["Thinking...", "Writing..."]} interval={2000} />
               : t.status === "done" ? <div className="max-w-none break-words leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_h1]:mt-3 [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:font-semibold [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5"><ReactMarkdown>{t.text}</ReactMarkdown></div>
               : <p className={cn(t.status === "error" ? "text-destructive" : "text-muted-foreground")}>{t.text}</p>}
+            {t.status === "done" && !!t.sources?.length && <div aria-label="Sources" className="mt-3 border-t pt-2 text-xs text-muted-foreground"><p className="font-medium">Sources</p><ul className="mt-1 space-y-1">{t.sources.map((s) => <li key={s.id} className="break-words">[{s.id}] {s.title} · {s.sourceKey}</li>)}</ul></div>}
           </div>
         ))}
         {steps && <AILoadingState steps={steps} />}
