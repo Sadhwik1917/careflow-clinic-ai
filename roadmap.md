@@ -71,3 +71,9 @@
 ## Phase 2C — Admin Analytics
 - [x] Real count-based metrics, registration trends, status distribution, range filter, tests.
 - [ ] Signed-in browser check — blocked: no test session for external Supabase.
+
+## Phase 3C.3 — Patient History Summary
+- [x] Server: summarizePatientHistory + listSummaryPatients (exact RLS-scoped queries, admin refused, meteredAi, empty history free)
+- [x] UI: patient picker + summary card on /clinic/ai with stop/retry/empty states and mandatory notice
+- [x] 12 new tests; full suite 230/230, tsgo clean, build OK
+- [ ] Live end-to-end summary — blocked: no authenticated session for external Supabase; verify by hand as a clinic owner
