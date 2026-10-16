@@ -25,7 +25,7 @@
 - Clinic suspension/revocation goes only through `admin_clinic_action` (clinics.status is trigger-protected and checked by `clinic_is_operational`); reinstate only lifts suspensions, revoked clinics re-verify, because history must stay append-only.
 - AI and multi-clinic entitlements come from plan fields via `clinic_ai_enabled` / `create_additional_clinic` (locks the subscription row, links new clinics to the existing multi subscription); every AI server function (e.g. `askAssistant`, options whitelisted in `src/lib/assistant.ts`) must run through `meteredAi`, because hiding UI is not enforcement.
 - Suspended/revoked clinics are blocked in the owner layout (`clinic-restriction.ts` + `RestrictionGate`, fresh read per navigation) except the verification page; resubmitting never restores access without admin action.
-- Admin Users reads via the caller's RLS client after the admin check; only email lookup uses the service-role auth API, because emails live in auth.users.
+- Admin Users reads via the caller's RLS client; only email lookup uses the service-role auth API (emails live in auth.users).
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` and `submit_clinic_verification`, because browser checks can't enforce deadlines.
 - Notifications are inserted only by trusted database code (verification_events trigger, cron jobs); clients only read own rows and set is_read; bell uses Realtime + polling fallback, so notices can't be forged.
