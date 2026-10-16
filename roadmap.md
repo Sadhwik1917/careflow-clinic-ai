@@ -3,10 +3,11 @@
 - [x] Connect existing assistant request to caller-authorized RAG inside existing metered flow.
 - [x] Ground answers in untrusted reference content with verified source metadata and safe missing-evidence behavior.
 - [x] Preserve attachments, commands, UI, accounting and domain isolation; 218 tests pass and compilation diagnostics are clean.
-- [ ] Approved-document filtering — blocked: existing knowledge metadata has no approval field or approval workflow; no schema invented.
-- [ ] Admin assistant and doctor/staff UI access — blocked: no existing routes; admin credit reservation requires clinic membership, so no entitlement bypass added.
-- [ ] Live changed-model-request verification — first diagnostic call timed out before a response; no automatic retry.
+- [x] Approved-document filtering — approval status added (3C.2.1); clinic shared search returns only approved docs; upsert resets to pending; admin-only review action; verified live with test markers, cleaned up.
+- [x] Admin assistant entitlement — platform admins use the assistant unmetered, never consuming clinic credits (3C.2.1). Doctor/staff UI access — blocked: no existing routes.
+- [x] Live Fast-model verification — retried once with the real model id; responded successfully.
 - [ ] Live document-to-assistant verification — requires a real approved document and an external Supabase user session.
+- [ ] Admin assistant UI page — no admin route exists; server entitlement only.
 
 ## Phase 2A — Admin Subscriptions
 - [x] Inspect real schema, RLS, payment lifecycle, and compatible UI libraries.
