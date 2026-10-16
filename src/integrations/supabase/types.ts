@@ -2074,6 +2074,10 @@ export type Database = {
         Args: { p_clinic: string; p_domain: string; p_source_key: string }
         Returns: boolean
       }
+      rag_review_document: {
+        Args: { p_document: string; p_status: string }
+        Returns: undefined
+      }
       rag_search_clinic: {
         Args: { p_clinic: string; p_count?: number; p_embedding: string }
         Returns: {
