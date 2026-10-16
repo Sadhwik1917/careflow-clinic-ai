@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { pageMetadata } from "@/lib/navigation";
 import { clinicAiQuery } from "@/lib/plan-state";
 import { AiUsageCard } from "@/components/careflow/ai-usage-card";
+import { PatientSummary } from "@/components/careflow/patient-summary";
 
 export const Route = createFileRoute("/_authenticated/clinic/ai")({
   head: () => pageMetadata("AI assistant", "OWNER"),
