@@ -33,7 +33,7 @@ export async function embedTexts(inputs: string[]): Promise<number[][]> {
       if (!Number.isInteger(d.index) || d.index < 0 || d.index >= batch.length || ordered[d.index] || d.embedding?.length !== EMBEDDING_DIMS) throw new Error("AI_UNAVAILABLE");
       ordered[d.index] = d.embedding;
     }
-    for (let j = 0; j < batch.length; j++) { if (!ordered[j]) throw new Error("AI_UNAVAILABLE"); out.push(ordered[j]); }
+    for (let j = 0; j < batch.length; j++) { const vec = ordered[j]; if (!vec) throw new Error("AI_UNAVAILABLE"); out.push(vec); }
   }
   return out;
 }
