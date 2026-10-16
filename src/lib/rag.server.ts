@@ -33,7 +33,7 @@ export async function embedTexts(inputs: string[]): Promise<number[][]> {
       if (!Number.isInteger(d.index) || d.index < 0 || d.index >= batch.length || ordered[d.index] || d.embedding?.length !== EMBEDDING_DIMS) throw new Error("AI_UNAVAILABLE");
       ordered[d.index] = d.embedding;
     }
-    for (let j = 0; j < batch.length; j++) { if (!ordered[j]) throw new Error("AI_UNAVAILABLE"); out.push(ordered[j]); }
+    for (let j = 0; j < batch.length; j++) { const vec = ordered[j]; if (!vec) throw new Error("AI_UNAVAILABLE"); out.push(vec); }
   }
   return out;
 }
@@ -49,12 +49,12 @@ export async function retrieveContext(db: Rpc, scope: { kind: "clinic"; clinicId
   const q = query.trim();
   if (!q || q.length > 8000) throw new Error("INVALID_INPUT");
   if (scope.kind === "clinic" && !/^[0-9a-f-]{36}$/i.test(scope.clinicId)) throw new Error("NOT_AUTHORISED");
-  const [vector] = await embed([q]);
+  const [vector] = await embed([q]); if (!vector) throw new Error("AI_UNAVAILABLE");
   const n = Math.min(Math.max(1, Math.floor(count)), MAX_RESULTS);
   const results: RetrievedChunk[] = [];
   for (const domain of allowedDomains(scope.kind === "clinic" ? "clinic" : "platform-admin")) {
     const args: Record<string, unknown> = { p_embedding: toVec(vector), p_count: n };
-    if (domain === "CLINIC") args.p_clinic = (scope as { clinicId: string }).clinicId;
+    if (domain === "CLINIC") args["p_clinic"] = (scope as { clinicId: string }).clinicId;
     const { data, error } = await db.rpc(SEARCH_FN[domain], args);
     if (error) throw new Error("NOT_AUTHORISED");
     for (const r of (data ?? []) as { chunk_id: string; source_key: string; title: string; content: string; similarity: number }[])
@@ -72,7 +72,7 @@ export async function ingestDocument(db: Rpc, doc: { domain: KnowledgeDomain; cl
   const vectors = await embed(chunks);
   const { data, error } = await db.rpc("rag_upsert_document", {
     p_domain: doc.domain, p_clinic: doc.clinicId, p_source_key: doc.sourceKey, p_title: doc.title,
-    p_chunks: chunks.map((content, i) => ({ content, embedding: toVec(vectors[i]) })),
+    p_chunks: chunks.map((content, i) => ({ content, embedding: toVec(vectors[i] ?? []) })),
   });
   if (error) throw new Error("NOT_AUTHORISED");
   return { documentId: data as string, chunks: chunks.length };
