@@ -11,8 +11,7 @@
 
 ## Frontend architecture
 - Semantic color tokens; new interactions reuse shadcn + reduced-motion `motion-primitives`, Radix owns focus/dismissal; verify Kokonut/bklit/v0 sources before adapting, no speculative deps, so animation never replaces accessibility.
-- Admin Subscriptions: read-only authed server functions, caller's RLS client, paged projected queries; no admin cancellation because the provider workflow authorizes owners only.
-- Plan-choice labels use configured prices and a temporary selection reverted on dismiss, keeping display separate from subscription actions.
+- Admin Subscriptions: read-only via the caller's RLS client, paged; no admin cancellation because the provider authorizes owners only. Plan-choice labels use configured prices and a temporary selection reverted on dismiss.
 - Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only and retain normal dashboard access gates.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only and must never be treated as authorization.
 - Render the application shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`), keeping public and auth pages outside it and each navigation destination a separate leaf route.
@@ -25,7 +24,7 @@
 - Trials start only via the signed `subscription.authenticated` webhook (`confirm_trial_mandate`, after `begin_mandated_trial` records PENDING_PAYMENT), which writes the append-only `trial_consumptions` row (unique per owner/clinic/registration key, advisory-locked); eligibility never derives from subscription status, because browser callbacks are untrusted and cancellation must not restore a trial.
 - Clinic suspension/revocation goes only through `admin_clinic_action` (clinics.status is trigger-protected and checked by `clinic_is_operational`); reinstate only lifts suspensions, revoked clinics re-verify, because history must stay append-only.
 - AI and multi-clinic entitlements come from plan fields via `clinic_ai_enabled` / `create_additional_clinic` (locks the subscription row, links new clinics to the existing multi subscription); every AI server function (e.g. `askAssistant`, options whitelisted in `src/lib/assistant.ts`) must run through `meteredAi`, because hiding UI is not enforcement.
-- Suspended or revoked clinics are blocked in the owner area layout (`clinic-restriction.ts` + `RestrictionGate`, fresh read every navigation); only the verification page stays reachable, and resubmitting never restores access without admin approval/reinstatement.
+- Suspended/revoked clinics are blocked in the owner layout (`clinic-restriction.ts` + `RestrictionGate`, fresh read per navigation) except the verification page; resubmitting never restores access without admin action.
 - Admin Users reads via the caller's RLS client after the admin check; only email lookup uses the service-role auth API, because emails live in auth.users.
 - Clinic activity history merges `verification_events` (primary) with `audit_logs` via `src/lib/clinic-activity.ts`, skipping CLINIC_* audit rows that duplicate admin events, because admin_clinic_action writes both.
 - Six-monthly reverification is enforced only by hourly pg_cron `private.run_reverification_maintenance` and `submit_clinic_verification`, because browser checks can't enforce deadlines.
