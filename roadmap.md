@@ -1,4 +1,10 @@
 # Phase 1A
+## Phase 3C.2 — Assistant secure retrieval
+- [ ] Connect existing assistant request to caller-authorized RAG inside existing metered flow.
+- [ ] Ground answers in untrusted reference content with verified source metadata and safe missing-evidence behavior.
+- [ ] Preserve attachments, commands, UI, accounting and domain isolation; run full tests and inspect build diagnostics.
+- [ ] Live document-to-assistant verification — requires a real approved document and an external Supabase user session.
+
 ## Phase 2A — Admin Subscriptions
 - [x] Inspect real schema, RLS, payment lifecycle, and compatible UI libraries.
 - [x] Implement searchable, filtered, paginated subscription records and read-only details/history.
