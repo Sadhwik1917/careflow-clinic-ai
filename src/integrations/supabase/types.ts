@@ -2070,6 +2070,50 @@ export type Database = {
           plan_id: string
         }[]
       }
+      rag_delete_document: {
+        Args: { p_clinic: string; p_domain: string; p_source_key: string }
+        Returns: boolean
+      }
+      rag_search_clinic: {
+        Args: { p_clinic: string; p_count?: number; p_embedding: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          similarity: number
+          source_key: string
+          title: string
+        }[]
+      }
+      rag_search_confidential: {
+        Args: { p_count?: number; p_embedding: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          similarity: number
+          source_key: string
+          title: string
+        }[]
+      }
+      rag_search_shared: {
+        Args: { p_count?: number; p_embedding: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          similarity: number
+          source_key: string
+          title: string
+        }[]
+      }
+      rag_upsert_document: {
+        Args: {
+          p_chunks: Json
+          p_clinic: string
+          p_domain: string
+          p_source_key: string
+          p_title: string
+        }
+        Returns: string
+      }
       register_clinic_document: {
         Args: {
           p_clinic: string
