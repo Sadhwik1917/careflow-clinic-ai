@@ -15,7 +15,7 @@
 - Authenticated header branding uses the selected verified membership's clinic display name; missing-name links are owner-only.
 - Keep shared navigation and page metadata in `src/lib/navigation.ts`; role selection is presentation-only, never authorization.
 - Render the app shell inside each role area layout (`_authenticated/{admin,clinic,doctor,staff,patient}.tsx`); public/auth pages stay outside; each navigation destination is its own leaf route.
-- Role guards resolve access only from the user's `profiles`/`clinic_members` rows via `src/lib/access.ts`; they are navigation aids — RLS is the security boundary; a stored clinic id counts only if it matches a verified membership.
+- Role guards resolve access only from the user's `profiles`/`clinic_members` rows via `src/lib/access.ts`; navigation aids only — RLS is the security boundary; a stored clinic id counts only if it matches a verified membership.
 - Unbuilt modules show disconnected states — fabricated records aren't allowed.
 - Clinics are created only through the database function `create_first_clinic`, which derives the owner from the session and checks eligibility; never insert clinics or OWNER memberships from the client; the owner-protection trigger only trusts that function.
 - Clinic verification status lives only in `clinic_verifications`/`verification_events`, changing only through the submit/review database functions; owner pages stay locked by `ownerGateRedirect` and RLS until `clinic_is_operational` — owners can edit their own clinic row.
