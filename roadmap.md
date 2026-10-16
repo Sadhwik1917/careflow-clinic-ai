@@ -1,4 +1,13 @@
 # Phase 1A
+## Phase 3C.2 — Assistant secure retrieval
+- [x] Connect existing assistant request to caller-authorized RAG inside existing metered flow.
+- [x] Ground answers in untrusted reference content with verified source metadata and safe missing-evidence behavior.
+- [x] Preserve attachments, commands, UI, accounting and domain isolation; 218 tests pass and compilation diagnostics are clean.
+- [ ] Approved-document filtering — blocked: existing knowledge metadata has no approval field or approval workflow; no schema invented.
+- [ ] Admin assistant and doctor/staff UI access — blocked: no existing routes; admin credit reservation requires clinic membership, so no entitlement bypass added.
+- [ ] Live changed-model-request verification — first diagnostic call timed out before a response; no automatic retry.
+- [ ] Live document-to-assistant verification — requires a real approved document and an external Supabase user session.
+
 ## Phase 2A — Admin Subscriptions
 - [x] Inspect real schema, RLS, payment lifecycle, and compatible UI libraries.
 - [x] Implement searchable, filtered, paginated subscription records and read-only details/history.

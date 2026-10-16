@@ -41,6 +41,7 @@ const ERRORS: Record<string, string> = {
   AI_RATE_LIMITED: "The assistant is busy right now. Please try again in a minute.",
   AI_UNAVAILABLE: "The assistant isn't available right now. Please try again later.",
   AI_REFUSED: "The assistant couldn't help with that request.",
+  NOT_AUTHORISED: "The assistant couldn't access permitted knowledge documents. No reply was generated.",
   INVALID_INPUT: "That message couldn't be sent. Check the text and attachments.",
 };
 export const assistantErrorMessage = (e: unknown) => ERRORS[e instanceof Error ? e.message : ""] ?? "The assistant couldn't reply. Please try again.";
