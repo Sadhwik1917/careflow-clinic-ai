@@ -32,3 +32,5 @@
 - Post-approval document replacements go only through `submit_document_update`/`review_document_update` (`clinic_document_updates` keeps old/new paths); they never change clinic/verification status and are off during open reverification, which has its own enforced workflow.
 - Subdirectories may have their own `AGENTS.md`; read it before changing files there.
 - RAG uses separate hidden stores and caller-checking `rag_*` actions via the user's RLS client; admins never get clinic chunks, clinic users never confidential. Assistant retrieval runs inside `meteredAi`, derives scope from the profile, fails closed, and validates source metadata, because isolation precedes generation.
+- Knowledge documents carry an approval status (PENDING/APPROVED/REJECTED); clinic-facing shared search returns only APPROVED, every upsert resets to PENDING, and only `rag_review_document` (admin-only, audited) changes status, because new content must never become clinic-visible automatically.
+- Platform admins use the assistant unmetered (explicit entitlement in `askAssistant`, no credit reservation), because there is no admin subscription and no clinic's credits may be consumed.
