@@ -14,8 +14,11 @@ export async function assertPatientOwner(db: Client, userId: string, clinicId: s
 // Every read/write uses the authenticated caller's RLS client and an explicitly verified clinic.
 export async function readPatients(db: Client, clinicId: string, filters: PatientFilters) {
   let q = db.from("patients").select("*", { count: "exact" }).eq("clinic_id", clinicId);
-  const expression = patientSearchExpression(filters.search);
-  if (expression) q = q.or(expression);
+  // AND the name tokens, while each token may match first name, last name or number.
+  for (const token of filters.search.trim().split(/\s+/).filter(Boolean)) {
+    const expression = patientSearchExpression(token);
+    if (expression) q = q.or(expression);
+  }
   const { data, count, error } = await q.order("created_at", { ascending: false }).order("id").range(filters.page * PATIENT_PAGE_SIZE, (filters.page + 1) * PATIENT_PAGE_SIZE - 1);
   if (error) throw new Error("Patients couldn't load. Please try again.");
   return { rows: data ?? [], count: count ?? 0 };

@@ -63,6 +63,13 @@ describe("scoped patient data", () => {
     expect(patientSearchExpression('a),clinic_id.eq.c2%"')).not.toMatch(/[()"\\]/);
     expect(patientSearchExpression("")).toBeUndefined();
   });
+  it("matches a full name across first and last name columns", async () => {
+    const { db, calls } = fakeDb(); await readPatients(db, "c1", { search: "Meera Iyer", page: 0 });
+    expect(calls.filter(([method]) => method === "patients.or")).toEqual([
+      ["patients.or", ["first_name.ilike.%Meera%,last_name.ilike.%Meera%,patient_number.ilike.%Meera%"]],
+      ["patients.or", ["first_name.ilike.%Iyer%,last_name.ilike.%Iyer%,patient_number.ilike.%Iyer%"]],
+    ]);
+  });
   it("returns only a matching patient's clinic profile", async () => {
     expect((await readPatient(fakeDb().db, "c1", "p1"))?.id).toBe("p1");
     expect(await readPatient(fakeDb().db, "c2", "p1")).toBeNull();

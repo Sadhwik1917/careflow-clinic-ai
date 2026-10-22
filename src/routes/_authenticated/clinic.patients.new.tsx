@@ -18,6 +18,6 @@ function Page() {
     const p = await register({ data: { clinicId, fields } });
     qc.setQueryData(patientQuery(user.id, clinicId, p.id).queryKey, p);
     await qc.invalidateQueries({ queryKey: ["patients", user.id, clinicId] });
-    await navigate({ to: "/clinic/patients/$patientId", params: { patientId: p.id } });
+    await navigate({ to: "/clinic/patients/$patientId", params: { patientId: p.id }, search: { registered: true } });
   }} /></div></>;
 }
