@@ -4,6 +4,11 @@
 - [x] Verify validation, duplicate patient numbers, cross-clinic denial and full regression tests: 247 tests pass across 32 files.
 - [ ] Signed-in registration-to-profile browser check — blocked: external Supabase has no available authenticated test session.
 
+## Clinic Owner MVP — Doctors & Staff
+- [ ] Doctors directory + detail/edit via caller RLS client (whitelisted fields, optimistic concurrency); names via owner-gated trusted lookup.
+- [ ] Staff roster + invitations via trusted DB functions (invite/cancel/status-only member changes; no role edits, no self-escalation).
+- [ ] Tests, type check, build; report live-verification limits.
+
 ## Phase 3C.2 — Assistant secure retrieval
 - [x] Connect existing assistant request to caller-authorized RAG inside existing metered flow.
 - [x] Ground answers in untrusted reference content with verified source metadata and safe missing-evidence behavior.
