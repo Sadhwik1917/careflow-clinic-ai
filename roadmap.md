@@ -1,7 +1,7 @@
 # Phase 1A
 ## Clinic Owner MVP — Patients
-- [ ] Connect directory, registration, profiles and permitted demographic editing through caller-scoped access.
-- [ ] Verify validation, duplicate patient numbers, cross-clinic denial and full regression tests.
+- [x] Connect directory, registration, profiles and permitted demographic editing through caller-scoped access; required atomic patient audit trigger added without altering RLS.
+- [x] Verify validation, duplicate patient numbers, cross-clinic denial and full regression tests: 247 tests pass across 32 files.
 - [ ] Signed-in registration-to-profile browser check — blocked: external Supabase has no available authenticated test session.
 
 ## Phase 3C.2 — Assistant secure retrieval
