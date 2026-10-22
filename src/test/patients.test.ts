@@ -12,15 +12,15 @@ function fakeDb(options: { role?: string; active?: boolean; operational?: boolea
     const filters: Record<string, unknown> = {};
     const result = () => {
       if (table === "profiles") return { data: { platform_role: options.admin ? "PLATFORM_ADMIN" : "USER", status: "ACTIVE" }, error: null };
-      if (table === "clinic_members") return { data: filters.clinic_id === "c1" ? { role: options.role ?? "OWNER", status: options.active === false ? "SUSPENDED" : "ACTIVE" } : null, error: null };
+      if (table === "clinic_members") return { data: filters['clinic_id'] === "c1" ? { role: options.role ?? "OWNER", status: options.active === false ? "SUSPENDED" : "ACTIVE" } : null, error: null };
       if (options.error) return { data: null, error: options.error };
-      const found = filters.clinic_id === row.clinic_id && (!filters.id || filters.id === row.id) && !options.stale;
+      const found = filters['clinic_id'] === row.clinic_id && (!filters['id'] || filters['id'] === row.id) && !options.stale;
       return { data: found ? row : null, count: found ? 1 : 0, error: null };
     };
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "insert", "update", "order", "or", "eq"]) chain[method] = (...args: unknown[]) => { calls.push([`${table}.${method}`, args]); if (method === "eq") filters[String(args[0])] = args[1]; return chain; };
-    chain.maybeSingle = async () => result(); chain.single = async () => result();
-    chain.range = async (...args: unknown[]) => { calls.push([`${table}.range`, args]); const r = result(); return { ...r, data: r.data ? [r.data] : [] }; };
+    for (const method of ["select", "insert", "update", "order", "or", "eq"]) chain[method] = (...args: unknown[]) => { calls.push([`${table}.${method}`, args]); if (method === "eq") filters[String(args[0])] = args[1]; if (method === "insert") filters['clinic_id'] = (args[0] as { clinic_id: string }).clinic_id; return chain; };
+    chain['maybeSingle'] = async () => result(); chain['single'] = async () => result();
+    chain['range'] = async (...args: unknown[]) => { calls.push([`${table}.range`, args]); const r = result(); return { ...r, data: r.data ? [r.data] : [] }; };
     return chain;
   };
   const rpc = vi.fn(async () => ({ data: options.operational !== false, error: null }));
