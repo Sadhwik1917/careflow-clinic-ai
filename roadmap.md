@@ -1,4 +1,9 @@
 # Phase 1A
+## Clinic Owner MVP — Patients
+- [ ] Connect directory, registration, profiles and permitted demographic editing through caller-scoped access.
+- [ ] Verify validation, duplicate patient numbers, cross-clinic denial and full regression tests.
+- [ ] Signed-in registration-to-profile browser check — blocked: external Supabase has no available authenticated test session.
+
 ## Phase 3C.2 — Assistant secure retrieval
 - [x] Connect existing assistant request to caller-authorized RAG inside existing metered flow.
 - [x] Ground answers in untrusted reference content with verified source metadata and safe missing-evidence behavior.
