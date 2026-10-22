@@ -6,7 +6,7 @@ import { patientQuery } from "@/lib/patient-queries";
 import { pageMetadata } from "@/lib/navigation";
 export const Route = createFileRoute("/_authenticated/clinic/patients/$patientId")({
   head: () => pageMetadata("Patient details", "OWNER"),
-  validateSearch: (input): { registered?: boolean } => ({ registered: input['registered'] === true ? true : undefined }),
+  validateSearch: (input): { registered?: boolean | undefined } => ({ registered: input['registered'] === true ? true : undefined }),
   loader: async ({ context, params }) => {
     if (!z.string().uuid().safeParse(params.patientId).success) throw notFound();
     const clinicId = context.membership?.clinic_id;
