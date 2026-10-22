@@ -16,7 +16,7 @@ export function PatientProfile({ userId, clinicId, patientId }: { userId: string
   const { data: p } = useSuspenseQuery(query);
   const qc = useQueryClient(); const update = useServerFn(updateClinicPatient);
   const [editing, setEditing] = useState(false); const [saved, setSaved] = useState(false);
-  return <><div className="mb-4"><Button variant="ghost" asChild size="sm"><Link to="/clinic/patients"><ArrowLeft />Patients</Link></Button></div><PageTitle title={[p.first_name, p.last_name].filter(Boolean).join(" ")} description={p.patient_number} actions={!editing && <Button variant="outline" onClick={() => { setEditing(true); setSaved(false); }}><Pencil />Edit patient</Button>} />
+  return <><div className="mb-4"><Button variant="ghost" asChild size="sm"><Link to="/clinic/patients" search={{ search: "", page: 0 }}><ArrowLeft />Patients</Link></Button></div><PageTitle title={[p.first_name, p.last_name].filter(Boolean).join(" ")} description={p.patient_number} actions={!editing && <Button variant="outline" onClick={() => { setEditing(true); setSaved(false); }}><Pencil />Edit patient</Button>} />
     {saved && <p role="status" className="mb-4 text-sm text-success-foreground">Patient changes saved.</p>}
     <div className="border-t py-6">{editing ? <PatientForm key={p.updated_at} patient={p} onCancel={() => setEditing(false)} onSave={async values => {
       const { patient_number, ...fields } = values;

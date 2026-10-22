@@ -14,7 +14,7 @@ function Page() {
   const { user, membership } = Route.useRouteContext();
   const clinicId = membership?.clinic_id ?? "";
   const register = useServerFn(registerClinicPatient); const qc = useQueryClient(); const navigate = useNavigate();
-  return <><PageTitle title="Register patient" /><div className="border-t py-6"><PatientForm onCancel={() => void navigate({ to: "/clinic/patients" })} onSave={async fields => {
+  return <><PageTitle title="Register patient" /><div className="border-t py-6"><PatientForm onCancel={() => void navigate({ to: "/clinic/patients", search: { search: "", page: 0 } })} onSave={async fields => {
     const p = await register({ data: { clinicId, fields } });
     qc.setQueryData(patientQuery(user.id, clinicId, p.id).queryKey, p);
     await qc.invalidateQueries({ queryKey: ["patients", user.id, clinicId] });
