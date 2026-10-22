@@ -2011,6 +2011,10 @@ export type Database = {
         }
         Returns: string
       }
+      cancel_clinic_invitation: {
+        Args: { p_invitation: string }
+        Returns: undefined
+      }
       cancel_clinic_trial: {
         Args: { p_subscription: string; p_user: string }
         Returns: string
@@ -2018,6 +2022,13 @@ export type Database = {
       clinic_ai_enabled: { Args: { p_clinic: string }; Returns: boolean }
       clinic_ai_usage: { Args: { p_clinic: string }; Returns: Json }
       clinic_is_operational: { Args: { p_clinic: string }; Returns: boolean }
+      clinic_member_names: {
+        Args: { p_clinic: string }
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       confirm_trial_mandate: {
         Args: { p_mandate_ref: string; p_provider_id: string }
         Returns: string
@@ -2060,6 +2071,14 @@ export type Database = {
       }
       finish_ai_credit: {
         Args: { p_request: string; p_success: boolean }
+        Returns: string
+      }
+      invite_clinic_member: {
+        Args: {
+          p_clinic: string
+          p_email: string
+          p_role: Database["public"]["Enums"]["member_role"]
+        }
         Returns: string
       }
       owner_clinic_allowance: { Args: never; Returns: Json }
@@ -2150,6 +2169,13 @@ export type Database = {
       }
       review_document_update: {
         Args: { p_note: string; p_status: string; p_update: string }
+        Returns: undefined
+      }
+      set_clinic_member_status: {
+        Args: {
+          p_member: string
+          p_status: Database["public"]["Enums"]["member_status"]
+        }
         Returns: undefined
       }
       start_clinic_trial: {
