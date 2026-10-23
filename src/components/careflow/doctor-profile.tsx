@@ -26,7 +26,7 @@ export function DoctorProfile({ userId, clinicId, doctorId }: { userId: string; 
       await qc.invalidateQueries({ queryKey: ["doctors", userId, clinicId] });
       setEditing(false); setSaved(true);
     }} /> : <dl className="grid max-w-3xl gap-x-8 gap-y-6 text-sm sm:grid-cols-2">{[
-      ["Status", <StatusBadge tone={statusTone[d.status]}>{doctorStatusLabel[d.status]}</StatusBadge>],
+      ["Status", <StatusBadge tone={statusTone[d.status] ?? "neutral"}>{doctorStatusLabel[d.status]}</StatusBadge>],
       ["Specialty", d.specialization], ["Department", d.department], ["Qualification", d.qualification],
       ["Experience", `${d.experience_years} year${d.experience_years === 1 ? "" : "s"}`], ["License number", d.license_number],
       ["Consultation fee", d.consultation_fee != null ? `₹${d.consultation_fee}` : null],

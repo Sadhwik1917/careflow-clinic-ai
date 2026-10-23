@@ -35,7 +35,7 @@ export function DoctorForm({ doctor, onSave, onCancel }: { doctor: DoctorProfile
       {control("experience_years", "Experience (years)", 3)}
       {control("consultation_fee", "Consultation fee (₹)", 9)}
       <div className="min-w-0 space-y-2"><Label htmlFor="status">Status</Label><Select value={values.status} onValueChange={v => change("status", v)}><SelectTrigger id="status"><SelectValue /></SelectTrigger><SelectContent>{(["ACTIVE", "INACTIVE", "ON_LEAVE"] as const).map(s => <SelectItem key={s} value={s}>{doctorStatusLabel[s]}</SelectItem>)}</SelectContent></Select></div>
-      <div className="space-y-2 sm:col-span-2"><Label htmlFor="bio">Bio</Label><Textarea id="bio" maxLength={2000} value={values.bio ?? ""} onChange={e => change("bio", e.target.value)} aria-invalid={!!errors.bio} />{errors.bio && <p className="text-sm text-destructive">{errors.bio}</p>}</div>
+      <div className="space-y-2 sm:col-span-2"><Label htmlFor="bio">Bio</Label><Textarea id="bio" maxLength={2000} value={values['bio'] ?? ""} onChange={e => change("bio", e.target.value)} aria-invalid={!!errors['bio']} />{errors['bio'] && <p className="text-sm text-destructive">{errors['bio']}</p>}</div>
     </fieldset>
     {mutation.isError && <p role="alert" className="text-sm text-destructive">{mutation.error instanceof Error ? mutation.error.message : "Changes could not be saved."}</p>}
     <div className="flex flex-wrap gap-3 border-t pt-5"><Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? <LoaderCircle className="animate-spin" /> : <Save />}{mutation.isPending ? "Saving…" : "Save changes"}</Button><Button type="button" variant="outline" disabled={mutation.isPending} onClick={onCancel}>Cancel</Button></div>
