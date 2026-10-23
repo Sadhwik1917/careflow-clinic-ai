@@ -122,5 +122,5 @@ describe("invitation display states", () => {
     expect(invitationState({ status: "ACCEPTED", expires_at: "" }).label).toBe("Accepted");
     expect(invitationState({ status: "CANCELLED", expires_at: "" }).label).toBe("Cancelled");
   });
-  it("sanitizes search terms", () => { expect(teamSearchTerm('a%,b_(c)"')).toBe("ab(c)"); });
+  it("sanitizes search terms", () => { expect(teamSearchTerm('a%,b_(c)"')).toBe("abc"); });
 });
