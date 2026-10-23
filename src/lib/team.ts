@@ -14,7 +14,7 @@ export const staffFiltersSchema = z.object({ search, status: z.enum(["ALL", "ACT
 export type DoctorFilters = z.infer<typeof doctorFiltersSchema>;
 export type StaffFilters = z.infer<typeof staffFiltersSchema>;
 
-const optionalText = (max: number) => z.string().trim().max(max).transform(v => v || null);
+const optionalText = (max: number) => z.string().trim().max(max).transform(v => v || null).optional();
 /** Owner-editable doctor profile fields; clinic, account link and timestamps stay immutable. */
 export const doctorFieldsSchema = z.object({
   specialization: z.string().trim().min(1, "Specialty is required.").max(120),
@@ -22,7 +22,7 @@ export const doctorFieldsSchema = z.object({
   qualification: optionalText(200),
   experience_years: z.coerce.number().int("Enter whole years.").min(0, "Experience cannot be negative.").max(70, "Enter a realistic number of years."),
   license_number: optionalText(80),
-  consultation_fee: z.union([z.literal(""), z.coerce.number().min(0, "Fee cannot be negative.").max(1000000, "Enter a realistic fee.")]).transform(v => v === "" ? null : v),
+  consultation_fee: z.union([z.literal(""), z.coerce.number().min(0, "Fee cannot be negative.").max(1000000, "Enter a realistic fee.")]).transform(v => v === "" ? null : v).optional(),
   bio: optionalText(2000),
   status: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE"]),
 }).strict();
