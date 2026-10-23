@@ -47,7 +47,7 @@ export async function readDoctor(db: Client, clinicId: string, doctorId: string)
 }
 
 export async function editDoctor(db: Client, clinicId: string, doctorId: string, updatedAt: string, input: unknown) {
-  const fields = doctorFieldsSchema.parse(input);
+  const fields = Object.fromEntries(Object.entries(doctorFieldsSchema.parse(input)).filter(([, v]) => v !== undefined));
   const { data, error } = await db.from("doctor_profiles").update(fields).eq("clinic_id", clinicId).eq("id", doctorId).eq("updated_at", updatedAt).select("*").maybeSingle();
   if (error) throw new Error("Doctor changes weren't saved. Please try again.");
   if (!data) throw new Error("This doctor profile changed or is no longer available. Reload the profile before editing.");
