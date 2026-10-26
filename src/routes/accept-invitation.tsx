@@ -33,7 +33,7 @@ export const Route = createFileRoute("/accept-invitation")({
     token: typeof s["token"] === "string" ? s["token"] : typeof s["id"] === "string" ? s["id"] : undefined,
     confirmed: s["confirmed"] === true || s["confirmed"] === "true" || undefined,
   }),
-  head: () => publicMeta("Clinic Invitation", "Accept your clinic invitation to join CAREFLOW AI."),
+  head: () => publicMeta("Clinic Invitation", "Accept your clinic invitation to join CAREFLOW AI.", { noindex: true }),
   component: AcceptInvitationPage,
 });
 

@@ -1,14 +1,30 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# CAREFLOW AI Robots Directive
+# https://careflow-ai-ten.vercel.app
 
 User-agent: *
+
+# Public canonical pages
 Allow: /
+Allow: /about
+Allow: /contact
+Allow: /pricing
+Allow: /privacy
+Allow: /terms
+
+# Private, authenticated workspaces and transient flows
+Disallow: /clinic/
+Disallow: /doctor/
+Disallow: /staff/
+Disallow: /admin/
+Disallow: /patient/
+Disallow: /workspace
+Disallow: /accept-invitation
+Disallow: /auth/
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /forgot-password
+
+# Sitemap
+Sitemap: https://careflow-ai-ten.vercel.app/sitemap.xml

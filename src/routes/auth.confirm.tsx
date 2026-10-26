@@ -25,7 +25,7 @@ export const Route = createFileRoute("/auth/confirm")({
     error: typeof s["error"] === "string" ? s["error"] : undefined,
     error_description: typeof s["error_description"] === "string" ? s["error_description"] : undefined,
   }),
-  head: () => publicMeta("Email Confirmation", "Confirm your CAREFLOW AI email."),
+  head: () => publicMeta("Email Confirmation", "Confirm your CAREFLOW AI email.", { noindex: true }),
   component: AuthConfirmPage,
 });
 

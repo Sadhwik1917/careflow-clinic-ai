@@ -12,7 +12,7 @@ import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/login")({
   validateSearch: redirectSearch,
-  head: () => publicMeta("Sign in", "Sign in to your CAREFLOW AI clinic workspace."),
+  head: () => publicMeta("Sign in", "Sign in to your CAREFLOW AI clinic workspace.", { noindex: true }),
   component: LoginPage,
 });
 

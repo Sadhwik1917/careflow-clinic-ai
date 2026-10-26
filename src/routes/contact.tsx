@@ -6,6 +6,11 @@ import { PageTitle } from "@/components/careflow/page-title";
 import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/contact")({
-  head: () => publicMeta("Contact", "Get in touch with the CAREFLOW AI team."),
+  head: () =>
+    publicMeta(
+      "Contact",
+      "Get in touch with the CAREFLOW AI team for clinic onboarding, support inquiries, or practice management questions.",
+      "/contact"
+    ),
   component: () => <PublicLayout><PageTitle title="Contact" description="Get in touch with the CAREFLOW AI team." /><div className="rounded-lg border bg-card"><EmptyState icon={Mail} title="Contact details coming soon" description="Our contact information will be published here." /></div></PublicLayout>,
 });

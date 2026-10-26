@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/")({
-  head: () => publicMeta("Clinic management for modern practices", "CAREFLOW AI brings patients, appointments, queues, consultations and billing together in one calm clinic workspace."),
+  head: () =>
+    publicMeta(
+      "Clinic management for modern practices",
+      "CAREFLOW AI brings patients, appointments, queues, consultations and billing together in one calm clinic workspace.",
+      "/"
+    ),
   component: Index,
 });
 

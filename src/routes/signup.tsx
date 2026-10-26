@@ -15,7 +15,7 @@ export const Route = createFileRoute("/signup")({
     ...redirectSearch(s),
     email: typeof s["email"] === "string" ? s["email"] : undefined,
   }),
-  head: () => publicMeta("Create account", "Create your CAREFLOW AI account."),
+  head: () => publicMeta("Create account", "Create your CAREFLOW AI account.", { noindex: true }),
   component: SignupPage,
 });
 
