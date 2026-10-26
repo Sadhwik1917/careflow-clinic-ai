@@ -39,3 +39,36 @@ describe("webhook status mapping", () => {
     expect(canTransition("PENDING_PAYMENT", "ACTIVE")).toBe(true);
   });
 });
+
+describe("razorpayAuth credential resolution", () => {
+  const originalEnv = process.env;
+
+  it("resolves Basic auth header using RAZORPAY_KEY_*", async () => {
+    const { razorpayAuth } = await import("@/lib/subscriptions.server");
+    process.env = { ...originalEnv, RAZORPAY_KEY_ID: "key1", RAZORPAY_KEY_SECRET: "sec1" };
+    expect(razorpayAuth()).toBe("Basic " + btoa("key1:sec1"));
+  });
+
+  it("resolves Basic auth header using VITE_RAZORPAY_KEY_* fallback", async () => {
+    const { razorpayAuth } = await import("@/lib/subscriptions.server");
+    process.env = { ...originalEnv };
+    delete process.env["RAZORPAY_KEY_ID"];
+    delete process.env["RAZORPAY_KEY_SECRET"];
+    process.env["VITE_RAZORPAY_KEY_ID"] = "vite_key";
+    process.env["VITE_RAZORPAY_KEY_SECRET"] = "vite_sec";
+    expect(razorpayAuth()).toBe("Basic " + btoa("vite_key:vite_sec"));
+    process.env = originalEnv;
+  });
+
+  it("returns null when neither prefix is configured", async () => {
+    const { razorpayAuth } = await import("@/lib/subscriptions.server");
+    process.env = { ...originalEnv };
+    delete process.env["RAZORPAY_KEY_ID"];
+    delete process.env["RAZORPAY_KEY_SECRET"];
+    delete process.env["VITE_RAZORPAY_KEY_ID"];
+    delete process.env["VITE_RAZORPAY_KEY_SECRET"];
+    expect(razorpayAuth()).toBeNull();
+    process.env = originalEnv;
+  });
+});
+

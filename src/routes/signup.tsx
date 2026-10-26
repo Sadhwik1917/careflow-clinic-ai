@@ -11,7 +11,10 @@ import { authErrorMessage, useAuth } from "@/lib/auth";
 import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/signup")({
-  validateSearch: redirectSearch,
+  validateSearch: (s: Record<string, unknown>): { redirect?: string | undefined; email?: string | undefined } => ({
+    ...redirectSearch(s),
+    email: typeof s["email"] === "string" ? s["email"] : undefined,
+  }),
   head: () => publicMeta("Create account", "Create your CAREFLOW AI account."),
   component: SignupPage,
 });
@@ -25,36 +28,101 @@ const schema = z.object({
 type Field = "name" | "email" | "password" | "confirm";
 
 function SignupPage() {
-  const { redirect } = Route.useSearch();
+  const { redirect, email: initialEmail } = Route.useSearch();
   const navigate = useNavigate();
   const { session, ready } = useAuth();
-  const [values, setValues] = useState<Record<Field, string>>({ name: "", email: "", password: "", confirm: "" });
+  const [values, setValues] = useState<Record<Field, string>>({
+    name: "",
+    email: initialEmail ?? "",
+    password: "",
+    confirm: "",
+  });
   const [errors, setErrors] = useState<Partial<Record<Field, string | undefined>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const set = (k: Field) => (v: string) => setValues(s => ({ ...s, [k]: v }));
 
-  useEffect(() => { if (ready && session) void navigate({ to: redirect ?? "/workspace", replace: true }); }, [ready, session, redirect, navigate]);
+  useEffect(() => {
+    if (ready && session) void navigate({ to: redirect ?? "/workspace", replace: true });
+  }, [ready, session, redirect, navigate]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
     const parsed = schema.safeParse(values);
-    if (!parsed.success) { const f = parsed.error.flatten().fieldErrors; setErrors({ name: f.name?.[0], email: f.email?.[0], password: f.password?.[0], confirm: f.confirm?.[0] }); return; }
+    if (!parsed.success) {
+      const f = parsed.error.flatten().fieldErrors;
+      setErrors({ name: f.name?.[0], email: f.email?.[0], password: f.password?.[0], confirm: f.confirm?.[0] });
+      return;
+    }
     setErrors({});
     setSubmitting(true);
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const confirmCallbackUrl = redirect
+      ? `${origin}/auth/confirm?redirect=${encodeURIComponent(redirect)}`
+      : `${origin}/auth/confirm`;
+
     // display_name is read by the existing database signup trigger; no role or membership is sent.
-    const { data, error } = await supabase.auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: { emailRedirectTo: window.location.origin + "/login", data: { display_name: parsed.data.name } } });
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        emailRedirectTo: confirmCallbackUrl,
+        data: { display_name: parsed.data.name },
+      },
+    });
     setSubmitting(false);
-    if (error) { setFormError(authErrorMessage(error)); return; }
-    if (data.user && data.user.identities?.length === 0) { setFormError("An account with this email already exists. Try signing in instead."); return; }
+    if (error) {
+      setFormError(authErrorMessage(error));
+      return;
+    }
+    if (data.user && data.user.identities?.length === 0) {
+      setFormError("An account with this email already exists. Try signing in instead.");
+      return;
+    }
     if (!data.session) setSentTo(parsed.data.email);
   }
 
-  if (sentTo) return <AuthLayout title="Check your email" footer={<Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">Back to sign in</Link>}>
-    <div className="flex flex-col items-center gap-4 text-center"><span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary"><MailCheck className="size-6" /></span><p className="text-sm leading-relaxed text-muted-foreground">We sent a confirmation link to <span className="font-medium text-foreground">{sentTo}</span>. Open it to activate your account, then sign in.</p></div>
-  </AuthLayout>;
+  if (sentTo) {
+    return (
+      <AuthLayout
+        title="Check your email"
+        footer={
+          <div className="flex flex-col items-center gap-2">
+            <Link to="/login" search={{ redirect }} className="font-medium text-primary underline-offset-4 hover:underline">
+              Back to sign in
+            </Link>
+            {redirect && (
+              <Link to={redirect} className="text-xs text-muted-foreground hover:underline">
+                Return to invitation
+              </Link>
+            )}
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <span className="flex size-12 items-center justify-center rounded-full bg-secondary text-primary">
+            <MailCheck className="size-6" />
+          </span>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            We sent a confirmation link to <span className="font-medium text-foreground">{sentTo}</span>.
+            {redirect
+              ? " Click the link in that email to confirm your account and return directly to your clinic invitation."
+              : " Open it to activate your account, then sign in."}
+          </p>
+          {redirect && (
+            <div className="w-full space-y-2 pt-2">
+              <Button asChild variant="outline" className="w-full">
+                <Link to={redirect}>Return to invitation</Link>
+              </Button>
+            </div>
+          )}
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return <AuthLayout title="Create your account" description="Set up your CAREFLOW AI sign-in." footer={<>Already have an account? <Link to="/login" search={{ redirect }} className="font-medium text-primary underline-offset-4 hover:underline">Sign in</Link></>}>
     <form noValidate onSubmit={onSubmit} className="space-y-5">

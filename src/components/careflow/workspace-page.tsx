@@ -14,12 +14,25 @@ const metrics: Record<AppRole, { label: string; icon: LucideIcon }[]> = {
   PLATFORM_ADMIN: [{ label: "Clinics", icon: Building2 }, { label: "Subscriptions", icon: Receipt }, { label: "Users", icon: Users }, { label: "Analytics", icon: ClipboardCheck }],
 };
 
-export function WorkspacePage({ role, title, dashboard = false }: { role: AppRole; title: string; dashboard?: boolean }) {
-  if (!dashboard) return <><PageTitle title={title} description={`${roleLabels[role]} workspace`} actions={<StatusBadge>Preview</StatusBadge>} /><div className="border-t"><EmptyState title={`${title} workspace is not connected`} description="Live records and actions will be available in a later phase." icon={navigation[role].find(item => item.title === title)?.icon ?? ClipboardCheck} /></div></>;
+export function WorkspacePage({
+  role,
+  title,
+  dashboard = false,
+  actions,
+  extraContent,
+}: {
+  role: AppRole;
+  title: string;
+  dashboard?: boolean;
+  actions?: React.ReactNode;
+  extraContent?: React.ReactNode;
+}) {
+  if (!dashboard) return <><PageTitle title={title} description={`${roleLabels[role]} workspace`} actions={actions ?? <StatusBadge>Preview</StatusBadge>} /><div className="border-t"><EmptyState title={`${title} workspace is not connected`} description="Live records and actions will be available in a later phase." icon={navigation[role].find(item => item.title === title)?.icon ?? ClipboardCheck} /></div></>;
   const heading = role === "OWNER" ? "Clinic overview" : role === "PATIENT" ? "Your care overview" : role === "PLATFORM_ADMIN" ? "Platform overview" : role === "DOCTOR" ? "Clinical overview" : "Daily overview";
   const items = navigation[role].filter(item => item.group === "Workspace" && item.title !== "Dashboard").slice(0, 3);
   return <>
-    <PageTitle title={heading} description={role === "OWNER" ? "A clear view of your clinic, all in one place." : `${roleLabels[role]} workspace`} actions={<StatusBadge>Preview</StatusBadge>} />
+    <PageTitle title={heading} description={role === "OWNER" ? "A clear view of your clinic, all in one place." : `${roleLabels[role]} workspace`} actions={actions ?? <StatusBadge>Preview</StatusBadge>} />
+    {extraContent}
     <div className="mb-6 flex items-start gap-3 border-l-2 border-primary bg-secondary/50 px-4 py-3 text-sm text-secondary-foreground"><Info className="mt-0.5 size-4 shrink-0" /><p>This is a design preview. Clinic records, totals, and actions are not connected.</p></div>
     <section aria-label="Overview statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics[role].map(metric => <StatisticsCard key={metric.label} label={metric.label} value={null} detail="Not connected" icon={metric.icon} />)}</section>
     <div className="mt-9 grid gap-8 xl:grid-cols-[1.8fr_1fr]">

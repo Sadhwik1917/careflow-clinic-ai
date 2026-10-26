@@ -1,5 +1,5 @@
 /** Client-safe RAG rules. The database search/ingest functions are the authority; these only shape requests. */
-export const EMBEDDING_MODEL = "google/gemini-embedding-2";
+export const EMBEDDING_MODEL = "gemini-embedding-001";
 export const EMBEDDING_DIMS = 3072;
 export const MAX_CHUNK_CHARS = 2400; // ~600 tokens; well under the model's 8192-token input cap
 export const CHUNK_OVERLAP_CHARS = 200;

@@ -27,6 +27,7 @@ export function notificationTarget(n: Pick<NotificationRow, "type"> & { clinic_i
   }
   if (role === "OWNER" && (n.type.startsWith("VERIFICATION_") || n.type.startsWith("REVERIFICATION_"))) return "/clinic/verification";
   if (role === "OWNER" && n.type.startsWith("TRIAL_")) return "/clinic/plans";
+  if (role === "OWNER" && n.type === "MEMBER_JOINED") return "/clinic/staff";
   return null;
 }
 

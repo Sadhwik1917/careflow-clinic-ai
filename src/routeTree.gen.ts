@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AcceptInvitationRouteImport } from './routes/accept-invitation'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
@@ -26,6 +27,7 @@ import { Route as AuthenticatedSelectClinicRouteImport } from './routes/_authent
 import { Route as AuthenticatedSetupClinicRouteImport } from './routes/_authenticated/setup-clinic'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
+import { Route as AuthConfirmRouteImport } from './routes/auth.confirm'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -75,6 +77,7 @@ import { Route as AuthenticatedClinicDoctorsDoctorIdRouteImport } from './routes
 import { Route as AuthenticatedClinicPatientsIndexRouteImport } from './routes/_authenticated/clinic.patients.index'
 import { Route as AuthenticatedClinicPatientsPatientIdRouteImport } from './routes/_authenticated/clinic.patients.$patientId'
 import { Route as AuthenticatedClinicPatientsNewRouteImport } from './routes/_authenticated/clinic.patients.new'
+import { Route as ApiAuthCallbackGoogleGmailRouteImport } from './routes/api/auth/callback/google-gmail'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +91,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptInvitationRoute = AcceptInvitationRouteImport.update({
+  id: '/accept-invitation',
+  path: '/accept-invitation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -161,6 +169,11 @@ const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthConfirmRoute = AuthConfirmRouteImport.update({
+  id: '/auth/confirm',
+  path: '/auth/confirm',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminAnalyticsRoute =
   AuthenticatedAdminAnalyticsRouteImport.update({
@@ -453,10 +466,17 @@ const AuthenticatedClinicPatientsNewRoute =
     path: '/new',
     getParentRoute: () => AuthenticatedClinicPatientsRoute,
   } as any)
+const ApiAuthCallbackGoogleGmailRoute =
+  ApiAuthCallbackGoogleGmailRouteImport.update({
+    id: '/api/auth/callback/google-gmail',
+    path: '/api/auth/callback/google-gmail',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -471,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -515,6 +536,7 @@ export interface FileRoutesByFullPath {
   '/clinic/doctors/$doctorId': typeof AuthenticatedClinicDoctorsDoctorIdRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/api/auth/callback/google-gmail': typeof ApiAuthCallbackGoogleGmailRoute
   '/admin/clinics/': typeof AuthenticatedAdminClinicsIndexRoute
   '/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
@@ -524,6 +546,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -538,6 +561,7 @@ export interface FileRoutesByTo {
   '/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/staff': typeof AuthenticatedStaffRouteWithChildren
   '/workspace': typeof AuthenticatedWorkspaceRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -579,6 +603,7 @@ export interface FileRoutesByTo {
   '/clinic/doctors/$doctorId': typeof AuthenticatedClinicDoctorsDoctorIdRoute
   '/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/api/auth/callback/google-gmail': typeof ApiAuthCallbackGoogleGmailRoute
   '/admin/clinics': typeof AuthenticatedAdminClinicsIndexRoute
   '/admin/verifications': typeof AuthenticatedAdminVerificationsIndexRoute
   '/clinic/appointments': typeof AuthenticatedClinicAppointmentsIndexRoute
@@ -590,6 +615,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/contact': typeof ContactRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -604,6 +630,7 @@ export interface FileRoutesById {
   '/_authenticated/setup-clinic': typeof AuthenticatedSetupClinicRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRouteWithChildren
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
+  '/auth/confirm': typeof AuthConfirmRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -648,6 +675,7 @@ export interface FileRoutesById {
   '/_authenticated/clinic/doctors/$doctorId': typeof AuthenticatedClinicDoctorsDoctorIdRoute
   '/_authenticated/clinic/patients/$patientId': typeof AuthenticatedClinicPatientsPatientIdRoute
   '/_authenticated/clinic/patients/new': typeof AuthenticatedClinicPatientsNewRoute
+  '/api/auth/callback/google-gmail': typeof ApiAuthCallbackGoogleGmailRoute
   '/_authenticated/admin/clinics/': typeof AuthenticatedAdminClinicsIndexRoute
   '/_authenticated/admin/verifications/': typeof AuthenticatedAdminVerificationsIndexRoute
   '/_authenticated/clinic/appointments/': typeof AuthenticatedClinicAppointmentsIndexRoute
@@ -659,6 +687,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/accept-invitation'
     | '/contact'
     | '/forgot-password'
     | '/login'
@@ -673,6 +702,7 @@ export interface FileRouteTypes {
     | '/setup-clinic'
     | '/staff'
     | '/workspace'
+    | '/auth/confirm'
     | '/admin/analytics'
     | '/admin/dashboard'
     | '/admin/settings'
@@ -717,6 +747,7 @@ export interface FileRouteTypes {
     | '/clinic/doctors/$doctorId'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/api/auth/callback/google-gmail'
     | '/admin/clinics/'
     | '/admin/verifications/'
     | '/clinic/appointments/'
@@ -726,6 +757,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/accept-invitation'
     | '/contact'
     | '/forgot-password'
     | '/login'
@@ -740,6 +772,7 @@ export interface FileRouteTypes {
     | '/setup-clinic'
     | '/staff'
     | '/workspace'
+    | '/auth/confirm'
     | '/admin/analytics'
     | '/admin/dashboard'
     | '/admin/settings'
@@ -781,6 +814,7 @@ export interface FileRouteTypes {
     | '/clinic/doctors/$doctorId'
     | '/clinic/patients/$patientId'
     | '/clinic/patients/new'
+    | '/api/auth/callback/google-gmail'
     | '/admin/clinics'
     | '/admin/verifications'
     | '/clinic/appointments'
@@ -791,6 +825,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/about'
+    | '/accept-invitation'
     | '/contact'
     | '/forgot-password'
     | '/login'
@@ -805,6 +840,7 @@ export interface FileRouteTypes {
     | '/_authenticated/setup-clinic'
     | '/_authenticated/staff'
     | '/_authenticated/workspace'
+    | '/auth/confirm'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/settings'
@@ -849,6 +885,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clinic/doctors/$doctorId'
     | '/_authenticated/clinic/patients/$patientId'
     | '/_authenticated/clinic/patients/new'
+    | '/api/auth/callback/google-gmail'
     | '/_authenticated/admin/clinics/'
     | '/_authenticated/admin/verifications/'
     | '/_authenticated/clinic/appointments/'
@@ -860,13 +897,16 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
+  AcceptInvitationRoute: typeof AcceptInvitationRoute
   ContactRoute: typeof ContactRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  AuthConfirmRoute: typeof AuthConfirmRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
+  ApiAuthCallbackGoogleGmailRoute: typeof ApiAuthCallbackGoogleGmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -890,6 +930,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accept-invitation': {
+      id: '/accept-invitation'
+      path: '/accept-invitation'
+      fullPath: '/accept-invitation'
+      preLoaderRoute: typeof AcceptInvitationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -989,6 +1036,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workspace'
       preLoaderRoute: typeof AuthenticatedWorkspaceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth/confirm': {
+      id: '/auth/confirm'
+      path: '/auth/confirm'
+      fullPath: '/auth/confirm'
+      preLoaderRoute: typeof AuthConfirmRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/analytics': {
       id: '/_authenticated/admin/analytics'
@@ -1333,6 +1387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClinicPatientsNewRouteImport
       parentRoute: typeof AuthenticatedClinicPatientsRoute
     }
+    '/api/auth/callback/google-gmail': {
+      id: '/api/auth/callback/google-gmail'
+      path: '/api/auth/callback/google-gmail'
+      fullPath: '/api/auth/callback/google-gmail'
+      preLoaderRoute: typeof ApiAuthCallbackGoogleGmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1565,13 +1626,16 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
+  AcceptInvitationRoute: AcceptInvitationRoute,
   ContactRoute: ContactRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  AuthConfirmRoute: AuthConfirmRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
+  ApiAuthCallbackGoogleGmailRoute: ApiAuthCallbackGoogleGmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

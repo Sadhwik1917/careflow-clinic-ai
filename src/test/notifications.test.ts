@@ -26,6 +26,7 @@ describe("notifications", () => {
     expect(notificationTarget({ type: "REVERIFICATION_REMINDER" }, "OWNER")).toBe("/clinic/verification");
     expect(notificationTarget({ type: "VERIFICATION_SUSPENDED" }, "OWNER")).toBe("/clinic/verification");
     expect(notificationTarget({ type: "TRIAL_EXPIRY_REMINDER" }, "OWNER")).toBe("/clinic/plans");
+    expect(notificationTarget({ type: "MEMBER_JOINED" }, "OWNER")).toBe("/clinic/staff");
     expect(notificationTarget({ type: "VERIFICATION_APPROVED" }, "STAFF")).toBeNull();
   });
   it("routes admin submission notices to the clinic's admin pages, admins only", () => {

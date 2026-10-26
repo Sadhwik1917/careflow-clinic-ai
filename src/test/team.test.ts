@@ -2,36 +2,60 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { doctorFieldsSchema, doctorSearchExpression, inviteSchema, teamSearchTerm, invitationState } from "@/lib/team";
-import { assertTeamOwner, readDoctors, readDoctor, editDoctor, readStaff, readInvitations } from "@/lib/team.server";
+import { assertTeamOwner, readDoctors, readDoctor, editDoctor, readStaff, readInvitations, inviteMember, cancelInvitation, setMemberStatus } from "@/lib/team.server";
 
 const doctor = { id: "d1", clinic_id: "c1", user_id: "u1", specialization: "Cardiology", department: "OPD", qualification: "MD", experience_years: 8, license_number: "LIC-1", consultation_fee: 500, bio: null, availability: {}, status: "ACTIVE", created_at: "2026-10-22T00:00:00Z", updated_at: "2026-10-22T00:00:00Z" };
 const staffMember = { id: "m1", clinic_id: "c1", user_id: "u2", role: "STAFF", status: "ACTIVE", joined_at: "2026-10-22T00:00:00Z", created_at: "2026-10-22T00:00:00Z", updated_at: "2026-10-22T00:00:00Z" };
 const invitation = { id: "i1", clinic_id: "c1", email: "new@example.com", role: "DOCTOR", status: "PENDING", invited_by: "u0", expires_at: "2026-10-29T00:00:00Z", created_at: "2026-10-22T00:00:00Z" };
 
-function fakeDb(options: { role?: string; active?: boolean; operational?: boolean; admin?: boolean; stale?: boolean } = {}) {
+function fakeDb(options: { role?: string; active?: boolean; operational?: boolean; admin?: boolean; stale?: boolean; memberNotFound?: boolean; invNotFound?: boolean; duplicatePending?: boolean; rpcError?: boolean } = {}) {
   const calls: [string, unknown[]][] = [];
   const from = (table: string) => {
     const filters: Record<string, unknown> = {};
     const result = (single: boolean) => {
       if (table === "profiles") return { data: { platform_role: options.admin ? "PLATFORM_ADMIN" : "USER", status: "ACTIVE" }, error: null };
-      if (table === "clinic_members" && single) return { data: filters['clinic_id'] === "c1" ? { role: options.role ?? "OWNER", status: options.active === false ? "SUSPENDED" : "ACTIVE" } : null, error: null };
+      if (table === "clinic_members" && single) {
+        if (options.memberNotFound) return { data: null, error: null };
+        if (filters['user_id']) {
+          return { data: filters['clinic_id'] === "c1" ? { ...staffMember, user_id: String(filters['user_id']), role: options.role ?? "OWNER", status: options.active === false ? "SUSPENDED" : "ACTIVE" } : null, error: null };
+        }
+        return { data: filters['clinic_id'] === "c1" ? { ...staffMember, role: "STAFF", status: options.active === false ? "SUSPENDED" : "ACTIVE" } : null, error: null };
+      }
       if (table === "doctor_profiles") {
         const found = filters['clinic_id'] === doctor.clinic_id && (!filters['id'] || filters['id'] === doctor.id) && !options.stale;
         return { data: found ? doctor : null, count: found ? 1 : 0, error: null };
       }
-      if (table === "clinic_members") return { data: staffMember, count: 1, error: null };
-      return { data: invitation, count: 1, error: null };
+      if (table === "clinic_members") {
+        if (options.memberNotFound) return { data: null, count: 0, error: null };
+        return { data: staffMember, count: 1, error: null };
+      }
+      if (table === "clinic_invitations") {
+        if (options.invNotFound) return { data: null, count: 0, error: null };
+        if (options.duplicatePending) return { data: invitation, count: 1, error: null };
+        return { data: filters['status'] === "PENDING" && !options.duplicatePending ? null : invitation, count: 1, error: null };
+      }
+      return { data: null, count: 0, error: null };
     };
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "update", "order", "or", "eq", "in", "limit"]) chain[method] = (...args: unknown[]) => { calls.push([`${table}.${method}`, args]); if (method === "eq") filters[String(args[0])] = args[1]; return chain; };
+    for (const method of ["select", "update", "insert", "order", "or", "eq", "in", "limit"]) chain[method] = (...args: unknown[]) => { calls.push([`${table}.${method}`, args]); if (method === "eq") filters[String(args[0])] = args[1]; return chain; };
     chain['maybeSingle'] = async () => result(true);
+    chain['single'] = async () => ({ data: { id: "new-inv-1" }, error: null });
     chain['range'] = async (...args: unknown[]) => { calls.push([`${table}.range`, args]); const r = result(false); return { ...r, data: r.data ? [r.data] : [] }; };
     chain['then'] = (resolve: (v: unknown) => unknown) => { const r = result(false); return Promise.resolve(resolve({ ...r, data: r.data ? [r.data] : [] })); };
     return chain;
   };
-  const rpc = vi.fn(async (fn: string) => fn === "clinic_member_names"
-    ? { data: [{ user_id: "u1", display_name: "Asha Rao" }, { user_id: "u2", display_name: "Ravi Kumar" }], error: null }
-    : { data: options.operational !== false, error: null });
+  const rpc = vi.fn(async (fn: string) => {
+    if (fn === "clinic_member_names") {
+      return { data: [{ user_id: "u1", display_name: "Asha Rao" }, { user_id: "u2", display_name: "Ravi Kumar" }], error: null };
+    }
+    if (fn === "clinic_is_operational") {
+      return { data: options.operational !== false, error: null };
+    }
+    if (options.rpcError) {
+      return { data: null, error: { code: "42883", message: "function does not exist" } };
+    }
+    return { data: true, error: null };
+  });
   return { db: { from, rpc } as unknown as SupabaseClient<Database>, calls, rpc };
 }
 
@@ -123,4 +147,189 @@ describe("invitation display states", () => {
     expect(invitationState({ status: "CANCELLED", expires_at: "" }).label).toBe("Cancelled");
   });
   it("sanitizes search terms", () => { expect(teamSearchTerm('a%,b_(c)"')).toBe("abc"); });
+});
+
+describe("doctor profile field validation edge cases", () => {
+  it("rejects non-numeric and fractional experience years with clear messages", () => {
+    const nonNumeric = doctorFieldsSchema.safeParse({ specialization: "Cardiology", experience_years: "abc", status: "ACTIVE" });
+    expect(nonNumeric.success).toBe(false);
+    if (!nonNumeric.success) {
+      expect(nonNumeric.error.issues[0]?.message).toMatch(/valid number/);
+    }
+
+    const fractional = doctorFieldsSchema.safeParse({ specialization: "Cardiology", experience_years: "3.5", status: "ACTIVE" });
+    expect(fractional.success).toBe(false);
+    if (!fractional.success) {
+      expect(fractional.error.issues[0]?.message).toMatch(/whole years/);
+    }
+  });
+
+  it("rejects non-numeric and negative consultation fee with clear messages", () => {
+    const nonNumeric = doctorFieldsSchema.safeParse({ specialization: "Cardiology", experience_years: 5, consultation_fee: "bad", status: "ACTIVE" });
+    expect(nonNumeric.success).toBe(false);
+    if (!nonNumeric.success) {
+      expect(nonNumeric.error.issues[0]?.message).toMatch(/valid consultation fee/);
+    }
+
+    const negative = doctorFieldsSchema.safeParse({ specialization: "Cardiology", experience_years: 5, consultation_fee: "-100", status: "ACTIVE" });
+    expect(negative.success).toBe(false);
+    if (!negative.success) {
+      expect(negative.error.issues[0]?.message).toMatch(/cannot be negative/);
+    }
+  });
+
+  it("parses valid positive fee and coerces empty or null to null", () => {
+    const valid = doctorFieldsSchema.parse({ specialization: "Cardiology", experience_years: 5, consultation_fee: "750", status: "ACTIVE" });
+    expect(valid.consultation_fee).toBe(750);
+
+    const empty = doctorFieldsSchema.parse({ specialization: "Cardiology", experience_years: 5, consultation_fee: "", status: "ACTIVE" });
+    expect(empty.consultation_fee).toBeNull();
+  });
+});
+
+describe("doctor profile updates and audit logging", () => {
+  it("records an audit log entry when callerUserId is provided", async () => {
+    const fields = { specialization: "Cardiology", experience_years: 8, status: "ACTIVE" as const };
+    const { db, calls } = fakeDb();
+    await editDoctor(db, "c1", "d1", doctor.updated_at, fields, "u-owner-1");
+
+    expect(calls).toContainEqual([
+      "audit_logs.insert",
+      [
+        expect.objectContaining({
+          clinic_id: "c1",
+          user_id: "u-owner-1",
+          action: "DOCTOR_PROFILE_UPDATED",
+          entity_type: "DOCTOR_PROFILE",
+          entity_id: "d1",
+          metadata: { changed_fields: ["specialization", "experience_years", "status"] },
+        }),
+      ],
+    ]);
+  });
+});
+
+describe("invitation and member status lifecycle", () => {
+  it("enforces clinic Gmail connection before sending invitations", async () => {
+    const { db } = fakeDb({ rpcError: true });
+    await expect(
+      inviteMember(db, "c1", "newstaff@careflow.test", "STAFF", "u-owner-1")
+    ).rejects.toThrow("Gmail not connected.");
+  });
+
+  it("allows owner to invite a member and records audit log when email delivery is handled", async () => {
+    const { db, calls } = fakeDb({ rpcError: true });
+    const res = await inviteMember(db, "c1", "newstaff@careflow.test", "STAFF", "u-owner-1", { skipEmailDelivery: true });
+    expect(res.ok).toBe(true);
+
+    expect(calls).toContainEqual([
+      "clinic_invitations.insert",
+      [
+        expect.objectContaining({
+          clinic_id: "c1",
+          email: "newstaff@careflow.test",
+          role: "STAFF",
+          invited_by: "u-owner-1",
+          status: "PENDING",
+        }),
+      ],
+    ]);
+    expect(calls).toContainEqual([
+      "audit_logs.insert",
+      [
+        expect.objectContaining({
+          clinic_id: "c1",
+          user_id: "u-owner-1",
+          action: "MEMBER_INVITED",
+          entity_type: "CLINIC_INVITATION",
+          metadata: { role: "STAFF" },
+        }),
+      ],
+    ]);
+  });
+
+  it("prevents duplicate pending invitations for the same email", async () => {
+    const { db } = fakeDb({ rpcError: true, duplicatePending: true });
+    await expect(
+      inviteMember(db, "c1", "new@example.com", "DOCTOR", "u-owner-1", { skipEmailDelivery: true })
+    ).rejects.toThrow("A pending invitation already exists for this email.");
+  });
+
+  it("refuses non-owner to invite members", async () => {
+    const { db } = fakeDb({ role: "STAFF" });
+    await expect(
+      inviteMember(db, "c1", "test@example.com", "STAFF", "u-staff-1")
+    ).rejects.toThrow("Team management is unavailable for this clinic.");
+  });
+
+  it("allows owner to cancel a pending invitation and records audit log", async () => {
+    const { db, calls } = fakeDb({ rpcError: true });
+    const res = await cancelInvitation(db, "c1", "i1", "u-owner-1");
+    expect(res.ok).toBe(true);
+
+    expect(calls).toContainEqual(["clinic_invitations.update", [{ status: "CANCELLED" }]]);
+    expect(calls).toContainEqual([
+      "audit_logs.insert",
+      [
+        expect.objectContaining({
+          clinic_id: "c1",
+          user_id: "u-owner-1",
+          action: "MEMBER_INVITATION_CANCELLED",
+          entity_type: "CLINIC_INVITATION",
+          entity_id: "i1",
+          metadata: { role: "DOCTOR" },
+        }),
+      ],
+    ]);
+  });
+
+  it("refuses to cancel non-existent or foreign invitations", async () => {
+    const { db } = fakeDb({ rpcError: true, invNotFound: true });
+    await expect(
+      cancelInvitation(db, "c1", "foreign-inv", "u-owner-1")
+    ).rejects.toThrow("Invitation not found.");
+  });
+
+  it("allows owner to suspend, reactivate, or remove a member and records audit log", async () => {
+    const { db, calls } = fakeDb({ rpcError: true });
+    const res = await setMemberStatus(db, "c1", "m1", "SUSPENDED", "u-owner-1");
+    expect(res.ok).toBe(true);
+
+    expect(calls).toContainEqual([
+      "clinic_members.update",
+      [
+        expect.objectContaining({
+          status: "SUSPENDED",
+        }),
+      ],
+    ]);
+    expect(calls).toContainEqual([
+      "audit_logs.insert",
+      [
+        expect.objectContaining({
+          clinic_id: "c1",
+          user_id: "u-owner-1",
+          action: "MEMBER_STATUS_CHANGED",
+          entity_type: "CLINIC_MEMBER",
+          entity_id: "m1",
+          metadata: { from: "ACTIVE", to: "SUSPENDED" },
+        }),
+      ],
+    ]);
+  });
+
+  it("prevents owners from modifying their own membership status", async () => {
+    const { db } = fakeDb({ rpcError: true });
+    // staffMember has user_id: "u2"
+    await expect(
+      setMemberStatus(db, "c1", "m1", "SUSPENDED", "u2")
+    ).rejects.toThrow("You cannot change your own membership.");
+  });
+
+  it("refuses non-owner to change member status", async () => {
+    const { db } = fakeDb({ role: "STAFF" });
+    await expect(
+      setMemberStatus(db, "c1", "m1", "SUSPENDED", "u-staff-1")
+    ).rejects.toThrow("Team management is unavailable for this clinic.");
+  });
 });

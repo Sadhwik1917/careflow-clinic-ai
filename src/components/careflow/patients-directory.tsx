@@ -11,6 +11,8 @@ import { PageTitle } from "./page-title";
 import { EmptyState, StatusBadge } from "./feedback";
 import { MotionReveal } from "./motion-primitives";
 
+import { PatientQrDialog } from "./patient-qr-dialog";
+
 export function PatientsDirectory({ userId, clinicId, filters }: { userId: string; clinicId: string; filters: PatientFilters }) {
   const { data, isRefetchError } = useSuspenseQuery(patientsQuery(userId, clinicId, filters));
   const navigate = useNavigate();
@@ -19,7 +21,7 @@ export function PatientsDirectory({ userId, clinicId, filters }: { userId: strin
   const pages = Math.max(1, Math.ceil(data.count / PATIENT_PAGE_SIZE));
   const change = (patch: Partial<PatientFilters>) => navigate({ to: "/clinic/patients", search: { ...filters, ...patch } });
   useEffect(() => { if (filters.page >= pages) void navigate({ to: "/clinic/patients", search: { ...filters, page: pages - 1 }, replace: true }); }, [filters, pages, navigate]);
-  return <><PageTitle title="Patients" actions={<Button asChild><Link to="/clinic/patients/new"><Plus />Register patient</Link></Button>} />
+  return <><PageTitle title="Patients" actions={<div className="flex flex-wrap items-center gap-2"><PatientQrDialog clinicId={clinicId} /><Button asChild><Link to="/clinic/patients/new"><Plus />Register patient</Link></Button></div>} />
     <MotionReveal className="space-y-5 border-t py-6">
       <form className="flex max-w-md gap-2" onSubmit={e => { e.preventDefault(); void change({ search: search.trim(), page: 0 }); }}><Input aria-label="Search patients" placeholder="Patient name or number" maxLength={100} value={search} onChange={e => setSearch(e.target.value)} /><Button type="submit" variant="outline" size="icon" aria-label="Search"><Search /></Button>{filters.search && <Button type="button" variant="ghost" onClick={() => { setSearch(""); void change({ search: "", page: 0 }); }}>Clear</Button>}</form>
       {isRefetchError && <p role="alert" className="text-sm text-destructive">Refresh failed. Showing the last loaded patients.</p>}
