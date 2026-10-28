@@ -14,6 +14,7 @@ import { clinicAllowanceQuery } from "@/lib/plan-state";
 import { addClinicErrorMessage } from "@/lib/entitlements";
 import { setSelectedClinicId } from "@/lib/access";
 import { ThemeSelector } from "@/components/careflow/theme-selector";
+import { ClinicScheduleSettings } from "@/components/careflow/clinic-schedule-settings";
 
 export const Route = createFileRoute("/_authenticated/clinic/settings")({
   head: () => pageMetadata("Settings", "OWNER"),
@@ -24,6 +25,7 @@ const fields = [["displayName", "Clinic Display Name", 60], ["name", "Clinic nam
 type Form = Record<(typeof fields)[number][0], string>;
 
 function Page() {
+  const { user, membership } = Route.useRouteContext();
   const allowance = useQuery(clinicAllowanceQuery);
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -68,6 +70,12 @@ function Page() {
             <div className="flex gap-2 md:col-span-2"><Button type="submit" disabled={busy}>{busy && <Loader2 className="animate-spin" />}Add clinic and start verification</Button><Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>Close</Button></div>
           </form>}
       </section>
+      {membership?.clinic_id && (
+        <ClinicScheduleSettings
+          userId={user.id}
+          clinicId={membership.clinic_id}
+        />
+      )}
     </div>
   </>;
 }

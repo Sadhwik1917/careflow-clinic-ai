@@ -100,7 +100,7 @@ export const verifySubscriptionPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseCheckoutResult)
   .handler(async ({ data, context }): Promise<VerifyPaymentResult> => {
-    const keySecret = process.env["RAZORPAY_KEY_SECRET"] || process.env["VITE_RAZORPAY_KEY_SECRET"];
+    const keySecret = process.env["RAZORPAY_KEY_SECRET"];
     if (!keySecret) return { ok: false, error: "Payments aren't configured yet." };
     if (!(await verifyCheckoutSignature(keySecret, data.paymentId, data.subscriptionId, data.signature))) {
       console.error("[subscriptions] invalid checkout signature");

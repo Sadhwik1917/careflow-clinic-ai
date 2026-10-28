@@ -259,11 +259,9 @@ export async function acceptInvitation(
     throw new Error("This clinic is not currently operational.");
   }
 
-  if (privilegedDb === db) {
-    const { data: op } = await db.rpc("clinic_is_operational", { p_clinic: inv.clinic_id });
-    if (op === false) {
-      throw new Error("This clinic is not currently operational.");
-    }
+  const { data: op } = await privilegedDb.rpc("clinic_is_operational", { p_clinic: inv.clinic_id });
+  if (op === false) {
+    throw new Error("This clinic is not currently operational.");
   }
 
   if (!userEmail || userEmail.trim().toLowerCase() !== inv.email.trim().toLowerCase()) {

@@ -49,14 +49,15 @@ describe("razorpayAuth credential resolution", () => {
     expect(razorpayAuth()).toBe("Basic " + btoa("key1:sec1"));
   });
 
-  it("resolves Basic auth header using VITE_RAZORPAY_KEY_* fallback", async () => {
+  it("rejects VITE_RAZORPAY_KEY_SECRET to prevent client-side secret exposure", async () => {
     const { razorpayAuth } = await import("@/lib/subscriptions.server");
     process.env = { ...originalEnv };
     delete process.env["RAZORPAY_KEY_ID"];
     delete process.env["RAZORPAY_KEY_SECRET"];
     process.env["VITE_RAZORPAY_KEY_ID"] = "vite_key";
     process.env["VITE_RAZORPAY_KEY_SECRET"] = "vite_sec";
-    expect(razorpayAuth()).toBe("Basic " + btoa("vite_key:vite_sec"));
+    // Secret must NOT be resolved from VITE_RAZORPAY_KEY_SECRET
+    expect(razorpayAuth()).toBeNull();
     process.env = originalEnv;
   });
 
