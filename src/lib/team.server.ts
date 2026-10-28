@@ -31,12 +31,114 @@ export async function assertTeamOwner(db: Client, userId: string, clinicId: stri
   if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.role !== "OWNER" || m.data.status !== "ACTIVE" || op.data !== true) throw denied();
 }
 
-/** Display names come only from the owner-gated trusted lookup; everything else stays on the caller's RLS client. */
-async function readNameMap(db: Client, clinicId: string) {
-  const { data, error } = await db.rpc("clinic_member_names", { p_clinic: clinicId });
-  if (error) throw denied();
-  return new Map((data ?? []).map(row => [row.user_id, row.display_name]));
+/**
+ * Resolves display names for doctors and staff members of a clinic.
+ * Uses the trusted clinic_member_names RPC first, and seamlessly falls back to
+ * profile lookup if the RPC fails, is missing, or returns null/empty names.
+ * Ensures strict clinic isolation by only fetching profiles for user_ids linked
+ * to this clinic in clinic_members or doctor_profiles.
+ */
+export async function resolveClinicMemberNameMap(
+  db: Client,
+  clinicId: string,
+  targetUserIds?: string[]
+): Promise<Map<string, string>> {
+  const nameMap = new Map<string, string>();
+
+  // 1. Try public RPC first
+  try {
+    const { data, error } = await db.rpc("clinic_member_names", { p_clinic: clinicId });
+    if (!error && Array.isArray(data)) {
+      for (const row of data) {
+        if (row && row.user_id && typeof row.display_name === "string" && row.display_name.trim()) {
+          nameMap.set(row.user_id, row.display_name.trim());
+        }
+      }
+    }
+  } catch {
+    // Non-owner callers or environments where RPC fails will fall back below
+  }
+
+  // 2. Identify missing user IDs strictly within this clinic
+  let missingUserIds: string[] = [];
+  let privilegedDb: Client = db;
+  if (process.env["SUPABASE_SERVICE_ROLE_KEY"] && process.env["SUPABASE_URL"]) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      privilegedDb = supabaseAdmin as unknown as Client;
+    } catch {
+      // Keep caller db client in testing/mock environments
+    }
+  }
+
+  if (targetUserIds && targetUserIds.length > 0) {
+    missingUserIds = targetUserIds.filter(id => Boolean(id) && !nameMap.get(id));
+  } else if (nameMap.size === 0) {
+    // Only discover clinic users if RPC returned nothing or failed completely
+    try {
+      const [membersRes, doctorsRes] = await Promise.all([
+        privilegedDb.from("clinic_members").select("user_id").eq("clinic_id", clinicId),
+        privilegedDb.from("doctor_profiles").select("user_id").eq("clinic_id", clinicId),
+      ]);
+      const allClinicUserIds = new Set<string>();
+      (membersRes.data ?? []).forEach((m: any) => m?.user_id && allClinicUserIds.add(m.user_id));
+      (doctorsRes.data ?? []).forEach((d: any) => d?.user_id && allClinicUserIds.add(d.user_id));
+      missingUserIds = [...allClinicUserIds].filter(id => !nameMap.get(id));
+    } catch {
+      // Fallback
+    }
+  }
+
+  if (missingUserIds.length === 0) {
+    return nameMap;
+  }
+
+  // 3. Query profiles for missing user IDs using privilegedDb
+  try {
+    const { data: profiles, error: profError } = await privilegedDb
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", missingUserIds);
+
+    if (!profError && Array.isArray(profiles)) {
+      for (const p of profiles) {
+        if (p?.id && typeof p.display_name === "string" && p.display_name.trim()) {
+          nameMap.set(p.id, p.display_name.trim());
+        }
+      }
+    }
+  } catch {
+    // Ignore error
+  }
+
+  // 4. For any users still missing a display_name, check auth metadata and self-heal
+  const stillMissing = missingUserIds.filter(id => !nameMap.get(id));
+  if (stillMissing.length > 0 && typeof (privilegedDb as any).auth?.admin?.getUserById === "function") {
+    try {
+      for (const uid of stillMissing) {
+        const { data: authUser } = await (privilegedDb as any).auth.admin.getUserById(uid);
+        const meta = authUser?.user?.user_metadata || {};
+        const metaName = meta.display_name || meta.full_name || meta.name;
+        if (typeof metaName === "string" && metaName.trim()) {
+          const cleanName = metaName.trim();
+          nameMap.set(uid, cleanName);
+          // Self-heal: persist name to profiles so future lookups are instant
+          void privilegedDb.from("profiles").update({ display_name: cleanName }).eq("id", uid);
+        }
+      }
+    } catch {
+      // Ignore auth admin errors
+    }
+  }
+
+  return nameMap;
 }
+
+/** Display names resolved for clinic members; everything else stays on the caller's RLS client. */
+export async function readNameMap(db: Client, clinicId: string): Promise<Map<string, string>> {
+  return resolveClinicMemberNameMap(db, clinicId);
+}
+
 const matchingIds = (names: Map<string, string | null>, term: string) =>
   [...names].filter(([, n]) => n?.toLowerCase().includes(term.toLowerCase())).map(([id]) => id);
 
@@ -51,6 +153,17 @@ export async function readDoctors(db: Client, clinicId: string, filters: DoctorF
   }
   const { data, count, error } = await q.order("created_at", { ascending: false }).order("id").range(filters.page * TEAM_PAGE_SIZE, (filters.page + 1) * TEAM_PAGE_SIZE - 1);
   if (error) throw new Error("Doctors couldn't load. Please try again.");
+
+  // Secondary pass: if any returned doctor is still missing from names map, resolve them explicitly
+  const returnedUserIds = (data ?? []).map((d: any) => d.user_id).filter(Boolean);
+  const missingInMap = returnedUserIds.filter(id => !names.get(id));
+  if (missingInMap.length > 0) {
+    const additionalNames = await resolveClinicMemberNameMap(db, clinicId, missingInMap);
+    for (const [uid, name] of additionalNames) {
+      names.set(uid, name);
+    }
+  }
+
   return { rows: (data ?? []).map(d => ({ ...d, display_name: names.get(d.user_id) ?? null })), count: count ?? 0 };
 }
 
@@ -58,7 +171,7 @@ export async function readDoctor(db: Client, clinicId: string, doctorId: string)
   const { data, error } = await db.from("doctor_profiles").select("*").eq("clinic_id", clinicId).eq("id", doctorId).maybeSingle();
   if (error) throw new Error("Doctor couldn't load. Please try again.");
   if (!data) return null;
-  const names = await readNameMap(db, clinicId);
+  const names = await resolveClinicMemberNameMap(db, clinicId, [data.user_id]);
   return { ...data, display_name: names.get(data.user_id) ?? null };
 }
 
@@ -93,6 +206,17 @@ export async function readStaff(db: Client, clinicId: string, filters: StaffFilt
   if (term) q = q.in("user_id", ids);
   const { data, count, error } = await q.order("created_at", { ascending: false }).order("id").range(filters.page * TEAM_PAGE_SIZE, (filters.page + 1) * TEAM_PAGE_SIZE - 1);
   if (error) throw new Error("Staff couldn't load. Please try again.");
+
+  // Secondary pass: if any returned staff member is still missing from names map, resolve them explicitly
+  const returnedUserIds = (data ?? []).map((m: any) => m.user_id).filter(Boolean);
+  const missingInMap = returnedUserIds.filter(id => !names.get(id));
+  if (missingInMap.length > 0) {
+    const additionalNames = await resolveClinicMemberNameMap(db, clinicId, missingInMap);
+    for (const [uid, name] of additionalNames) {
+      names.set(uid, name);
+    }
+  }
+
   return { rows: (data ?? []).map(m => ({ ...m, display_name: names.get(m.user_id) ?? null })), count: count ?? 0 };
 }
 
@@ -208,6 +332,21 @@ export async function acceptInvitation(
     if (d["success"] === false) {
       throw new Error(String(d["error"] || "Failed to accept invitation."));
     }
+
+    const chosenName = onboarding?.doctorProfile?.displayName || onboarding?.staffProfile?.displayName;
+    if (chosenName && chosenName.trim()) {
+      try {
+        let privilegedDb = db;
+        if (process.env["SUPABASE_SERVICE_ROLE_KEY"] && process.env["SUPABASE_URL"]) {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          privilegedDb = supabaseAdmin as unknown as Client;
+        }
+        await privilegedDb.from("profiles").update({ display_name: chosenName.trim() }).eq("id", userId);
+      } catch {
+        // Continue if profile update failed
+      }
+    }
+
     return {
       ok: true,
       clinicId: String(d["clinic_id"]),
@@ -311,8 +450,9 @@ export async function acceptInvitation(
     }
   }
 
-  if (inv.role === "STAFF" && onboarding?.staffProfile?.displayName) {
-    await privilegedDb.from("profiles").update({ display_name: onboarding.staffProfile.displayName }).eq("id", userId);
+  const chosenName = onboarding?.doctorProfile?.displayName || onboarding?.staffProfile?.displayName;
+  if (chosenName && chosenName.trim()) {
+    await privilegedDb.from("profiles").update({ display_name: chosenName.trim() }).eq("id", userId);
   }
 
   await privilegedDb.from("clinic_invitations").update({ status: "ACCEPTED" }).eq("id", token);

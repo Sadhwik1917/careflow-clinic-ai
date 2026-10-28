@@ -70,11 +70,11 @@ export async function getCallerDoctorProfile(db: Client, userId: string, clinicI
 
 /**
  * Reads display name map for doctors and members.
+ * Uses shared resolveClinicMemberNameMap to guarantee consistent, clinic-scoped name resolution.
  */
 export async function readDoctorNameMap(db: Client, clinicId: string): Promise<Map<string, string>> {
-  const { data, error } = await db.rpc("clinic_member_names", { p_clinic: clinicId });
-  if (error || !data) return new Map();
-  return new Map(data.map((d) => [d.user_id, d.display_name ?? "Doctor"]));
+  const { resolveClinicMemberNameMap } = await import("./team.server");
+  return resolveClinicMemberNameMap(db, clinicId);
 }
 
 /**

@@ -205,6 +205,7 @@ function AcceptInvitationPage() {
 
     if (currentPreview.role === "DOCTOR") {
       const parsedDoc = doctorOnboardingSchema.safeParse({
+        displayName,
         specialization,
         department,
         qualification,
@@ -421,6 +422,17 @@ function AcceptInvitationPage() {
                 <div className="flex items-center gap-2 border-b pb-2">
                   <Stethoscope className="size-4 text-primary" />
                   <h2 className="text-sm font-semibold text-foreground">Doctor Clinical Profile</h2>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="doc-name">Full Name / Display Name</Label>
+                  <Input
+                    id="doc-name"
+                    placeholder="e.g. Dr. Jane Smith"
+                    maxLength={120}
+                    value={displayName}
+                    onChange={e => setDisplayName(e.target.value)}
+                  />
                 </div>
 
                 <div className="space-y-2">

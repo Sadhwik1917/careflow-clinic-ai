@@ -1,18 +1,25 @@
 import { useState, useId } from "react";
-import { Check, Copy, Download, Printer, QrCode } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Camera, Check, Copy, Download, Printer, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { MotionDialogContent, DialogTitle, DialogDescription } from "./motion-primitives";
+import { PatientQrScanner } from "./patient-qr-scanner";
 import { generateQrSvg } from "@/lib/qr";
+import { createPatientRegistrationUrl } from "@/lib/qr-payload";
 import { toast } from "@/lib/toast";
 
 export function PatientQrDialog({ clinicId }: { clinicId?: string }) {
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"display" | "scan">("display");
   const [copied, setCopied] = useState(false);
   const titleId = useId();
+  const navigate = useNavigate();
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const registrationUrl = `${origin}/clinic/patients/new${clinicId ? `?clinic=${encodeURIComponent(clinicId)}` : ""}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://careflow-clinic.internal";
+  const registrationUrl = clinicId
+    ? createPatientRegistrationUrl(origin, clinicId)
+    : `${origin}/clinic/patients/new`;
   const svgMarkup = generateQrSvg(registrationUrl, { size: 280, margin: 4 });
 
   const copyLink = async () => {
@@ -105,40 +112,88 @@ export function PatientQrDialog({ clinicId }: { clinicId?: string }) {
         </Button>
       </DialogTrigger>
       <MotionDialogContent className="max-w-md">
-        <DialogTitle id={titleId}>Register with QR Code</DialogTitle>
+        <DialogTitle id={titleId}>Patient Registration QR</DialogTitle>
         <DialogDescription>
-          Scan this code with your phone to open patient registration.
+          Display the clinic QR code for desk registration, or scan a patient registration code using your camera.
         </DialogDescription>
 
-        <div className="mt-4 flex flex-col items-center justify-center rounded-xl border bg-white p-6 shadow-sm">
-          <div
-            className="size-64 overflow-hidden rounded-lg flex items-center justify-center"
-            dangerouslySetInnerHTML={{ __html: svgMarkup }}
-            role="img"
-            aria-label="Patient registration QR code"
-          />
-          <p className="mt-4 text-center text-xs font-medium text-slate-600">
-            Scan this code with your phone to open patient registration.
-          </p>
+        {/* Mode Switcher */}
+        <div className="mt-3 flex border-b border-border">
+          <button
+            type="button"
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === "display"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("display")}
+          >
+            <QrCode className="size-3.5" />
+            Display QR Code
+          </button>
+          <button
+            type="button"
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === "scan"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("scan")}
+          >
+            <Camera className="size-3.5" />
+            Scan QR Code
+          </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink} className="gap-1.5 text-xs">
-            {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
-            {copied ? "Copied" : "Copy link"}
-          </Button>
+        {activeTab === "display" ? (
+          <>
+            <div className="mt-4 flex flex-col items-center justify-center rounded-xl border bg-white p-6 shadow-sm">
+              <div
+                className="size-64 overflow-hidden rounded-lg flex items-center justify-center"
+                dangerouslySetInnerHTML={{ __html: svgMarkup }}
+                role="img"
+                aria-label="Patient registration QR code"
+              />
+              <p className="mt-4 text-center text-xs font-medium text-slate-600">
+                Scan this code with any phone camera to open registration.
+              </p>
+            </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={downloadSvg} className="gap-1.5 text-xs">
-              <Download className="size-3.5" />
-              Download SVG
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
-              <Printer className="size-3.5" />
-              Print
-            </Button>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+              <Button variant="outline" size="sm" onClick={copyLink} className="gap-1.5 text-xs">
+                {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+                {copied ? "Copied" : "Copy link"}
+              </Button>
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={downloadSvg} className="gap-1.5 text-xs">
+                  <Download className="size-3.5" />
+                  Download SVG
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
+                  <Printer className="size-3.5" />
+                  Print
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="mt-4">
+            <PatientQrScanner
+              clinicId={clinicId}
+              isActive={open && activeTab === "scan"}
+              onSuccess={result => {
+                toast.success("Clinic registration verified");
+                setOpen(false);
+                void navigate({
+                  to: "/clinic/patients/new",
+                  search: { clinic: result.clinicId },
+                });
+              }}
+              onCancel={() => setOpen(false)}
+            />
           </div>
-        </div>
+        )}
       </MotionDialogContent>
     </Dialog>
   );

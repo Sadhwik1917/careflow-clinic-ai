@@ -73,6 +73,7 @@ export function invitationState(inv: Pick<InvitationRow, "status" | "expires_at"
 }
 
 export const doctorOnboardingSchema = z.object({
+  displayName: optionalText(120),
   specialization: z.string().trim().min(1, "Specialty is required.").max(120),
   department: optionalText(120),
   qualification: optionalText(200),
