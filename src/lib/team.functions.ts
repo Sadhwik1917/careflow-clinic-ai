@@ -18,7 +18,7 @@ export const getClinicDoctor = createServerFn({ method: "POST" }).middleware([re
   .inputValidator(i => doctor.strict().parse(i))
   .handler(async ({ data, context }) => {
     const s = await import("./team.server");
-    await s.assertTeamOwner(context.supabase, context.userId, data.clinicId);
+    await s.assertDoctorOrOwner(context.supabase, context.userId, data.clinicId, data.doctorId);
     return s.readDoctor(context.supabase, data.clinicId, data.doctorId);
   });
 
@@ -26,9 +26,10 @@ export const updateClinicDoctor = createServerFn({ method: "POST" }).middleware(
   .inputValidator(i => doctor.extend({ updatedAt: z.string().datetime({ offset: true }), fields: z.unknown().refine(v => doctorFieldsSchema.safeParse(v).success, "Invalid doctor changes.") }).strict().parse(i))
   .handler(async ({ data, context }) => {
     const s = await import("./team.server");
-    await s.assertTeamOwner(context.supabase, context.userId, data.clinicId);
+    await s.assertDoctorOrOwner(context.supabase, context.userId, data.clinicId, data.doctorId);
     return s.editDoctor(context.supabase, data.clinicId, data.doctorId, data.updatedAt, data.fields, context.userId);
   });
+
 
 export const listClinicStaff = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
   .inputValidator(i => clinic.extend({ filters: staffFiltersSchema }).strict().parse(i))
@@ -117,4 +118,37 @@ export const acceptClinicInvitation = createServerFn({ method: "POST" })
       staffProfile: data.staffProfile,
     });
   });
+
+export const getMyDoctorProfileFn = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator(i => clinic.strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./team.server");
+    return s.readDoctorSelf(context.supabase, data.clinicId, context.userId);
+  });
+
+export const updateMyDoctorProfileFn = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator(i => clinic.extend({
+    updatedAt: z.string().datetime({ offset: true }),
+    fields: z.unknown().refine(v => doctorFieldsSchema.safeParse(v).success, "Invalid doctor changes."),
+    displayName: z.string().trim().max(120).optional(),
+  }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./team.server");
+    return s.editDoctorSelf(context.supabase, data.clinicId, context.userId, data.updatedAt, data.fields, data.displayName);
+  });
+
+export const getMyStaffProfileFn = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator(i => clinic.strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./team.server");
+    return s.readStaffSelf(context.supabase, data.clinicId, context.userId);
+  });
+
+export const updateMyStaffProfileFn = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])
+  .inputValidator(i => clinic.extend({ displayName: z.string().trim().min(1, "Display name cannot be empty.").max(120) }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./team.server");
+    return s.editStaffDisplayName(context.supabase, data.clinicId, context.userId, data.displayName);
+  });
+
 

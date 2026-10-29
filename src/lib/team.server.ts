@@ -31,6 +31,59 @@ export async function assertTeamOwner(db: Client, userId: string, clinicId: stri
   if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.role !== "OWNER" || m.data.status !== "ACTIVE" || op.data !== true) throw denied();
 }
 
+/** Asserts caller is an active DOCTOR of the specified operational clinic. */
+export async function assertTeamDoctor(db: Client, userId: string, clinicId: string) {
+  const [p, m, op] = await Promise.all([
+    db.from("profiles").select("platform_role,status").eq("id", userId).maybeSingle(),
+    db.from("clinic_members").select("role,status").eq("user_id", userId).eq("clinic_id", clinicId).maybeSingle(),
+    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+  ]);
+  if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.role !== "DOCTOR" || m.data.status !== "ACTIVE" || op.data !== true) {
+    throw new Error("Doctor workspace is unavailable for this clinic.");
+  }
+}
+
+/** Asserts caller is an active STAFF member of the specified operational clinic. */
+export async function assertTeamStaff(db: Client, userId: string, clinicId: string) {
+  const [p, m, op] = await Promise.all([
+    db.from("profiles").select("platform_role,status").eq("id", userId).maybeSingle(),
+    db.from("clinic_members").select("role,status").eq("user_id", userId).eq("clinic_id", clinicId).maybeSingle(),
+    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+  ]);
+  if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.role !== "STAFF" || m.data.status !== "ACTIVE" || op.data !== true) {
+    throw new Error("Staff workspace is unavailable for this clinic.");
+  }
+}
+
+/** Asserts caller is either an active OWNER, or an active DOCTOR accessing/modifying their own doctor profile. */
+export async function assertDoctorOrOwner(db: Client, userId: string, clinicId: string, doctorId: string) {
+  const [p, m, op] = await Promise.all([
+    db.from("profiles").select("platform_role,status").eq("id", userId).maybeSingle(),
+    db.from("clinic_members").select("role,status").eq("user_id", userId).eq("clinic_id", clinicId).maybeSingle(),
+    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+  ]);
+  if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.status !== "ACTIVE" || op.data !== true) {
+    throw denied();
+  }
+  if (m.data.role === "OWNER") {
+    return;
+  }
+  if (m.data.role === "DOCTOR") {
+    const { data: doc, error: docError } = await db
+      .from("doctor_profiles")
+      .select("id, user_id")
+      .eq("clinic_id", clinicId)
+      .eq("id", doctorId)
+      .maybeSingle();
+    if (docError || !doc || doc.user_id !== userId) {
+      throw denied();
+    }
+    return;
+  }
+  throw denied();
+}
+
+
 /**
  * Resolves display names for doctors and staff members of a clinic.
  * Uses the trusted clinic_member_names RPC first, and seamlessly falls back to
@@ -722,4 +775,94 @@ export async function setMemberStatus(
 
   return { ok: true };
 }
+
+export async function readDoctorSelf(db: Client, clinicId: string, userId: string) {
+  await assertTeamDoctor(db, userId, clinicId);
+  const { data, error } = await db
+    .from("doctor_profiles")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw new Error("Doctor profile couldn't load. Please try again.");
+  if (!data) return null;
+
+  const names = await resolveClinicMemberNameMap(db, clinicId, [userId]);
+  return { ...data, display_name: names.get(userId) ?? null };
+}
+
+export async function editDoctorSelf(
+  db: Client,
+  clinicId: string,
+  userId: string,
+  updatedAt: string,
+  input: unknown,
+  displayName?: string
+) {
+  await assertTeamDoctor(db, userId, clinicId);
+  const { data: existing, error: findError } = await db
+    .from("doctor_profiles")
+    .select("id")
+    .eq("clinic_id", clinicId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (findError || !existing) {
+    throw new Error("Doctor profile not found.");
+  }
+
+  const updated = await editDoctor(db, clinicId, existing.id, updatedAt, input, userId);
+
+  if (displayName && typeof displayName === "string" && displayName.trim()) {
+    const cleanName = displayName.trim().slice(0, 120);
+    await db.from("profiles").update({ display_name: cleanName }).eq("id", userId);
+    return { ...updated, display_name: cleanName };
+  }
+
+  const names = await resolveClinicMemberNameMap(db, clinicId, [userId]);
+  return { ...updated, display_name: names.get(userId) ?? null };
+}
+
+export async function readStaffSelf(db: Client, clinicId: string, userId: string): Promise<import("./team").StaffSelfProfile> {
+  await assertTeamStaff(db, userId, clinicId);
+  const [memberRes, profileRes, clinicRes] = await Promise.all([
+    db.from("clinic_members").select("*").eq("clinic_id", clinicId).eq("user_id", userId).maybeSingle(),
+    db.from("profiles").select("id, display_name, avatar_url").eq("id", userId).maybeSingle(),
+    db.from("clinics").select("id, name, display_name, address, city, state, phone, email, status").eq("id", clinicId).maybeSingle(),
+  ]);
+
+  if (memberRes.error || !memberRes.data) throw new Error("Staff membership couldn't load. Please try again.");
+  return {
+    member: memberRes.data,
+    profile: profileRes.data ?? { id: userId, display_name: null, avatar_url: null },
+    clinic: clinicRes.data ?? null,
+  };
+}
+
+export async function editStaffDisplayName(
+  db: Client,
+  clinicId: string,
+  userId: string,
+  displayName: string
+) {
+  await assertTeamStaff(db, userId, clinicId);
+  const cleanName = displayName.trim().slice(0, 120);
+  if (!cleanName) throw new Error("Display name cannot be empty.");
+
+  const { error } = await db.from("profiles").update({ display_name: cleanName }).eq("id", userId);
+  if (error) throw new Error("Failed to update profile name.");
+
+  await db.from("audit_logs").insert({
+    clinic_id: clinicId,
+    user_id: userId,
+    action: "STAFF_PROFILE_UPDATED",
+    entity_type: "CLINIC_MEMBER",
+    entity_id: userId,
+    metadata: { changed_fields: ["display_name"] },
+  });
+
+  return { ok: true, displayName: cleanName };
+}
+
 

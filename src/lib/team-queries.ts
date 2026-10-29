@@ -1,6 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import { notFound } from "@tanstack/react-router";
-import { getClinicDoctor, getInvitationPreview, listClinicDoctors, listClinicInvitations, listClinicStaff } from "./team.functions";
+import {
+  getClinicDoctor,
+  getInvitationPreview,
+  getMyDoctorProfileFn,
+  getMyStaffProfileFn,
+  listClinicDoctors,
+  listClinicInvitations,
+  listClinicStaff,
+} from "./team.functions";
 import type { DoctorFilters, StaffFilters } from "./team";
 
 export const doctorsQuery = (userId: string, clinicId: string, filters: DoctorFilters) => queryOptions({ queryKey: ["doctors", userId, clinicId, filters], queryFn: () => listClinicDoctors({ data: { clinicId, filters } }) });
@@ -13,4 +21,19 @@ export const invitationPreviewQuery = (token: string, userEmail?: string | null)
     queryFn: () => getInvitationPreview({ data: { token } }),
     staleTime: 30_000,
   });
+
+export const doctorSelfProfileQuery = (clinicId: string) =>
+  queryOptions({
+    queryKey: ["doctor-self-profile", clinicId],
+    queryFn: () => getMyDoctorProfileFn({ data: { clinicId } }),
+    staleTime: 60_000,
+  });
+
+export const staffSelfProfileQuery = (clinicId: string) =>
+  queryOptions({
+    queryKey: ["staff-self-profile", clinicId],
+    queryFn: () => getMyStaffProfileFn({ data: { clinicId } }),
+    staleTime: 60_000,
+  });
+
 

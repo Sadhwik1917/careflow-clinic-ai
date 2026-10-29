@@ -66,8 +66,12 @@ export async function getCallerDoctorProfile(db: Client, userId: string, clinicI
     .maybeSingle();
 
   if (error) throw new Error("Could not load doctor profile.");
-  return data;
+  if (!data) return null;
+  const { resolveClinicMemberNameMap } = await import("./team.server");
+  const names = await resolveClinicMemberNameMap(db, clinicId, [userId]);
+  return { ...data, display_name: names.get(userId) ?? null };
 }
+
 
 /**
  * Reads display name map for doctors and members.

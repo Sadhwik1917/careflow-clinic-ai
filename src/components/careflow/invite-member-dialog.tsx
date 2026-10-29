@@ -13,10 +13,20 @@ import { getClinicGmailStatusFn, initiateGmailConnectionFn } from "@/lib/gmail.f
 import { inviteSchema } from "@/lib/team";
 import { toast } from "@/lib/toast";
 
-export function InviteMemberDialog({ userId, clinicId }: { userId: string; clinicId: string }) {
+export function InviteMemberDialog({
+  userId,
+  clinicId,
+  defaultRole = "DOCTOR",
+  triggerLabel,
+}: {
+  userId: string;
+  clinicId: string;
+  defaultRole?: "DOCTOR" | "STAFF";
+  triggerLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"DOCTOR" | "STAFF">("DOCTOR");
+  const [role, setRole] = useState<"DOCTOR" | "STAFF">(defaultRole);
   const [error, setError] = useState("");
 
   const invite = useServerFn(inviteClinicMember);
@@ -57,7 +67,7 @@ export function InviteMemberDialog({ userId, clinicId }: { userId: string; clini
       ]);
       setOpen(false);
       setEmail("");
-      setRole("DOCTOR");
+      setRole(defaultRole);
       setError("");
     },
     onError: e => {
@@ -75,19 +85,23 @@ export function InviteMemberDialog({ userId, clinicId }: { userId: string; clini
       onOpenChange={v => {
         if (!mutation.isPending) {
           setOpen(v);
+          if (v) {
+            setRole(defaultRole);
+          }
           setError("");
         }
       }}
     >
       <DialogTrigger asChild>
         <Button>
-          <MailPlus className="size-4" />
-          Invite member
+          <MailPlus className="size-4 mr-2" />
+          {triggerLabel ?? (defaultRole === "DOCTOR" ? "Invite doctor" : defaultRole === "STAFF" ? "Invite staff" : "Invite member")}
         </Button>
       </DialogTrigger>
       <MotionDialogContent className="max-w-md">
         <DialogTitle>Invite a team member</DialogTitle>
         <DialogDescription>
+
           They'll receive an invitation to join your clinic as a doctor or staff member. Invitations expire after 7 days.
         </DialogDescription>
 

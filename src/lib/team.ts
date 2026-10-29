@@ -126,3 +126,25 @@ export type InvitationPreview = {
   expiresAt?: string | undefined;
 };
 
+export const staffDisplayNameSchema = z.object({
+  displayName: z.string().trim().min(1, "Display name cannot be empty.").max(120, "Display name must be 120 characters or fewer."),
+}).strict();
+export type StaffDisplayNameInput = z.infer<typeof staffDisplayNameSchema>;
+
+export type StaffSelfProfile = {
+  member: Database["public"]["Tables"]["clinic_members"]["Row"];
+  profile: { id: string; display_name: string | null; avatar_url: string | null };
+  clinic: {
+    id: string;
+    name: string;
+    display_name: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    phone: string | null;
+    email: string | null;
+    status: Database["public"]["Enums"]["clinic_status"];
+  } | null;
+};
+
+
