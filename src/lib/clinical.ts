@@ -282,6 +282,9 @@ export interface PatientProfileSummary {
     address: string | null;
     emergency_contact_name: string | null;
     emergency_contact_phone: string | null;
+    notes?: string | null;
+    status?: string;
+    created_at?: string;
     clinic?: {
       id: string;
       name: string;

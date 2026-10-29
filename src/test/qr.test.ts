@@ -89,9 +89,9 @@ describe("QR Payload Generation and Security Validation", () => {
     expect(isValidClinicUuid("550e8400-e29b-41d4-a716")).toBe(false);
   });
 
-  it("generates canonical registration URLs", () => {
+  it("generates canonical registration URLs pointing to public self-registration", () => {
     const url = createPatientRegistrationUrl("https://careflow.ai", clinicId);
-    expect(url).toBe(`https://careflow.ai/clinic/patients/new?clinic=${clinicId}`);
+    expect(url).toBe(`https://careflow.ai/register?clinic=${clinicId}`);
   });
 
   it("rejects invalid clinic IDs during URL generation", () => {
@@ -100,8 +100,8 @@ describe("QR Payload Generation and Security Validation", () => {
     );
   });
 
-  it("validates canonical registration URLs correctly", () => {
-    const canonical = `https://careflow-clinic-ai.lovable.app/clinic/patients/new?clinic=${clinicId}`;
+  it("validates canonical public registration URLs correctly", () => {
+    const canonical = `https://careflow-clinic-ai.lovable.app/register?clinic=${clinicId}`;
     const result = validatePatientRegistrationPayload(canonical);
     expect(result).toEqual({
       success: true,
@@ -110,12 +110,29 @@ describe("QR Payload Generation and Security Validation", () => {
     });
   });
 
+  it("validates legacy registration URLs for backwards compatibility", () => {
+    const legacy = `https://careflow-clinic-ai.lovable.app/clinic/patients/new?clinic=${clinicId}`;
+    const result = validatePatientRegistrationPayload(legacy);
+    expect(result).toEqual({
+      success: true,
+      clinicId,
+      registrationUrl: legacy,
+    });
+  });
+
   it("validates relative registration URLs correctly", () => {
-    const relative = `/clinic/patients/new?clinic=${clinicId}`;
+    const relative = `/register?clinic=${clinicId}`;
     const result = validatePatientRegistrationPayload(relative);
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.clinicId).toBe(clinicId);
+    }
+
+    const legacyRelative = `/clinic/patients/new?clinic=${clinicId}`;
+    const legacyResult = validatePatientRegistrationPayload(legacyRelative);
+    expect(legacyResult.success).toBe(true);
+    if (legacyResult.success) {
+      expect(legacyResult.clinicId).toBe(clinicId);
     }
   });
 

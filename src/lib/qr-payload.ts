@@ -27,13 +27,14 @@ export function isValidClinicUuid(id: string): boolean {
 
 /**
  * Generates the canonical patient registration URL for a given clinic.
+ * Points to the public, clinic-specific patient self-registration page.
  */
 export function createPatientRegistrationUrl(origin: string, clinicId: string): string {
   if (!isValidClinicUuid(clinicId)) {
     throw new Error(`Invalid clinic ID format for registration URL: ${clinicId}`);
   }
   const cleanOrigin = origin.replace(/\/+$/, "");
-  return `${cleanOrigin}/clinic/patients/new?clinic=${encodeURIComponent(clinicId.trim())}`;
+  return `${cleanOrigin}/register?clinic=${encodeURIComponent(clinicId.trim())}`;
 }
 
 /**
@@ -105,7 +106,7 @@ export function validatePatientRegistrationPayload(
       }
 
       const path = parsedUrl.pathname.replace(/\/+$/, "");
-      if (path === "/clinic/patients/new" || path === "/clinic/patients") {
+      if (path === "/register" || path === "/clinic/patients/new" || path === "/clinic/patients") {
         const candidate = parsedUrl.searchParams.get("clinic");
         if (candidate && isValidClinicUuid(candidate)) {
           extractedClinicId = candidate.trim().toLowerCase();
