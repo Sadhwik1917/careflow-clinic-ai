@@ -22,6 +22,7 @@ import {
   Activity,
 } from "lucide-react";
 import { VitalsDialog } from "./vitals-dialog";
+import { AppointmentForm } from "./appointment-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,12 +45,12 @@ import { PageTitle } from "@/components/careflow/page-title";
 import { DatePicker } from "@/components/careflow/date-picker";
 import { toast } from "@/lib/toast";
 import { supabase } from "@/integrations/supabase/client";
-import { doctorsQuery } from "@/lib/team-queries";
 import {
   appointmentsQuery,
   doctorAvailabilityQuery,
   clinicHoursQuery,
   affectedAppointmentsQuery,
+  clinicQueueDoctorsQuery,
 } from "@/lib/appointment-queries";
 import {
   checkInClinicPatient,
@@ -73,7 +74,7 @@ interface AppointmentsListProps {
   userId: string;
   clinicId: string;
   role: "OWNER" | "STAFF" | "DOCTOR";
-  initialDoctorId?: string;
+  initialDoctorId?: string | undefined;
 }
 
 export function AppointmentsList({
@@ -121,9 +122,12 @@ export function AppointmentsList({
   // Vitals Dialog State
   const [vitalsTarget, setVitalsTarget] = useState<AppointmentWithDetails | null>(null);
 
+  // New Appointment Dialog State (for Staff and Doctor workflows)
+  const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState<boolean>(false);
+
   // Queries
   const { data: doctorsData } = useQuery(
-    doctorsQuery(userId, clinicId, { search: "", status: "ACTIVE", page: 0 })
+    clinicQueueDoctorsQuery(userId, clinicId, { search: "", status: "ACTIVE", page: 0 })
   );
 
   const { data: appointmentsData, isLoading } = useQuery(
@@ -303,9 +307,19 @@ export function AppointmentsList({
           title="Appointments"
           description="Schedule, check in patients, and manage consultation bookings."
         />
-        {role !== "DOCTOR" && (
+        {role === "STAFF" ? (
+          <Button onClick={() => setIsNewAppointmentOpen(true)} className="gap-1.5">
+            <Plus className="size-4" />
+            New Appointment
+          </Button>
+        ) : role === "DOCTOR" ? (
+          <Button onClick={() => setIsNewAppointmentOpen(true)} className="gap-1.5">
+            <Plus className="size-4" />
+            Schedule Follow-Up
+          </Button>
+        ) : (
           <Button asChild>
-            <Link to={role === "STAFF" ? "/staff/appointments" : "/clinic/appointments/new"}>
+            <Link to="/clinic/appointments/new">
               <Plus className="mr-1.5 size-4" />
               New Appointment
             </Link>
@@ -457,14 +471,19 @@ export function AppointmentsList({
               : "No appointments scheduled for this clinic yet."
           }
           action={
-            role !== "DOCTOR" ? (
+            role === "STAFF" || role === "DOCTOR" ? (
+              <Button variant="outline" size="sm" onClick={() => setIsNewAppointmentOpen(true)}>
+                <Plus className="mr-1.5 size-4" />
+                Schedule Appointment
+              </Button>
+            ) : (
               <Button asChild variant="outline" size="sm">
                 <Link to="/clinic/appointments/new">
                   <Plus className="mr-1.5 size-4" />
                   Schedule First Appointment
                 </Link>
               </Button>
-            ) : undefined
+            )
           }
         />
       ) : (
@@ -563,7 +582,7 @@ export function AppointmentsList({
                               Vitals
                             </Button>
                           )}
-                          {canManage && role !== "DOCTOR" && (
+                          {canManage && (
                             <>
                               <Button
                                 size="sm"
@@ -747,6 +766,36 @@ export function AppointmentsList({
           }}
         />
       )}
+
+      {/* New Appointment Dialog for Staff and Doctor workflows */}
+      <Dialog open={isNewAppointmentOpen} onOpenChange={setIsNewAppointmentOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {role === "DOCTOR" ? "Schedule Follow-Up Appointment" : "Schedule New Appointment"}
+            </DialogTitle>
+            <DialogDescription>
+              {role === "DOCTOR"
+                ? "Select a patient and choose an available time slot for consultation."
+                : "Select a patient and doctor, choose an available time slot, and confirm the booking."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <AppointmentForm
+              userId={userId}
+              clinicId={clinicId}
+              defaultDoctorId={role === "DOCTOR" ? initialDoctorId : undefined}
+              lockDoctor={role === "DOCTOR"}
+              onSuccess={() => {
+                setIsNewAppointmentOpen(false);
+                qc.invalidateQueries({ queryKey: ["appointments", clinicId] });
+                qc.invalidateQueries({ queryKey: ["doctor-availability", clinicId] });
+              }}
+              onCancel={() => setIsNewAppointmentOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -18,6 +18,8 @@ import {
 } from "@/lib/appointments";
 import {
   assertClinicMemberWithRoles,
+  readAppointments,
+  readAppointment,
   createAppointment,
   rescheduleAppointment,
   cancelAppointment,
@@ -770,6 +772,144 @@ describe("Consulted Button & Queue Transitions (Phases 11 & 12)", () => {
       clinical_notes: "Updated notes",
       assessment: "Improving",
     });
+  });
+});
+
+describe("Appointments Security, Isolation & Lifecycle Operations", () => {
+  it("authorizes active clinic members with required roles", async () => {
+    const { db: ownerDb } = makeFakeDb({ role: "OWNER" });
+    await expect(assertClinicMemberWithRoles(ownerDb, userId, clinicId, ["OWNER", "STAFF"])).resolves.toEqual({
+      role: "OWNER",
+    });
+
+    const { db: staffDb } = makeFakeDb({ role: "STAFF" });
+    await expect(assertClinicMemberWithRoles(staffDb, userId, clinicId, ["OWNER", "STAFF"])).resolves.toEqual({
+      role: "STAFF",
+    });
+
+    const { db: doctorDb } = makeFakeDb({ role: "DOCTOR" });
+    await expect(assertClinicMemberWithRoles(doctorDb, userId, clinicId, ["OWNER", "STAFF", "DOCTOR"])).resolves.toEqual({
+      role: "DOCTOR",
+    });
+  });
+
+  it("refuses unauthorized roles, non-operational clinics, and suspended memberships", async () => {
+    const { db: doctorDb } = makeFakeDb({ role: "DOCTOR" });
+    // Refuses DOCTOR when only OWNER and STAFF are allowed
+    await expect(assertClinicMemberWithRoles(doctorDb, userId, clinicId, ["OWNER", "STAFF"])).rejects.toThrow(
+      "Access is unavailable"
+    );
+
+    // Refuses when clinic is not operational
+    const { db: nonOpDb } = makeFakeDb({ role: "STAFF", operational: false });
+    await expect(assertClinicMemberWithRoles(nonOpDb, userId, clinicId, ["OWNER", "STAFF"])).rejects.toThrow(
+      "Clinic is not currently operational"
+    );
+
+    // Refuses when membership is suspended
+    const { db: suspendedDb } = makeFakeDb({ role: "OWNER", active: false });
+    await expect(assertClinicMemberWithRoles(suspendedDb, userId, clinicId, ["OWNER", "STAFF"])).rejects.toThrow(
+      "Access is unavailable"
+    );
+  });
+
+  it("rejects appointment creation if doctor is on leave or inactive", async () => {
+    const { db: leaveDb } = makeFakeDb({ doctorStatus: "ON_LEAVE" });
+    await expect(
+      createAppointment(leaveDb, userId, clinicId, {
+        clinic_id: clinicId,
+        patient_id: patientId,
+        doctor_profile_id: doctorId,
+        appointment_type: "CONSULTATION",
+        scheduled_start: "2026-10-28T09:00:00.000Z",
+        scheduled_end: "2026-10-28T10:00:00.000Z",
+      })
+    ).rejects.toThrow("on leave");
+
+    const { db: inactiveDb } = makeFakeDb({ doctorStatus: "INACTIVE" });
+    await expect(
+      createAppointment(inactiveDb, userId, clinicId, {
+        clinic_id: clinicId,
+        patient_id: patientId,
+        doctor_profile_id: doctorId,
+        appointment_type: "CONSULTATION",
+        scheduled_start: "2026-10-28T09:00:00.000Z",
+        scheduled_end: "2026-10-28T10:00:00.000Z",
+      })
+    ).rejects.toThrow("inactive");
+  });
+
+  it("reschedules appointment to new slot, updates status to CONFIRMED, and records audit log", async () => {
+    const { db, calls, auditLogs } = makeFakeDb();
+    const result = await rescheduleAppointment(
+      db,
+      userId,
+      clinicId,
+      appointmentId,
+      "2026-10-28T14:00:00.000Z",
+      "2026-10-28T15:00:00.000Z"
+    );
+
+    expect(result.status).toBe("CONFIRMED");
+    expect(calls).toContainEqual(["appointments.update", [expect.objectContaining({
+      scheduled_start: "2026-10-28T14:00:00.000Z",
+      scheduled_end: "2026-10-28T15:00:00.000Z",
+    })]]);
+
+    expect(auditLogs).toContainEqual(
+      expect.objectContaining({
+        action: "APPOINTMENT_RESCHEDULED",
+        entity_id: appointmentId,
+      })
+    );
+  });
+
+  it("rejects rescheduling an already COMPLETED or CANCELLED appointment", async () => {
+    const { db: completedDb } = makeFakeDb({ appointmentStatus: "COMPLETED" });
+    await expect(
+      rescheduleAppointment(
+        completedDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("Cannot reschedule an appointment that is already completed");
+
+    const { db: cancelledDb } = makeFakeDb({ appointmentStatus: "CANCELLED" });
+    await expect(
+      rescheduleAppointment(
+        cancelledDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("Cannot reschedule an appointment that is already cancelled");
+  });
+
+  it("cancels appointment with reason, releases slot, and cancels linked queue entries", async () => {
+    const { db, calls, auditLogs } = makeFakeDb({ existingActiveQueue: true });
+    const result = await cancelAppointment(db, userId, clinicId, appointmentId, "Patient emergency");
+
+    expect(result).toBeDefined();
+    expect(calls).toContainEqual(["appointments.update", [expect.objectContaining({
+      status: "CANCELLED",
+      notes: "Cancellation reason: Patient emergency",
+    })]]);
+
+    // Cancels waiting/called queue entries associated with appointment
+    expect(calls).toContainEqual(["queue_entries.update", [{ status: "CANCELLED" }]]);
+
+    expect(auditLogs).toContainEqual(
+      expect.objectContaining({
+        action: "APPOINTMENT_CANCELLED",
+        entity_id: appointmentId,
+        metadata: { reason: "Patient emergency" },
+      })
+    );
   });
 });
 

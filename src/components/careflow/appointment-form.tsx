@@ -27,11 +27,13 @@ import {
 import { StatusBadge } from "@/components/careflow/feedback";
 import { DatePicker } from "@/components/careflow/date-picker";
 import { toast } from "@/lib/toast";
-import { doctorsQuery } from "@/lib/team-queries";
-import { patientsQuery } from "@/lib/patient-queries";
-import { registerClinicPatient } from "@/lib/patients.functions";
-import { createClinicAppointment } from "@/lib/appointments.functions";
-import { doctorAvailabilityQuery, clinicHoursQuery } from "@/lib/appointment-queries";
+import { createClinicAppointment, registerAppointmentPatient } from "@/lib/appointments.functions";
+import {
+  doctorAvailabilityQuery,
+  clinicHoursQuery,
+  clinicQueueDoctorsQuery,
+  appointmentPatientsQuery,
+} from "@/lib/appointment-queries";
 import {
   getClinicLocalDate,
   formatSlotLabel12h,
@@ -43,19 +45,23 @@ import {
 interface AppointmentFormProps {
   userId: string;
   clinicId: string;
-  onSuccess?: (appointmentId: string) => void;
-  onCancel?: () => void;
+  defaultDoctorId?: string | undefined;
+  lockDoctor?: boolean | undefined;
+  onSuccess?: ((appointmentId: string) => void) | undefined;
+  onCancel?: (() => void) | undefined;
 }
 
 export function AppointmentForm({
   userId,
   clinicId,
+  defaultDoctorId,
+  lockDoctor,
   onSuccess,
   onCancel,
 }: AppointmentFormProps) {
   const qc = useQueryClient();
   const createAppointmentFn = useServerFn(createClinicAppointment);
-  const registerPatientFn = useServerFn(registerClinicPatient);
+  const registerPatientFn = useServerFn(registerAppointmentPatient);
 
   // Clinic metadata for timezone
   const { data: clinicHoursData } = useQuery(clinicHoursQuery(userId, clinicId));
@@ -64,10 +70,16 @@ export function AppointmentForm({
   // Form State: Initial date uses clinic-local date
   const [patientId, setPatientId] = useState<string>("");
   const [selectedPatientName, setSelectedPatientName] = useState<string>("");
-  const [doctorProfileId, setDoctorProfileId] = useState<string>("");
+  const [doctorProfileId, setDoctorProfileId] = useState<string>(defaultDoctorId ?? "");
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     getClinicLocalDate(new Date(), timeZone)
   );
+
+  useEffect(() => {
+    if (defaultDoctorId && !doctorProfileId) {
+      setDoctorProfileId(defaultDoctorId);
+    }
+  }, [defaultDoctorId, doctorProfileId]);
 
   useEffect(() => {
     if (timeZone) {
@@ -97,11 +109,11 @@ export function AppointmentForm({
 
   // Queries
   const { data: doctorsData, isLoading: loadingDoctors } = useQuery(
-    doctorsQuery(userId, clinicId, { search: "", status: "ACTIVE", page: 0 })
+    clinicQueueDoctorsQuery(userId, clinicId, { search: "", status: "ACTIVE", page: 0 })
   );
 
   const { data: patientsData, isLoading: loadingPatients } = useQuery(
-    patientsQuery(userId, clinicId, { search: patientSearch, page: 0 })
+    appointmentPatientsQuery(userId, clinicId, { search: patientSearch, page: 0 })
   );
 
   const { data: availabilityData, isLoading: loadingSlots } = useQuery(
@@ -140,6 +152,7 @@ export function AppointmentForm({
       setPatientId(newPatient.id);
       setSelectedPatientName(`${newPatient.first_name} ${newPatient.last_name ?? ""}`.trim());
       setShowQuickRegister(false);
+      qc.invalidateQueries({ queryKey: ["appointment-patients", clinicId] });
       qc.invalidateQueries({ queryKey: ["patients", clinicId] });
     },
     onError: (err: Error) => {
@@ -395,6 +408,18 @@ export function AppointmentForm({
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             <Loader2 className="mr-2 size-4 animate-spin" />
             Loading doctors...
+          </div>
+        ) : lockDoctor ? (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-foreground">
+                {doctors.find((d) => d.id === doctorProfileId)?.display_name ?? "Your Doctor Profile"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {doctors.find((d) => d.id === doctorProfileId)?.specialization ?? "Consultation"}
+              </div>
+            </div>
+            <StatusBadge tone="info">Assigned to You</StatusBadge>
           </div>
         ) : doctors.length === 0 ? (
           <p className="text-sm text-muted-foreground">

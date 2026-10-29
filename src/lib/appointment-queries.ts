@@ -9,6 +9,7 @@ import {
   getClinicDoctorLeavesFn,
   getMyDoctorProfile,
   listClinicQueueDoctors,
+  searchAppointmentPatients,
 } from "./appointments.functions";
 import type { AppointmentFilters } from "./appointments";
 import type { DoctorFilters } from "./team";
@@ -125,6 +126,23 @@ export const clinicQueueDoctorsQuery = (
     queryKey: ["clinic-queue-doctors", clinicId, filters],
     queryFn: () => listClinicQueueDoctors({ data: { clinicId, filters } }),
     staleTime: 30_000,
+  });
+
+export const appointmentPatientsQuery = (
+  userId: string,
+  clinicId: string,
+  filters: { search: string; page?: number }
+) =>
+  queryOptions({
+    queryKey: ["appointment-patients", clinicId, filters],
+    queryFn: () =>
+      searchAppointmentPatients({
+        data: {
+          clinicId,
+          filters: { search: filters.search, page: filters.page ?? 0 },
+        },
+      }),
+    staleTime: 10_000,
   });
 
 

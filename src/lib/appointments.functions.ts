@@ -22,11 +22,19 @@ export const listClinicAppointments = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const s = await import("./appointments.server");
-    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+    const { role } = await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
       "OWNER",
       "STAFF",
       "DOCTOR",
     ]);
+    if (role === "DOCTOR") {
+      const doc = await s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
+      if (!doc) throw new Error("Doctor profile not found.");
+      return s.readAppointments(context.supabase, data.clinicId, {
+        ...data.filters,
+        doctor_id: doc.id,
+      });
+    }
     return s.readAppointments(context.supabase, data.clinicId, data.filters);
   });
 
@@ -37,12 +45,20 @@ export const getClinicAppointment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const s = await import("./appointments.server");
-    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+    const { role } = await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
       "OWNER",
       "STAFF",
       "DOCTOR",
     ]);
-    return s.readAppointment(context.supabase, data.clinicId, data.appointmentId);
+    const appt = await s.readAppointment(context.supabase, data.clinicId, data.appointmentId);
+    if (!appt) return null;
+    if (role === "DOCTOR") {
+      const doc = await s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
+      if (!doc || appt.doctor_profile_id !== doc.id) {
+        throw new Error("Access is unavailable for this clinic.");
+      }
+    }
+    return appt;
   });
 
 export const getDoctorAvailabilitySlots = createServerFn({ method: "POST" })
@@ -83,10 +99,18 @@ export const createClinicAppointment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const s = await import("./appointments.server");
-    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+    const { role } = await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
       "OWNER",
       "STAFF",
+      "DOCTOR",
     ]);
+    if (role === "DOCTOR") {
+      const doc = await s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
+      if (!doc) throw new Error("Doctor profile not found.");
+      if (data.appointment.doctor_profile_id !== doc.id) {
+        throw new Error("Doctors may only schedule appointments for their own profile.");
+      }
+    }
     return s.createAppointment(context.supabase, context.userId, data.clinicId, {
       ...data.appointment,
       clinic_id: data.clinicId,
@@ -107,10 +131,18 @@ export const rescheduleClinicAppointment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const s = await import("./appointments.server");
-    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+    const { role } = await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
       "OWNER",
       "STAFF",
+      "DOCTOR",
     ]);
+    if (role === "DOCTOR") {
+      const doc = await s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
+      const appt = await s.readAppointment(context.supabase, data.clinicId, data.appointmentId);
+      if (!doc || !appt || appt.doctor_profile_id !== doc.id) {
+        throw new Error("Doctors may only reschedule their own appointments.");
+      }
+    }
     return s.rescheduleAppointment(
       context.supabase,
       context.userId,
@@ -134,10 +166,18 @@ export const cancelClinicAppointment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const s = await import("./appointments.server");
-    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+    const { role } = await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
       "OWNER",
       "STAFF",
+      "DOCTOR",
     ]);
+    if (role === "DOCTOR") {
+      const doc = await s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
+      const appt = await s.readAppointment(context.supabase, data.clinicId, data.appointmentId);
+      if (!doc || !appt || appt.doctor_profile_id !== doc.id) {
+        throw new Error("Doctors may only cancel their own appointments.");
+      }
+    }
     return s.cancelAppointment(
       context.supabase,
       context.userId,
@@ -562,6 +602,50 @@ export const listClinicQueueDoctors = createServerFn({ method: "POST" })
       "DOCTOR",
     ]);
     return s.readClinicOperationalDoctors(context.supabase, data.clinicId, data.filters);
+  });
+
+export const searchAppointmentPatients = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    clinicIdSchema
+      .extend({
+        filters: z.object({
+          search: z.string().trim().max(100).catch("").default(""),
+          page: z.coerce.number().int().min(0).catch(0).default(0),
+        }),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./appointments.server");
+    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+      "OWNER",
+      "STAFF",
+      "DOCTOR",
+    ]);
+    const { readPatients } = await import("./patients.server");
+    return readPatients(context.supabase, data.clinicId, data.filters);
+  });
+
+export const registerAppointmentPatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    clinicIdSchema
+      .extend({
+        fields: z.unknown(),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./appointments.server");
+    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+      "OWNER",
+      "STAFF",
+    ]);
+    const { insertPatient } = await import("./patients.server");
+    return insertPatient(context.supabase, data.clinicId, data.fields);
   });
 
 
