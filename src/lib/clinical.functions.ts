@@ -5,6 +5,8 @@ import {
   vitalsInputSchema,
   saveConsultationSchema,
   recordPaymentSchema,
+  updateInvoiceBillingSchema,
+  createDirectInvoiceSchema,
 } from "./clinical";
 
 const clinicIdSchema = z.object({ clinicId: z.string().uuid() });
@@ -161,6 +163,32 @@ export const recordInvoicePaymentFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const s = await import("./clinical.server");
     return s.recordInvoicePayment(
+      context.supabase,
+      context.userId,
+      data.clinicId,
+      data
+    );
+  });
+
+export const updateInvoiceBillingFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => updateInvoiceBillingSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./clinical.server");
+    return s.updateInvoiceBilling(
+      context.supabase,
+      context.userId,
+      data.clinicId,
+      data
+    );
+  });
+
+export const createDirectInvoiceFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => createDirectInvoiceSchema.parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./clinical.server");
+    return s.createDirectInvoice(
       context.supabase,
       context.userId,
       data.clinicId,

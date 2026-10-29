@@ -36,6 +36,10 @@ export interface QueueEntryWithDetails extends QueueEntryRow {
     last_name: string | null;
     phone: string | null;
     gender: string | null;
+    date_of_birth?: string | null;
+    email?: string | null;
+    emergency_contact_name?: string | null;
+    emergency_contact_phone?: string | null;
   } | null;
   doctor: {
     id: string;

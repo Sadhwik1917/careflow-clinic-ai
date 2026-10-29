@@ -8,8 +8,10 @@ import {
   getAffectedAppointmentsFn,
   getClinicDoctorLeavesFn,
   getMyDoctorProfile,
+  listClinicQueueDoctors,
 } from "./appointments.functions";
 import type { AppointmentFilters } from "./appointments";
+import type { DoctorFilters } from "./team";
 
 export const appointmentsQuery = (
   userId: string,
@@ -113,4 +115,16 @@ export const myDoctorProfileQuery = (clinicId: string) =>
     queryFn: () => getMyDoctorProfile({ data: { clinicId } }),
     staleTime: 60_000,
   });
+
+export const clinicQueueDoctorsQuery = (
+  userId: string,
+  clinicId: string,
+  filters: DoctorFilters = { search: "", status: "ACTIVE", page: 0 }
+) =>
+  queryOptions({
+    queryKey: ["clinic-queue-doctors", clinicId, filters],
+    queryFn: () => listClinicQueueDoctors({ data: { clinicId, filters } }),
+    staleTime: 30_000,
+  });
+
 

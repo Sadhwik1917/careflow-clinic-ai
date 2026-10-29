@@ -11,6 +11,7 @@ import {
   doctorLeaveRequestSchema,
   doctorLeaveReviewSchema,
 } from "./appointments";
+import { doctorFiltersSchema } from "./team";
 
 const clinicIdSchema = z.object({ clinicId: z.string().uuid() });
 
@@ -516,3 +517,51 @@ export const getMyDoctorProfile = createServerFn({ method: "POST" })
     ]);
     return s.getCallerDoctorProfile(context.supabase, context.userId, data.clinicId);
   });
+
+export const reassignClinicQueueDoctor = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    clinicIdSchema
+      .extend({
+        queueEntryId: z.string().uuid(),
+        newDoctorProfileId: z.string().uuid(),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./appointments.server");
+    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+      "OWNER",
+      "STAFF",
+    ]);
+    return s.reassignQueueDoctor(
+      context.supabase,
+      context.userId,
+      data.clinicId,
+      data.queueEntryId,
+      data.newDoctorProfileId
+    );
+  });
+
+export const listClinicQueueDoctors = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    clinicIdSchema
+      .extend({
+        filters: doctorFiltersSchema.optional(),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./appointments.server");
+    await s.assertClinicMemberWithRoles(context.supabase, context.userId, data.clinicId, [
+      "OWNER",
+      "STAFF",
+      "DOCTOR",
+    ]);
+    return s.readClinicOperationalDoctors(context.supabase, data.clinicId, data.filters);
+  });
+
+

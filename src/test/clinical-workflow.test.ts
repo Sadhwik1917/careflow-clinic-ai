@@ -679,6 +679,7 @@ describe("CAREFLOW AI — Doctor Consultation & e-Prescription Clinical Workflow
           meal_timing: "AFTER_MEAL",
           duration: "5 days",
           instructions: "Take after meals",
+          unit_price: 100,
         },
         {
           medicine_name: "Paracetamol 650mg",
@@ -687,6 +688,7 @@ describe("CAREFLOW AI — Doctor Consultation & e-Prescription Clinical Workflow
           meal_timing: "AFTER_MEAL",
           duration: "3 days",
           instructions: "For fever",
+          unit_price: 100,
         },
       ],
       finalize: true,

@@ -78,6 +78,9 @@ export const medicationItemSchema = z.object({
   duration: z.string().trim().max(50).optional().nullable(),
   meal_timing: z.string().optional().nullable(),
   instructions: z.string().trim().max(300).optional().nullable(),
+  quantity: z.coerce.number().positive("Quantity must be greater than 0").optional().nullable(),
+  unit_price: z.coerce.number().min(0, "Unit price cannot be negative").optional().nullable(),
+  discount: z.coerce.number().min(0, "Discount cannot be negative").optional().nullable(),
 }).refine((data) => Boolean(data.name || data.medicine_name), {
   message: "Medicine name is required",
 });
@@ -167,6 +170,41 @@ export interface AppointmentClinicalContext {
 // Billing & Invoices Schemas & Types
 // -------------------------------------------------------------
 
+export const updateInvoiceItemInputSchema = z.object({
+  id: z.string().optional(),
+  description: z.string().trim().min(1, "Description is required").max(200),
+  quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+  unit_price: z.coerce.number().min(0, "Unit price cannot be negative"),
+  discount: z.coerce.number().min(0, "Discount cannot be negative").default(0),
+});
+
+export type UpdateInvoiceItemInput = z.infer<typeof updateInvoiceItemInputSchema>;
+
+export const updateInvoiceBillingSchema = z.object({
+  clinicId: z.string().uuid(),
+  invoiceId: z.string().uuid(),
+  items: z.array(updateInvoiceItemInputSchema).min(1, "Invoice must contain at least one item"),
+  discountType: z.enum(["FIXED", "PERCENTAGE"]).default("FIXED"),
+  discountValue: z.coerce.number().min(0, "Discount cannot be negative").default(0),
+  finalize: z.boolean().default(false),
+  notes: z.string().trim().max(500).optional().nullable(),
+});
+
+export type UpdateInvoiceBillingInput = z.infer<typeof updateInvoiceBillingSchema>;
+
+export const createDirectInvoiceSchema = z.object({
+  clinicId: z.string().uuid(),
+  patientId: z.string().uuid(),
+  appointmentId: z.string().uuid().optional().nullable(),
+  items: z.array(updateInvoiceItemInputSchema).min(1, "Invoice must contain at least one item"),
+  discountType: z.enum(["FIXED", "PERCENTAGE"]).default("FIXED"),
+  discountValue: z.coerce.number().min(0, "Discount cannot be negative").default(0),
+  finalize: z.boolean().default(false),
+  notes: z.string().trim().max(500).optional().nullable(),
+});
+
+export type CreateDirectInvoiceInput = z.infer<typeof createDirectInvoiceSchema>;
+
 export const recordPaymentSchema = z.object({
   clinicId: z.string().uuid(),
   invoiceId: z.string().uuid(),
@@ -177,6 +215,8 @@ export const recordPaymentSchema = z.object({
 });
 
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
+
+export * from "./billing-calculations";
 
 export interface InvoiceWithDetails extends InvoiceRow {
   items: InvoiceItemRow[];

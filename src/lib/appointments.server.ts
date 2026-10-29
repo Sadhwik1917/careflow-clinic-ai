@@ -23,6 +23,7 @@ import {
   type QueueStatus,
   type TimeSlot,
 } from "./appointments";
+import type { DoctorFilters } from "./team";
 
 type Client = SupabaseClient<Database>;
 type MemberRole = Database["public"]["Enums"]["member_role"];
@@ -726,7 +727,7 @@ export async function readQueueEntries(
     .select(
       `
       *,
-      patient:patients(id, patient_number, first_name, last_name, phone, gender),
+      patient:patients(id, patient_number, first_name, last_name, phone, gender, date_of_birth, email, emergency_contact_name, emergency_contact_phone),
       doctor:doctor_profiles(id, specialization, department, user_id),
       appointment:appointments(id, scheduled_start, scheduled_end, appointment_type, status, reason, notes)
     `
@@ -994,6 +995,145 @@ export async function consultActivePatient(
   }
 
   return { completed, next: nextCalled };
+}
+
+/**
+ * Reassigns a waiting or skipped queue patient to another active doctor in the clinic.
+ * Calculates the next sequential queue number for the new doctor on that date,
+ * updates the appointment doctor if linked, and writes an audit log.
+ */
+export async function reassignQueueDoctor(
+  db: Client,
+  userId: string,
+  clinicId: string,
+  queueEntryId: string,
+  newDoctorProfileId: string
+): Promise<QueueEntryRow> {
+  const { data: queueEntry, error: findError } = await db
+    .from("queue_entries")
+    .select("*")
+    .eq("clinic_id", clinicId)
+    .eq("id", queueEntryId)
+    .maybeSingle();
+
+  if (findError || !queueEntry) throw new Error("Queue entry not found.");
+
+  if (queueEntry.status !== "WAITING" && queueEntry.status !== "SKIPPED") {
+    throw new Error(
+      `Cannot reassign doctor for queue entry with status ${queueEntry.status}. Only waiting or skipped patients can be reassigned.`
+    );
+  }
+
+  // Validate new doctor belongs to clinic and is ACTIVE
+  const { data: doc, error: docError } = await db
+    .from("doctor_profiles")
+    .select("id, status, specialization, department")
+    .eq("clinic_id", clinicId)
+    .eq("id", newDoctorProfileId)
+    .maybeSingle();
+
+  if (docError || !doc || doc.status !== "ACTIVE") {
+    throw new Error("Selected doctor is not active or does not belong to this clinic.");
+  }
+
+  if (queueEntry.doctor_profile_id === newDoctorProfileId) {
+    return queueEntry;
+  }
+
+  // Enforce clinical domain parity: same specialization or same department
+  if (queueEntry.doctor_profile_id) {
+    const { data: currentDoc } = await db
+      .from("doctor_profiles")
+      .select("id, specialization, department")
+      .eq("clinic_id", clinicId)
+      .eq("id", queueEntry.doctor_profile_id)
+      .maybeSingle();
+
+    if (currentDoc) {
+      const currentSpec = currentDoc.specialization?.trim().toLowerCase();
+      const newSpec = doc.specialization?.trim().toLowerCase();
+      const sameSpec = Boolean(currentSpec && newSpec && currentSpec === newSpec);
+
+      const currentDept = currentDoc.department?.trim().toLowerCase();
+      const newDept = doc.department?.trim().toLowerCase();
+      const sameDept = Boolean(currentDept && newDept && currentDept === newDept);
+
+      if (!sameSpec && !sameDept) {
+        throw new Error(
+          `Patients can only be reassigned to doctors with the same specialization (${currentDoc.specialization}) or clinical department.`
+        );
+      }
+    }
+  }
+
+  // Get next queue number for new doctor on this date
+  const { data: existingQueues } = await db
+    .from("queue_entries")
+    .select("queue_number")
+    .eq("clinic_id", clinicId)
+    .eq("doctor_profile_id", newDoctorProfileId)
+    .eq("queue_date", queueEntry.queue_date)
+    .order("queue_number", { ascending: false })
+    .limit(1);
+
+  const nextQueueNumber = (existingQueues?.[0]?.queue_number ?? 0) + 1;
+
+  // Update queue entry
+  const { data: updated, error: updateError } = await db
+    .from("queue_entries")
+    .update({
+      doctor_profile_id: newDoctorProfileId,
+      queue_number: nextQueueNumber,
+    })
+    .eq("clinic_id", clinicId)
+    .eq("id", queueEntryId)
+    .select("*")
+    .single();
+
+  if (updateError || !updated) {
+    console.error("[reassignQueueDoctor] error updating queue:", updateError);
+    throw new Error("Could not reassign doctor in queue.");
+  }
+
+  // If linked to an appointment, update appointment's doctor as well
+  if (queueEntry.appointment_id) {
+    await db
+      .from("appointments")
+      .update({ doctor_profile_id: newDoctorProfileId })
+      .eq("clinic_id", clinicId)
+      .eq("id", queueEntry.appointment_id);
+  }
+
+  // Audit log
+  await db.from("audit_logs").insert({
+    clinic_id: clinicId,
+    user_id: userId,
+    action: "QUEUE_DOCTOR_REASSIGNED",
+    entity_type: "queue_entries",
+    entity_id: queueEntryId,
+    metadata: {
+      old_doctor_id: queueEntry.doctor_profile_id,
+      new_doctor_id: newDoctorProfileId,
+      old_queue_number: queueEntry.queue_number,
+      new_queue_number: nextQueueNumber,
+      queue_date: queueEntry.queue_date,
+    },
+  });
+
+  return updated;
+}
+
+/**
+ * Reads active operational doctors for queue and appointments workflows.
+ * Caller role (OWNER, STAFF, DOCTOR) is verified at the server function layer.
+ */
+export async function readClinicOperationalDoctors(
+  db: Client,
+  clinicId: string,
+  filters?: DoctorFilters
+) {
+  const { readDoctors } = await import("./team.server");
+  return readDoctors(db, clinicId, filters ?? { search: "", status: "ACTIVE", page: 0 });
 }
 
 // -------------------------------------------------------------
