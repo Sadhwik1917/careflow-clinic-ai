@@ -11,7 +11,13 @@ import {
 
 // Setup state for mocks
 let mockClinicData: any = null;
-let mockOperationalResult = true;
+let mockVerificationData: any = { status: "APPROVED" };
+let mockSubscriptionClinicsData: any = [
+  { subscription: { status: "ACTIVE", trial_end_date: null } },
+];
+let mockVerificationEventsData: any = [{ event_type: "APPROVED", created_at: "2026-10-29T00:00:00Z" }];
+let mockClinicReverificationsData: any = null;
+
 let mockExistingPatient: any = null;
 let mockInsertedPatient: any = null;
 let mockInviteError: any = null;
@@ -71,6 +77,9 @@ const mockDb = {
         filters[col] = val;
         return chain;
       }),
+      in: vi.fn(() => chain),
+      order: vi.fn(() => chain),
+      limit: vi.fn(() => chain),
       single: vi.fn(async () => {
         if (table === "patients") {
           return { data: mockInsertedPatient, error: null };
@@ -80,6 +89,12 @@ const mockDb = {
       maybeSingle: vi.fn(async () => {
         if (table === "clinics") {
           return { data: mockClinicData, error: null };
+        }
+        if (table === "clinic_verifications") {
+          return { data: mockVerificationData, error: null };
+        }
+        if (table === "clinic_reverifications") {
+          return { data: mockClinicReverificationsData, error: null };
         }
         if (table === "patients") {
           if (isUpdate) {
@@ -135,15 +150,18 @@ const mockDb = {
           }
           return resolve({ data: list, error: null });
         }
+        if (table === "subscription_clinics") {
+          return resolve({ data: mockSubscriptionClinicsData, error: null });
+        }
+        if (table === "verification_events") {
+          return resolve({ data: mockVerificationEventsData, error: null });
+        }
         return resolve({ data: [], error: null });
       },
     };
     return chain;
   },
-  rpc: vi.fn(async (fnName: string) => {
-    if (fnName === "clinic_is_operational") {
-      return { data: mockOperationalResult, error: null };
-    }
+  rpc: vi.fn(async () => {
     return { data: true, error: null };
   }),
   auth: {
@@ -294,7 +312,7 @@ describe("QR Code Workflow & Legacy URL Compatibility", () => {
   });
 });
 
-describe("Server-Side Clinic Identification & Operational Security", () => {
+describe("Server-Side Clinic Identification & Operational Security (Regression Suite)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetRateLimits();
@@ -307,7 +325,12 @@ describe("Server-Side Clinic Identification & Operational Security", () => {
       phone: "+91 33 2222 3333",
       status: "ACTIVE",
     };
-    mockOperationalResult = true;
+    mockVerificationData = { status: "APPROVED" };
+    mockSubscriptionClinicsData = [
+      { subscription: { status: "ACTIVE", trial_end_date: null } },
+    ];
+    mockVerificationEventsData = [{ event_type: "APPROVED", created_at: "2026-10-29T00:00:00Z" }];
+    mockClinicReverificationsData = null;
   });
 
   it("rejects non-UUID clinic IDs", async () => {
@@ -324,12 +347,48 @@ describe("Server-Side Clinic Identification & Operational Security", () => {
     await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
   });
 
-  it("rejects clinics that are not operational (e.g. suspended, revoked, unpaid)", async () => {
-    mockOperationalResult = false;
+  it("rejects unverified clinics (e.g. DRAFT)", async () => {
+    mockVerificationData = { status: "DRAFT" };
     await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
   });
 
-  it("returns strictly public clinic info without leaking private business or patient details", async () => {
+  it("rejects clinics without active subscription or trial", async () => {
+    mockSubscriptionClinicsData = [];
+    await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
+  });
+
+  it("rejects clinics with expired trial", async () => {
+    mockSubscriptionClinicsData = [
+      {
+        subscription: {
+          status: "TRIAL_ACTIVE",
+          trial_end_date: "2020-01-01T00:00:00Z", // expired
+        },
+      },
+    ];
+    await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
+  });
+
+  it("rejects suspended clinics via verification events", async () => {
+    mockVerificationEventsData = [{ event_type: "SUSPENDED", created_at: "2026-10-30T00:00:00Z" }];
+    await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
+  });
+
+  it("rejects revoked clinics via verification events", async () => {
+    mockVerificationEventsData = [{ event_type: "REVOKED_AFTER_APPROVAL", created_at: "2026-10-30T00:00:00Z" }];
+    await expect(getPublicClinicInfo(clinicId)).rejects.toThrow("unavailable");
+  });
+
+  it("allows operational clinics during responded reverification review", async () => {
+    mockVerificationData = { status: "PENDING_REVIEW" };
+    mockClinicReverificationsData = { status: "RESPONDED" };
+
+    const info = await getPublicClinicInfo(clinicId);
+    expect(info.clinicId).toBe(clinicId);
+    expect(info.name).toBe("Apollo City Clinic");
+  });
+
+  it("returns strictly public clinic info for an eligible operational clinic without leaking private details", async () => {
     const info = await getPublicClinicInfo(clinicId);
     expect(info).toEqual({
       clinicId,
@@ -339,9 +398,10 @@ describe("Server-Side Clinic Identification & Operational Security", () => {
       city: "Kolkata",
       phone: "+91 33 2222 3333",
     });
-    // Ensure no sensitive fields
+    // Ensure no sensitive or private clinic metadata
     expect((info as any).registration_number).toBeUndefined();
     expect((info as any).owner_user_id).toBeUndefined();
+    expect((info as any).subscription).toBeUndefined();
   });
 });
 
@@ -358,7 +418,12 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
       phone: "+91 33 2222 3333",
       status: "ACTIVE",
     };
-    mockOperationalResult = true;
+    mockVerificationData = { status: "APPROVED" };
+    mockSubscriptionClinicsData = [
+      { subscription: { status: "ACTIVE", trial_end_date: null } },
+    ];
+    mockVerificationEventsData = [{ event_type: "APPROVED", created_at: "2026-10-29T00:00:00Z" }];
+    mockClinicReverificationsData = null;
     mockExistingPatient = null;
     mockInsertedPatient = null;
     mockInviteError = null;
@@ -526,7 +591,6 @@ describe("Rate Limiting Hardening & Abuse Protection", () => {
 
   it("enforces IP-based rate limiting on registration", async () => {
     mockClinicData = { id: clinicId, name: "Apollo", display_name: "Apollo", status: "ACTIVE" };
-    mockOperationalResult = true;
 
     const clientIp = "192.168.1.100";
     // Exhaust IP rate limit (20)

@@ -84,13 +84,40 @@ export async function getPublicClinicInfo(clinicId: string): Promise<PublicClini
 
   const db = await getAdminDb();
 
-  const [clinicRes, opRes] = await Promise.all([
+  // Validate clinic operational status directly via server-side admin client.
+  // Note: public.clinic_is_operational requires an authenticated clinic member (private.is_clinic_member)
+  // and was explicitly revoked from service_role/anon in migration 20261014164444.
+  // For anonymous public patient self-registration, we evaluate the exact operational conditions:
+  // active clinic status, approved verification, active subscription/trial, and absence of suspensions.
+  const [clinicRes, verifRes, subRes, eventsRes] = await Promise.all([
     db
       .from("clinics")
       .select("id, name, display_name, address, city, phone, status")
       .eq("id", clinicId)
       .maybeSingle(),
-    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+    db
+      .from("clinic_verifications")
+      .select("status")
+      .eq("clinic_id", clinicId)
+      .maybeSingle(),
+    db
+      .from("subscription_clinics")
+      .select("subscription:clinic_subscriptions(status, trial_end_date)")
+      .eq("clinic_id", clinicId),
+    db
+      .from("verification_events")
+      .select("event_type, created_at")
+      .eq("clinic_id", clinicId)
+      .in("event_type", [
+        "APPROVED",
+        "CHANGES_REQUESTED",
+        "REJECTED",
+        "REVOKED_AFTER_APPROVAL",
+        "REINSTATED",
+        "SUSPENDED",
+      ])
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   if (clinicRes.error || !clinicRes.data) {
@@ -99,7 +126,49 @@ export async function getPublicClinicInfo(clinicId: string): Promise<PublicClini
 
   const clinic = clinicRes.data;
 
-  if (clinic.status !== "ACTIVE" || opRes.data !== true) {
+  // 1. Basic clinic status check (must be ACTIVE)
+  if (clinic.status !== "ACTIVE") {
+    throw new Error("This clinic is currently inactive or unavailable for online registration.");
+  }
+
+  // 2. Verification status check (APPROVED or responded reverification)
+  const verifStatus = verifRes.data?.status;
+  let isVerified = verifStatus === "APPROVED";
+  if (!isVerified && verifStatus === "PENDING_REVIEW") {
+    const { data: rev } = await db
+      .from("clinic_reverifications")
+      .select("status")
+      .eq("clinic_id", clinicId)
+      .eq("status", "RESPONDED")
+      .maybeSingle();
+    if (rev) {
+      isVerified = true;
+    }
+  }
+
+  if (!isVerified) {
+    throw new Error("This clinic is currently inactive or unavailable for online registration.");
+  }
+
+  // 3. Subscription & trial check (must have an active plan or running trial)
+  const now = Date.now();
+  const hasActivePlan = (subRes.data || []).some((item: any) => {
+    const sub = Array.isArray(item.subscription) ? item.subscription[0] : item.subscription;
+    if (!sub) return false;
+    if (sub.status === "ACTIVE") return true;
+    if (sub.status === "TRIAL_ACTIVE" && sub.trial_end_date && new Date(sub.trial_end_date).getTime() > now) {
+      return true;
+    }
+    return false;
+  });
+
+  if (!hasActivePlan) {
+    throw new Error("This clinic is currently inactive or unavailable for online registration.");
+  }
+
+  // 4. Restriction / Suspension check (latest event must not be SUSPENDED or REVOKED_AFTER_APPROVAL)
+  const latestEvent = eventsRes.data?.[0]?.event_type;
+  if (latestEvent === "SUSPENDED" || latestEvent === "REVOKED_AFTER_APPROVAL") {
     throw new Error("This clinic is currently inactive or unavailable for online registration.");
   }
 
