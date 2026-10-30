@@ -168,6 +168,9 @@ export function ClinicOwnerDashboardView({ userId, clinicId }: ClinicOwnerDashbo
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
+            <Link to="/clinic/reports">Attendance &amp; Analytics</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
             <Link to="/clinic/doctors" search={{ search: "", status: "ALL", page: 0 }}>View doctors</Link>
           </Button>
           <InviteMemberDialog userId={userId} clinicId={clinicId} />

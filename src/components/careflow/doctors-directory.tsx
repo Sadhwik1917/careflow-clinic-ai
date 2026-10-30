@@ -12,6 +12,7 @@ import { PageTitle } from "./page-title";
 import { EmptyState, StatusBadge, type StatusTone } from "./feedback";
 import { MotionReveal } from "./motion-primitives";
 import { InviteMemberDialog } from "./invite-member-dialog";
+import { MarkDoctorAbsentDialog } from "./mark-doctor-absent-dialog";
 
 const statusTone: Record<string, StatusTone> = { ACTIVE: "success", INACTIVE: "neutral", ON_LEAVE: "warning" };
 
@@ -26,7 +27,12 @@ export function DoctorsDirectory({ userId, clinicId, filters }: { userId: string
   return <><PageTitle
       title="Doctors"
       description="Doctor profiles in your clinic."
-      actions={<InviteMemberDialog userId={userId} clinicId={clinicId} defaultRole="DOCTOR" triggerLabel="Invite doctor" />}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <MarkDoctorAbsentDialog userId={userId} clinicId={clinicId} />
+          <InviteMemberDialog userId={userId} clinicId={clinicId} defaultRole="DOCTOR" triggerLabel="Invite doctor" />
+        </div>
+      }
     />
     <MotionReveal className="space-y-5 border-t py-6">
       <div className="flex flex-wrap items-center gap-2">
@@ -70,11 +76,24 @@ export function DoctorsDirectory({ userId, clinicId, filters }: { userId: string
                   <StatusBadge tone={statusTone[d.status] ?? "neutral"}>{doctorStatusLabel[d.status]}</StatusBadge>
                 </TableCell>
                 <TableCell>
-                  <Button asChild variant="outline" size="sm">
-                    <Link to="/clinic/doctors/$doctorId" params={{ doctorId: d.id }} search={filters}>
-                      View profile
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <MarkDoctorAbsentDialog
+                      userId={userId}
+                      clinicId={clinicId}
+                      doctorProfileId={d.id}
+                      doctorName={d.display_name ?? undefined}
+                      trigger={
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-destructive hover:bg-destructive/10">
+                          Mark absent
+                        </Button>
+                      }
+                    />
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/clinic/doctors/$doctorId" params={{ doctorId: d.id }} search={filters}>
+                        View profile
+                      </Link>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

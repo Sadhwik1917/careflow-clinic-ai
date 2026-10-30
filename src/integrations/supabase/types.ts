@@ -340,6 +340,67 @@ export type Database = {
           },
         ]
       }
+      clinic_attendance: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          date: string
+          id: string
+          reason: string | null
+          recorded_by: string
+          role: Database["public"]["Enums"]["member_role"]
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          date: string
+          id?: string
+          reason?: string | null
+          recorded_by: string
+          role: Database["public"]["Enums"]["member_role"]
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          reason?: string | null
+          recorded_by?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_attendance_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_attendance_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_documents: {
         Row: {
           clinic_id: string

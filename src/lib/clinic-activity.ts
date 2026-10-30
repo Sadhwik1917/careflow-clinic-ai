@@ -23,6 +23,9 @@ export const activityLabel: Record<string, string> = {
   CLINIC_REINSTATE: "Suspension lifted", REVERIFICATION_REQUESTED: "Reverification requested",
   DOCUMENT_UPDATE_SUBMITTED: "Document update submitted", DOCUMENT_UPDATE_ACCEPTED: "Document update accepted",
   DOCUMENT_UPDATE_NEEDS_REPLACEMENT: "Another document replacement requested",
+  DOCTOR_MARKED_ABSENT: "Doctor marked absent",
+  ATTENDANCE_RECORDED: "Attendance recorded",
+  ATTENDANCE_CORRECTED: "Attendance corrected",
 };
 export const labelFor = (code: string) => activityLabel[code] ?? code.toLowerCase().replace(/_/g, " ").replace(/^./, c => c.toUpperCase());
 
