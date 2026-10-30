@@ -170,7 +170,7 @@ export async function loadClinicGmailConnectionRecord(
  * Generates the Google OAuth 2.0 authorization URL for a clinic owner.
  * Requests minimum scopes: gmail.send and userinfo.email.
  */
-export function generateGoogleOAuthUrl(clinicId: string, stateNonce: string): string {
+export function generateGoogleOAuthUrl(clinicId: string, stateNonce: string, returnTo?: string): string {
   const clientId = getGoogleClientId();
   if (!clientId) {
     throw new Error("Google OAuth Client ID is not configured on the server.");
@@ -182,8 +182,17 @@ export function generateGoogleOAuthUrl(clinicId: string, stateNonce: string): st
     "https://www.googleapis.com/auth/userinfo.email",
   ].join(" ");
 
+  const statePayloadObj: { clinicId: string; nonce: string; timestamp: number; returnTo?: string } = {
+    clinicId,
+    nonce: stateNonce,
+    timestamp: Date.now(),
+  };
+  if (returnTo) {
+    statePayloadObj.returnTo = returnTo;
+  }
+
   const statePayload = Buffer.from(
-    JSON.stringify({ clinicId, nonce: stateNonce, timestamp: Date.now() })
+    JSON.stringify(statePayloadObj)
   ).toString("base64url");
 
   const params = new URLSearchParams({

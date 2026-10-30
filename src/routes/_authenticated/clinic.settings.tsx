@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Loader2 } from "lucide-react";
@@ -15,6 +15,9 @@ import { addClinicErrorMessage } from "@/lib/entitlements";
 import { setSelectedClinicId } from "@/lib/access";
 import { ThemeSelector } from "@/components/careflow/theme-selector";
 import { ClinicScheduleSettings } from "@/components/careflow/clinic-schedule-settings";
+import { AiUsageCard } from "@/components/careflow/ai-usage-card";
+import { ClinicGmailSettings } from "@/components/careflow/clinic-gmail-settings";
+import { toast } from "@/lib/toast";
 
 export const Route = createFileRoute("/_authenticated/clinic/settings")({
   head: () => pageMetadata("Settings", "OWNER"),
@@ -35,6 +38,26 @@ function Page() {
   const [error, setError] = useState<string | null>(null);
   const a = allowance.data;
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("gmail_connected");
+    const err = params.get("gmail_error");
+    if (connected === "success") {
+      toast.success({
+        title: "Gmail connected",
+        description: "Your clinic Gmail account has been authorized to send team invitations.",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (err) {
+      toast.error({
+        title: "Gmail authorization failed",
+        description: decodeURIComponent(err),
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -52,7 +75,7 @@ function Page() {
   }
 
   return <>
-    <PageTitle title="Settings" description="Manage your clinics." />
+    <PageTitle title="Settings" description="Manage your clinics and clinic configurations." />
     <div className="space-y-6 border-t px-4 py-6 md:px-6">
       <section className="rounded-lg border bg-card p-5">
         <h2 className="text-base font-semibold">Appearance</h2>
@@ -71,10 +94,14 @@ function Page() {
           </form>}
       </section>
       {membership?.clinic_id && (
-        <ClinicScheduleSettings
-          userId={user.id}
-          clinicId={membership.clinic_id}
-        />
+        <>
+          <AiUsageCard clinicId={membership.clinic_id} />
+          <ClinicGmailSettings clinicId={membership.clinic_id} />
+          <ClinicScheduleSettings
+            userId={user.id}
+            clinicId={membership.clinic_id}
+          />
+        </>
       )}
     </div>
   </>;

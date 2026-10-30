@@ -10,30 +10,42 @@ export const Route = createFileRoute("/api/auth/callback/google-gmail")({
         const stateRaw = url.searchParams.get("state");
         const error = url.searchParams.get("error");
 
+        let returnTarget = "/clinic/dashboard";
+        let clinicId: string | undefined;
+
+        if (stateRaw) {
+          try {
+            const stateJson = Buffer.from(stateRaw, "base64url").toString("utf8");
+            const state = JSON.parse(stateJson) as { clinicId?: string; nonce?: string; returnTo?: string };
+            clinicId = state.clinicId;
+            if (state.returnTo && typeof state.returnTo === "string" && state.returnTo.startsWith("/")) {
+              returnTarget = state.returnTo;
+            }
+          } catch {
+            // Keep default target
+          }
+        }
+
         if (error) {
           const reason = error === "access_denied" ? "Google authorization was cancelled." : `Google error: ${error}`;
           return new Response(null, {
             status: 302,
-            headers: { Location: `/clinic/dashboard?gmail_error=${encodeURIComponent(reason)}` },
+            headers: { Location: `${returnTarget}?gmail_error=${encodeURIComponent(reason)}` },
           });
         }
 
         if (!code || !stateRaw) {
           return new Response(null, {
             status: 302,
-            headers: { Location: `/clinic/dashboard?gmail_error=${encodeURIComponent("Missing authorization code or state parameter.")}` },
+            headers: { Location: `${returnTarget}?gmail_error=${encodeURIComponent("Missing authorization code or state parameter.")}` },
           });
         }
 
         try {
-          const stateJson = Buffer.from(stateRaw, "base64url").toString("utf8");
-          const state = JSON.parse(stateJson) as { clinicId?: string; nonce?: string };
-          const clinicId = state.clinicId;
-
           if (!clinicId) {
             return new Response(null, {
               status: 302,
-              headers: { Location: `/clinic/dashboard?gmail_error=${encodeURIComponent("Invalid authorization state.")}` },
+              headers: { Location: `${returnTarget}?gmail_error=${encodeURIComponent("Invalid authorization state.")}` },
             });
           }
 
@@ -51,13 +63,13 @@ export const Route = createFileRoute("/api/auth/callback/google-gmail")({
 
           return new Response(null, {
             status: 302,
-            headers: { Location: `/clinic/dashboard?gmail_connected=success` },
+            headers: { Location: `${returnTarget}?gmail_connected=success` },
           });
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Failed to complete Google OAuth connection.";
           return new Response(null, {
             status: 302,
-            headers: { Location: `/clinic/dashboard?gmail_error=${encodeURIComponent(msg)}` },
+            headers: { Location: `${returnTarget}?gmail_error=${encodeURIComponent(msg)}` },
           });
         }
       },
