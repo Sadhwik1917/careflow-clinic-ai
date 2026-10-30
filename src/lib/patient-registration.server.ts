@@ -6,6 +6,7 @@ import {
   type SelfRegistrationInput,
   type PublicClinicInfo,
   type RegistrationResult,
+  type ResendActivationResult,
 } from "./patient-registration";
 
 type Client = SupabaseClient<Database>;
@@ -232,7 +233,7 @@ export async function registerPatientSelf(
 
   try {
     // 3. Validate clinic is active and operational
-    await getPublicClinicInfo(input.clinicId);
+    const clinicInfo = await getPublicClinicInfo(input.clinicId);
 
     const db = await getAdminDb();
 
@@ -294,28 +295,33 @@ export async function registerPatientSelf(
       throw new Error("Unable to create patient registration. Please try again.");
     }
 
-    // 7. Secure Account Activation via Supabase Auth
+    // 7. Secure Account Activation via Supabase Auth + Clinic Gmail API
+    // Generate valid Supabase activation link without using Supabase's built-in mailer
     // User metadata stores registration_patient_id and registration_clinic_id for trusted linking
     // Never uses a default shared password like Patient@1234.
     try {
       const displayName = `${input.first_name} ${input.last_name || ""}`.trim();
-      const { error: inviteError } = await (db as any).auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: `${cleanOrigin}/reset-password`,
-        data: {
-          display_name: displayName,
-          registration_patient_id: newPatient.id,
-          registration_clinic_id: input.clinicId,
+      const { data: linkData, error: linkError } = await (db as any).auth.admin.generateLink({
+        type: "invite",
+        email: cleanEmail,
+        options: {
+          redirectTo: `${cleanOrigin}/reset-password`,
+          data: {
+            display_name: displayName,
+            registration_patient_id: newPatient.id,
+            registration_clinic_id: input.clinicId,
+          },
         },
       });
 
-      if (inviteError) {
-        const errMessage = (inviteError.message || "").toLowerCase();
+      if (linkError) {
+        const errMessage = (linkError.message || "").toLowerCase();
         // If the auth user already exists in Supabase Auth
         if (
           errMessage.includes("already registered") ||
           errMessage.includes("already has an account") ||
           errMessage.includes("user already exists") ||
-          inviteError.status === 422
+          linkError.status === 422
         ) {
           return {
             status: "CREATED_EXISTING_USER",
@@ -326,24 +332,97 @@ export async function registerPatientSelf(
           };
         }
 
-        // Email delivery failure: DO NOT delete the patient record!
+        // Link generation failure: DO NOT delete the patient record!
         // Preserve audit integrity and allow the user to resend activation link.
         return {
           status: "CREATED_INVITE_PENDING",
           patientNumber: newPatient.patient_number,
           email: cleanEmail,
           message:
-            "Your patient registration has been created! However, our email activation service is currently delayed. Please use 'Resend activation link' below in a few moments to activate your account.",
+            "Your patient registration has been created! However, generating the account activation link is currently delayed. Please use 'Resend email activation link' below in a few moments or contact clinic reception.",
         };
       }
 
-      return {
-        status: "CREATED_INVITED",
-        patientNumber: newPatient.patient_number,
-        email: cleanEmail,
-        message:
-          "Registration successful! We have sent an activation link to your email. Please check your inbox and follow the instructions to set your password and access your care portal.",
-      };
+      // Check if user is already confirmed (e.g. existing user from another clinic)
+      const authUser = linkData?.user;
+      if (authUser && (authUser.email_confirmed_at || authUser.confirmed_at)) {
+        try {
+          await (db as any).auth.admin.updateUserById(authUser.id, {
+            user_metadata: {
+              ...(authUser.user_metadata || {}),
+              registration_patient_id: newPatient.id,
+              registration_clinic_id: input.clinicId,
+              display_name: displayName,
+            },
+          });
+        } catch {
+          // Non-fatal metadata sync
+        }
+
+        return {
+          status: "CREATED_EXISTING_USER",
+          patientNumber: newPatient.patient_number,
+          email: cleanEmail,
+          message:
+            "Your patient registration has been created! Since you already have an existing CAREFLOW account, sign in with your email and password to access your new clinic records.",
+        };
+      }
+
+      const actionLink = linkData?.properties?.action_link;
+      if (!actionLink) {
+        return {
+          status: "CREATED_INVITE_PENDING",
+          patientNumber: newPatient.patient_number,
+          email: cleanEmail,
+          message:
+            "Your patient registration has been created! However, generating the activation link was delayed. Please use 'Resend email activation link' below in a few moments.",
+        };
+      }
+
+      // Ensure user metadata is up to date on unconfirmed auth user
+      if (authUser?.id) {
+        try {
+          await (db as any).auth.admin.updateUserById(authUser.id, {
+            user_metadata: {
+              ...(authUser.user_metadata || {}),
+              registration_patient_id: newPatient.id,
+              registration_clinic_id: input.clinicId,
+              display_name: displayName,
+            },
+          });
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      // 8. Deliver email via clinic's authorized Gmail account
+      try {
+        const { sendPatientActivationEmail } = await import("./gmail.server");
+        await sendPatientActivationEmail({
+          clinicId: input.clinicId,
+          clinicName: clinicInfo.displayName,
+          recipientEmail: cleanEmail,
+          patientName: displayName,
+          actionLink,
+        });
+
+        return {
+          status: "CREATED_INVITED",
+          patientNumber: newPatient.patient_number,
+          email: cleanEmail,
+          message: `Registration successful! We have sent an activation link to your email from ${clinicInfo.displayName}. Please check your inbox and follow the instructions to set your password and access your care portal.`,
+        };
+      } catch (deliveryErr: any) {
+        // Email delivery failure: DO NOT delete the patient record!
+        // Preserve audit integrity and allow the user to resend activation link.
+        const deliveryMsg = deliveryErr instanceof Error ? deliveryErr.message : "Email delivery failed";
+        return {
+          status: "CREATED_INVITE_PENDING",
+          patientNumber: newPatient.patient_number,
+          email: cleanEmail,
+          message: `Your patient registration has been created! However, email delivery from the clinic could not be completed (${deliveryMsg}). Please contact clinic reception or use 'Resend email activation link' below.`,
+        };
+      }
     } catch {
       // Do not delete patient record on unexpected auth exception
       return {
@@ -351,7 +430,7 @@ export async function registerPatientSelf(
         patientNumber: newPatient.patient_number,
         email: cleanEmail,
         message:
-          "Your patient registration has been created! However, our email activation service is currently delayed. Please use 'Resend activation link' below in a few moments to activate your account.",
+          "Your patient registration has been created! However, our email activation service is currently delayed. Please use 'Resend email activation link' below in a few moments to activate your account.",
       };
     }
   } finally {
@@ -367,7 +446,7 @@ export async function resendPatientActivation(
   origin: string,
   rawInput: unknown,
   clientIp?: string
-): Promise<{ ok: true; message: string }> {
+): Promise<ResendActivationResult> {
   const input = resendActivationSchema.parse(rawInput);
   const cleanEmail = input.email.trim().toLowerCase();
   const cleanOrigin = origin.replace(/\/+$/, "");
@@ -379,6 +458,38 @@ export async function resendPatientActivation(
   checkRateLimit(`resend:short:${cleanEmail}`, 2, 60 * 1000);
   checkRateLimit(`resend:long:${cleanEmail}`, 5, 15 * 60 * 1000);
 
+  // Validate clinic status
+  let clinicInfo: PublicClinicInfo;
+  try {
+    clinicInfo = await getPublicClinicInfo(input.clinicId);
+  } catch {
+    return {
+      ok: false,
+      status: "FAILED",
+      message: "This clinic is currently inactive or unavailable for online registration.",
+    };
+  }
+
+  // Check clinic Gmail status beforehand
+  const { getClinicGmailStatus, sendPatientActivationEmail } = await import("./gmail.server");
+  const gmailStatus = await getClinicGmailStatus(input.clinicId);
+  if (!gmailStatus.connected) {
+    if (gmailStatus.status === "REVOKED") {
+      return {
+        ok: false,
+        status: "FAILED",
+        message:
+          "Clinic Gmail authorization has expired or been revoked. Please contact clinic reception.",
+      };
+    }
+    return {
+      ok: false,
+      status: "FAILED",
+      message:
+        "Clinic email delivery is currently not connected. Please contact clinic reception to activate your account.",
+    };
+  }
+
   const db = await getAdminDb();
 
   const { data: patient } = await db
@@ -388,28 +499,115 @@ export async function resendPatientActivation(
     .ilike("email", cleanEmail)
     .maybeSingle();
 
-  // If patient exists and is still unlinked, resend invite
+  // If patient exists and is still unlinked, generate link and dispatch via Gmail API
   if (patient && !patient.user_id) {
     const displayName = `${patient.first_name} ${patient.last_name || ""}`.trim();
     try {
-      await (db as any).auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: `${cleanOrigin}/reset-password`,
-        data: {
-          display_name: displayName,
-          registration_patient_id: patient.id,
-          registration_clinic_id: input.clinicId,
+      const { data: linkData, error: linkError } = await (db as any).auth.admin.generateLink({
+        type: "invite",
+        email: cleanEmail,
+        options: {
+          redirectTo: `${cleanOrigin}/reset-password`,
+          data: {
+            display_name: displayName,
+            registration_patient_id: patient.id,
+            registration_clinic_id: input.clinicId,
+          },
         },
       });
-    } catch {
-      // Ignore auth send errors to maintain anti-enumeration response
+
+      if (linkError || !linkData?.properties?.action_link) {
+        const errMessage = (linkError?.message || "").toLowerCase();
+        const isRateLimited = linkError?.status === 429 || errMessage.includes("rate limit");
+
+        if (isRateLimited) {
+          return {
+            ok: false,
+            status: "RATE_LIMITED",
+            message:
+              "The authentication service rate limit has been reached. Please wait a few minutes before requesting another link.",
+          };
+        }
+
+        if (
+          errMessage.includes("already registered") ||
+          errMessage.includes("already has an account") ||
+          errMessage.includes("user already exists") ||
+          linkError?.status === 422
+        ) {
+          return {
+            ok: true,
+            status: "REQUESTED",
+            message:
+              "An active account already exists for this email address. Please sign in with your email and password to access your clinic records.",
+          };
+        }
+
+        return {
+          ok: false,
+          status: "FAILED",
+          message:
+            "Unable to generate activation link from the authentication service. Please contact clinic reception.",
+        };
+      }
+
+      // Synchronize metadata if auth user exists
+      if (linkData.user?.id) {
+        try {
+          await (db as any).auth.admin.updateUserById(linkData.user.id, {
+            user_metadata: {
+              ...(linkData.user.user_metadata || {}),
+              registration_patient_id: patient.id,
+              registration_clinic_id: input.clinicId,
+              display_name: displayName,
+            },
+          });
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      // Deliver via clinic's authorized Gmail account
+      await sendPatientActivationEmail({
+        clinicId: input.clinicId,
+        clinicName: clinicInfo.displayName,
+        recipientEmail: cleanEmail,
+        patientName: displayName,
+        actionLink: linkData.properties.action_link,
+      });
+    } catch (err: any) {
+      const errMessage = (err?.message || "").toLowerCase();
+      const isRateLimited =
+        err?.status === 429 ||
+        errMessage.includes("rate limit") ||
+        errMessage.includes("quota");
+
+      if (isRateLimited) {
+        return {
+          ok: false,
+          status: "RATE_LIMITED",
+          message:
+            "The email delivery service quota or rate limit has been reached. Please wait a few minutes before requesting another link.",
+        };
+      }
+
+      return {
+        ok: false,
+        status: "FAILED",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Unable to request activation email at this time. Please try again later or contact clinic reception.",
+      };
     }
   }
 
-  // Consistent message returned regardless of existence to prevent enumeration
+  // Consistent message returned when dispatch succeeds (or when anti-enumeration applies)
   return {
     ok: true,
+    status: "REQUESTED",
     message:
-      "If an unactivated patient registration exists for this email, an activation link has been sent. Please check your inbox.",
+      "If an unactivated patient registration exists for this email, an activation link has been sent from this clinic's authorized email. Please check your inbox and spam folder.",
   };
 }
 

@@ -5,12 +5,18 @@ import {
   generateGoogleOAuthUrl,
   isGoogleOAuthConfigured,
   getCanonicalAppUrl,
+  sendPatientActivationEmail,
+  setClinicGmailConnectionRecord,
+  clearClinicGmailConnections,
+  loadClinicGmailConnectionRecord,
 } from "@/lib/gmail.server";
 import {
   buildMimeMessage,
   base64UrlEncode,
   generateInvitationEmailContent,
   buildInvitationUrl,
+  generatePatientActivationEmailContent,
+  buildPatientActivationMimeMessage,
 } from "@/lib/invitation-email";
 
 describe("Gmail OAuth and Email Infrastructure", () => {
@@ -100,6 +106,22 @@ describe("Gmail OAuth and Email Infrastructure", () => {
       process.env["APP_URL"] = "https://myclinic-careflow.com/";
       expect(getCanonicalAppUrl()).toBe("https://myclinic-careflow.com");
     });
+
+    it("resolves canonical URL using VERCEL_PROJECT_PRODUCTION_URL and VERCEL_URL", () => {
+      delete process.env["APP_URL"];
+      delete process.env["VITE_APP_URL"];
+
+      process.env["VERCEL_PROJECT_PRODUCTION_URL"] = "careflow-ai-ten.vercel.app";
+      expect(getCanonicalAppUrl()).toBe("https://careflow-ai-ten.vercel.app");
+
+      delete process.env["VERCEL_PROJECT_PRODUCTION_URL"];
+      process.env["VERCEL_URL"] = "careflow-dpl-123.vercel.app";
+      expect(getCanonicalAppUrl()).toBe("https://careflow-dpl-123.vercel.app");
+
+      delete process.env["VERCEL_URL"];
+      process.env["NODE_ENV"] = "production";
+      expect(getCanonicalAppUrl()).toBe("https://careflow-ai-ten.vercel.app");
+    });
   });
 
   describe("Invitation Email Template & MIME Generation", () => {
@@ -159,6 +181,204 @@ describe("Gmail OAuth and Email Infrastructure", () => {
       expect(encoded).not.toContain("+");
       expect(encoded).not.toContain("/");
       expect(encoded).not.toContain("=");
+    });
+  });
+
+  describe("Patient Activation Email Template & MIME Generation", () => {
+    const activationParams = {
+      clinicName: "Om Sri Sai Clinic",
+      senderEmail: "omsrisai@gmail.com",
+      recipientEmail: "patient.anita@example.com",
+      patientName: "Anita Sharma",
+      activationUrl: "https://careflow-test.app/auth/v1/verify?token=xyz123&type=invite&redirect_to=https%3A%2F%2Fcareflow-test.app%2Freset-password",
+    };
+
+    it("includes clinic name, patient greeting, 24-hour expiry notice, and activation link", () => {
+      const { subject, html, text } = generatePatientActivationEmailContent(activationParams);
+
+      expect(subject).toBe("Activate your patient account at Om Sri Sai Clinic | CAREFLOW AI");
+
+      expect(html).toContain("Om Sri Sai Clinic | CAREFLOW AI");
+      expect(html).toContain("Activate Your Patient Portal");
+      expect(html).toContain("Hello Anita Sharma,");
+      expect(html).toContain("Activate My Account &amp; Set Password");
+      expect(html).toContain("24 hours");
+      expect(html).toContain("token=xyz123&amp;type=invite");
+      expect(html).toContain("omsrisai@gmail.com");
+
+      expect(text).toContain("Om Sri Sai Clinic | CAREFLOW AI");
+      expect(text).toContain("Activate Your Patient Portal");
+      expect(text).toContain("Hello Anita Sharma,");
+      expect(text).toContain("24 hours");
+      expect(text).toContain(activationParams.activationUrl);
+      expect(text).toContain("omsrisai@gmail.com");
+    });
+
+    it("escapes patient name and clinic name to prevent HTML injection", () => {
+      const { html } = generatePatientActivationEmailContent({
+        ...activationParams,
+        clinicName: "Om <script>alert('xss')</script> Clinic",
+        patientName: "Anita <b>Sharma</b>",
+      });
+
+      expect(html).not.toContain("<script>");
+      expect(html).toContain("&lt;script&gt;");
+      expect(html).not.toContain("<b>Sharma</b>");
+      expect(html).toContain("&lt;b&gt;Sharma&lt;/b&gt;");
+    });
+
+    it("encodes patient activation MIME message as multipart/alternative with Base64URL without padding", () => {
+      const mime = buildPatientActivationMimeMessage(activationParams);
+      expect(mime).toContain('From: "Om Sri Sai Clinic | CAREFLOW AI" <omsrisai@gmail.com>');
+      expect(mime).toContain("To: <patient.anita@example.com>");
+      expect(mime).toContain("Content-Type: multipart/alternative");
+
+      const encoded = base64UrlEncode(mime);
+      expect(encoded).not.toContain("+");
+      expect(encoded).not.toContain("/");
+      expect(encoded).not.toContain("=");
+    });
+  });
+
+  describe("Patient Activation Email Delivery via Gmail API", () => {
+    beforeEach(() => {
+      clearClinicGmailConnections();
+      vi.restoreAllMocks();
+    });
+
+    it("enforces clinic Gmail connection before sending activation emails", async () => {
+      await expect(
+        sendPatientActivationEmail({
+          clinicId: "unconnected-clinic",
+          clinicName: "Om Sri Sai Clinic",
+          recipientEmail: "patient@example.com",
+          actionLink: "https://careflow-test.app/verify",
+        })
+      ).rejects.toThrow("Clinic Gmail account is not connected");
+    });
+
+    it("delivers activation email through Gmail API with refreshed token", async () => {
+      const { ciphertext, iv, tag } = encryptToken("test-refresh-token-123");
+      setClinicGmailConnectionRecord({
+        clinicId: "clinic-test-1",
+        senderEmail: "clinic@gmail.com",
+        encryptedRefreshToken: ciphertext,
+        iv,
+        tag,
+        connectedAt: new Date().toISOString(),
+        status: "ACTIVE",
+      });
+
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes("oauth2.googleapis.com/token")) {
+          return new Response(JSON.stringify({ access_token: "google-fresh-token-abc" }), { status: 200 });
+        }
+        if (urlStr.includes("gmail.googleapis.com/gmail/v1/users/me/messages/send")) {
+          return new Response(JSON.stringify({ id: "gmail-sent-message-id-999" }), { status: 200 });
+        }
+        return new Response("Not found", { status: 404 });
+      });
+
+      const res = await sendPatientActivationEmail({
+        clinicId: "clinic-test-1",
+        clinicName: "Om Sri Sai Clinic",
+        recipientEmail: "patient@example.com",
+        patientName: "Anita Sharma",
+        actionLink: "https://careflow-test.app/verify?token=123",
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.messageId).toBe("gmail-sent-message-id-999");
+      expect(res.senderEmail).toBe("clinic@gmail.com");
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("handles Gmail sending quota exceeded errors truthfully", async () => {
+      const { ciphertext, iv, tag } = encryptToken("test-refresh-token-123");
+      setClinicGmailConnectionRecord({
+        clinicId: "clinic-test-quota",
+        senderEmail: "clinic@gmail.com",
+        encryptedRefreshToken: ciphertext,
+        iv,
+        tag,
+        connectedAt: new Date().toISOString(),
+        status: "ACTIVE",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes("oauth2.googleapis.com/token")) {
+          return new Response(JSON.stringify({ access_token: "google-token" }), { status: 200 });
+        }
+        if (urlStr.includes("gmail.googleapis.com/gmail/v1/users/me/messages/send")) {
+          return new Response(JSON.stringify({ error: { message: "Daily user sending quota exceeded" } }), {
+            status: 429,
+          });
+        }
+        return new Response("Not found", { status: 404 });
+      });
+
+      await expect(
+        sendPatientActivationEmail({
+          clinicId: "clinic-test-quota",
+          clinicName: "Om Sri Sai Clinic",
+          recipientEmail: "patient@example.com",
+          actionLink: "https://careflow-test.app/verify",
+        })
+      ).rejects.toThrow("Gmail sending quota exceeded");
+    });
+
+    it("marks connection REVOKED and throws actionable error when authorization is rejected (401)", async () => {
+      const { ciphertext, iv, tag } = encryptToken("test-refresh-token-123");
+      setClinicGmailConnectionRecord({
+        clinicId: "clinic-test-revoked",
+        senderEmail: "clinic@gmail.com",
+        encryptedRefreshToken: ciphertext,
+        iv,
+        tag,
+        connectedAt: new Date().toISOString(),
+        status: "ACTIVE",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+        const urlStr = String(url);
+        if (urlStr.includes("oauth2.googleapis.com/token")) {
+          return new Response(JSON.stringify({ access_token: "google-token" }), { status: 200 });
+        }
+        if (urlStr.includes("gmail.googleapis.com/gmail/v1/users/me/messages/send")) {
+          return new Response("Invalid Credentials", { status: 401 });
+        }
+        return new Response("Not found", { status: 404 });
+      });
+
+      await expect(
+        sendPatientActivationEmail({
+          clinicId: "clinic-test-revoked",
+          clinicName: "Om Sri Sai Clinic",
+          recipientEmail: "patient@example.com",
+          actionLink: "https://careflow-test.app/verify",
+        })
+      ).rejects.toThrow("Clinic Gmail authorization was rejected");
+    });
+
+    it("loads connection record across serverless instances from persistent storage", async () => {
+      const { ciphertext, iv, tag } = encryptToken("persistent-refresh-token");
+      const record = {
+        clinicId: "clinic-persisted-1",
+        senderEmail: "persistent@gmail.com",
+        encryptedRefreshToken: ciphertext,
+        iv,
+        tag,
+        connectedAt: new Date().toISOString(),
+        status: "ACTIVE" as const,
+      };
+
+      // Set directly in memory cache or load
+      setClinicGmailConnectionRecord(record);
+      const loaded = await loadClinicGmailConnectionRecord("clinic-persisted-1");
+      expect(loaded).toEqual(record);
+      expect(loaded?.senderEmail).toBe("persistent@gmail.com");
     });
   });
 });

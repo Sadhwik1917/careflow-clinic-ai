@@ -73,6 +73,12 @@ export interface PublicClinicInfo {
   phone: string | null;
 }
 
+export type ResendActivationResult = {
+  ok: boolean;
+  status: "REQUESTED" | "RATE_LIMITED" | "FAILED";
+  message: string;
+};
+
 export type RegistrationResult =
   | {
       status: "CREATED_INVITED";

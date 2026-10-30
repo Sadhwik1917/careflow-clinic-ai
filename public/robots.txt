@@ -1,5 +1,5 @@
 # CAREFLOW AI Robots Directive
-# https://careflow-ai-ten.vercel.app
+# https://careflow-ai-ten.vercel.app/
 
 User-agent: *
 

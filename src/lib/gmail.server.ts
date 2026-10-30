@@ -7,7 +7,7 @@
  */
 
 import crypto from "node:crypto";
-import { buildMimeMessage, base64UrlEncode } from "./invitation-email";
+import { buildMimeMessage, buildPatientActivationMimeMessage, base64UrlEncode } from "./invitation-email";
 
 export interface GmailConnectionRecord {
   clinicId: string;
@@ -26,7 +26,7 @@ export interface ClinicGmailStatus {
   configured: boolean;
 }
 
-// In-memory / server persistent cache for clinic credentials when DB migration is pending
+// In-memory / server cache for clinic credentials (populated from DB or tests)
 const memoryCredentialsStore = new Map<string, GmailConnectionRecord>();
 
 /**
@@ -40,9 +40,15 @@ export function getCanonicalAppUrl(): string {
   if (process.env["VITE_APP_URL"]) {
     return process.env["VITE_APP_URL"].replace(/\/+$/, "");
   }
+  if (process.env["VERCEL_PROJECT_PRODUCTION_URL"]) {
+    return `https://${process.env["VERCEL_PROJECT_PRODUCTION_URL"]}`.replace(/\/+$/, "");
+  }
+  if (process.env["VERCEL_URL"]) {
+    return `https://${process.env["VERCEL_URL"]}`.replace(/\/+$/, "");
+  }
   if (process.env["NODE_ENV"] === "production") {
-    // In production without APP_URL, fail closed or use production host if available
-    return "https://careflow-clinic-ai.lovable.app";
+    // In production without APP_URL, fallback to verified production domain
+    return "https://careflow-ai-ten.vercel.app";
   }
   return "http://localhost:8080";
 }
@@ -102,6 +108,62 @@ export function decryptToken(ciphertext: string, iv: string, tag: string): strin
 /** Checks whether Google OAuth is configured in the environment */
 export function isGoogleOAuthConfigured(): boolean {
   return Boolean(getGoogleClientId() && getGoogleClientSecret());
+}
+
+async function getAdminDb() {
+  if (!process.env["SUPABASE_URL"] || !process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    return null;
+  }
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    return supabaseAdmin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Loads the clinic Gmail connection record from in-memory cache or persistent database.
+ * Ensures connection availability across serverless container invocations.
+ */
+export async function loadClinicGmailConnectionRecord(
+  clinicId: string
+): Promise<GmailConnectionRecord | null> {
+  const cached = memoryCredentialsStore.get(clinicId);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const db = await getAdminDb();
+    if (!db) {
+      return null;
+    }
+    const { data, error } = await (db as any)
+      .from("clinic_gmail_connections")
+      .select("clinic_id, sender_email, encrypted_refresh_token, iv, tag, status, connected_at")
+      .eq("clinic_id", clinicId)
+      .maybeSingle();
+
+    if (error || !data) {
+      return null;
+    }
+
+    const record: GmailConnectionRecord = {
+      clinicId: data.clinic_id,
+      senderEmail: data.sender_email,
+      encryptedRefreshToken: data.encrypted_refresh_token,
+      iv: data.iv,
+      tag: data.tag,
+      connectedAt: data.connected_at,
+      status: data.status as "ACTIVE" | "REVOKED",
+    };
+
+    memoryCredentialsStore.set(clinicId, record);
+    return record;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -199,7 +261,7 @@ export async function exchangeAndStoreGoogleAuth(
     throw new Error("Could not determine authorized Gmail address.");
   }
 
-  // 3. Strict verification: Authorized Gmail MUST match clinic registered email
+  // 3. Strict verification: Authorized Gmail MUST match clinic registered email when configured
   const cleanExpected = expectedClinicEmail.toLowerCase().trim();
   if (cleanExpected && authorizedEmail !== cleanExpected) {
     throw new Error(
@@ -210,7 +272,7 @@ export async function exchangeAndStoreGoogleAuth(
   if (!tokenData.refresh_token) {
     // If prompt=consent was not provided or re-authorizing without refresh token,
     // check if we already have an existing record for this clinic
-    const existing = memoryCredentialsStore.get(clinicId);
+    const existing = await loadClinicGmailConnectionRecord(clinicId);
     if (!existing) {
       throw new Error(
         "Google did not provide a refresh token. Please revoke access in your Google Account security settings and reconnect to grant offline access."
@@ -219,6 +281,24 @@ export async function exchangeAndStoreGoogleAuth(
     // Update existing record status
     existing.status = "ACTIVE";
     existing.senderEmail = authorizedEmail;
+    memoryCredentialsStore.set(clinicId, existing);
+
+    try {
+      const db = await getAdminDb();
+      if (db) {
+        await (db as any)
+          .from("clinic_gmail_connections")
+          .update({
+            sender_email: authorizedEmail,
+            status: "ACTIVE",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("clinic_id", clinicId);
+      }
+    } catch (dbErr) {
+      console.error("[Gmail OAuth] Failed to update existing connection status in database:", dbErr);
+    }
+
     return { success: true, senderEmail: authorizedEmail };
   }
 
@@ -236,6 +316,33 @@ export async function exchangeAndStoreGoogleAuth(
 
   memoryCredentialsStore.set(clinicId, record);
 
+  // 5. Persist to Supabase database for persistent serverless access
+  try {
+    const db = await getAdminDb();
+    if (db) {
+      const { error: upsertErr } = await (db as any)
+        .from("clinic_gmail_connections")
+        .upsert(
+          {
+            clinic_id: clinicId,
+            sender_email: authorizedEmail,
+            encrypted_refresh_token: ciphertext,
+            iv,
+            tag,
+            status: "ACTIVE",
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "clinic_id" }
+        );
+
+      if (upsertErr) {
+        console.error("[Gmail OAuth] Failed to persist connection in database:", upsertErr);
+      }
+    }
+  } catch (dbErr) {
+    console.error("[Gmail OAuth] Database error persisting connection:", dbErr);
+  }
+
   return { success: true, senderEmail: authorizedEmail };
 }
 
@@ -244,7 +351,7 @@ export async function exchangeAndStoreGoogleAuth(
  */
 export async function getClinicGmailStatus(clinicId: string): Promise<ClinicGmailStatus> {
   const configured = isGoogleOAuthConfigured();
-  const record = memoryCredentialsStore.get(clinicId);
+  const record = await loadClinicGmailConnectionRecord(clinicId);
 
   if (!record || record.status !== "ACTIVE") {
     return {
@@ -271,6 +378,19 @@ export async function disconnectClinicGmail(clinicId: string): Promise<{ ok: tru
   if (record) {
     record.status = "REVOKED";
   }
+
+  try {
+    const db = await getAdminDb();
+    if (db) {
+      await (db as any)
+        .from("clinic_gmail_connections")
+        .update({ status: "REVOKED", updated_at: new Date().toISOString() })
+        .eq("clinic_id", clinicId);
+    }
+  } catch (err) {
+    console.error("[Gmail Disconnect] Failed to update status in DB:", err);
+  }
+
   return { ok: true };
 }
 
@@ -302,6 +422,17 @@ async function getFreshAccessToken(record: GmailConnectionRecord): Promise<strin
     const errText = await res.text();
     if (errText.includes("invalid_grant")) {
       record.status = "REVOKED";
+      try {
+        const db = await getAdminDb();
+        if (db) {
+          await (db as any)
+            .from("clinic_gmail_connections")
+            .update({ status: "REVOKED", updated_at: new Date().toISOString() })
+            .eq("clinic_id", record.clinicId);
+        }
+      } catch {
+        // Non-fatal DB update
+      }
       throw new Error("Clinic Gmail authorization has expired or been revoked. Please reconnect the clinic's Gmail account.");
     }
     throw new Error(`Failed to refresh Gmail access token: ${errText}`);
@@ -327,7 +458,7 @@ export async function sendClinicInvitationEmail(params: {
   token: string;
   expiresAt: string | Date;
 }): Promise<{ ok: true; messageId: string; senderEmail: string }> {
-  const record = memoryCredentialsStore.get(params.clinicId);
+  const record = await loadClinicGmailConnectionRecord(params.clinicId);
 
   // CRITICAL REQUIREMENT: Never silently send from Supabase Auth or another address!
   if (!record || record.status !== "ACTIVE") {
@@ -369,6 +500,17 @@ export async function sendClinicInvitationEmail(params: {
     }
     if (status === 401) {
       record.status = "REVOKED";
+      try {
+        const db = await getAdminDb();
+        if (db) {
+          await (db as any)
+            .from("clinic_gmail_connections")
+            .update({ status: "REVOKED", updated_at: new Date().toISOString() })
+            .eq("clinic_id", record.clinicId);
+        }
+      } catch {
+        // Non-fatal
+      }
       throw new Error("Clinic Gmail authorization was rejected. Please reconnect the clinic's Gmail account.");
     }
     throw new Error(`Gmail API delivery failed (${status}): ${errText}`);
@@ -376,4 +518,89 @@ export async function sendClinicInvitationEmail(params: {
 
   const resData = (await sendRes.json()) as { id: string };
   return { ok: true, messageId: resData.id, senderEmail: record.senderEmail };
+}
+
+/**
+ * Sends a patient self-registration activation email using the clinic's authorized Gmail account.
+ * Securely delivers the Supabase-generated action link to the patient.
+ * Throws a descriptive error if Gmail is not connected or delivery fails.
+ */
+export async function sendPatientActivationEmail(params: {
+  clinicId: string;
+  clinicName: string;
+  recipientEmail: string;
+  patientName?: string | undefined;
+  actionLink: string;
+}): Promise<{ ok: true; messageId: string; senderEmail: string }> {
+  const record = await loadClinicGmailConnectionRecord(params.clinicId);
+
+  // CRITICAL REQUIREMENT: Never silently send from Supabase Auth or another clinic's address!
+  if (!record || record.status !== "ACTIVE") {
+    throw new Error(
+      "Clinic Gmail account is not connected. Patient activation emails must be sent from your clinic's authorized Gmail address. Please connect your clinic's Gmail account in Settings."
+    );
+  }
+
+  const accessToken = await getFreshAccessToken(record);
+
+  const rawMime = buildPatientActivationMimeMessage({
+    clinicName: params.clinicName,
+    senderEmail: record.senderEmail,
+    recipientEmail: params.recipientEmail,
+    patientName: params.patientName,
+    activationUrl: params.actionLink,
+  });
+
+  const encodedMessage = base64UrlEncode(rawMime);
+
+  const sendRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ raw: encodedMessage }),
+  });
+
+  if (!sendRes.ok) {
+    const status = sendRes.status;
+    const errText = await sendRes.text();
+
+    if (status === 429 || (status === 403 && errText.includes("quotaExceeded"))) {
+      throw new Error("Gmail sending quota exceeded for this account. Please try again later.");
+    }
+    if (status === 401) {
+      record.status = "REVOKED";
+      try {
+        const db = await getAdminDb();
+        if (db) {
+          await (db as any)
+            .from("clinic_gmail_connections")
+            .update({ status: "REVOKED", updated_at: new Date().toISOString() })
+            .eq("clinic_id", record.clinicId);
+        }
+      } catch {
+        // Non-fatal
+      }
+      throw new Error("Clinic Gmail authorization was rejected. Please reconnect the clinic's Gmail account.");
+    }
+    throw new Error(`Gmail API delivery failed (${status}): ${errText}`);
+  }
+
+  const resData = (await sendRes.json()) as { id: string };
+  return { ok: true, messageId: resData.id, senderEmail: record.senderEmail };
+}
+
+/**
+ * Test & Internal Helper: registers a clinic Gmail connection record.
+ */
+export function setClinicGmailConnectionRecord(record: GmailConnectionRecord): void {
+  memoryCredentialsStore.set(record.clinicId, record);
+}
+
+/**
+ * Test & Internal Helper: clears all clinic Gmail connections.
+ */
+export function clearClinicGmailConnections(): void {
+  memoryCredentialsStore.clear();
 }

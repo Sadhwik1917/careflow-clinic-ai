@@ -407,6 +407,50 @@ export type Database = {
           },
         ]
       }
+      clinic_gmail_connections: {
+        Row: {
+          clinic_id: string
+          connected_at: string
+          encrypted_refresh_token: string
+          id: string
+          iv: string
+          sender_email: string
+          status: string
+          tag: string
+          updated_at: string
+        }
+        Insert: {
+          clinic_id: string
+          connected_at?: string
+          encrypted_refresh_token: string
+          id?: string
+          iv: string
+          sender_email: string
+          status?: string
+          tag: string
+          updated_at?: string
+        }
+        Update: {
+          clinic_id?: string
+          connected_at?: string
+          encrypted_refresh_token?: string
+          id?: string
+          iv?: string
+          sender_email?: string
+          status?: string
+          tag?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_gmail_connections_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: true
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinic_invitations: {
         Row: {
           clinic_id: string

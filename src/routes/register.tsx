@@ -93,7 +93,7 @@ function PatientRegistrationPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submissionResult, setSubmissionResult] = useState<RegistrationResult | null>(null);
   const [resending, setResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendAlert, setResendAlert] = useState<{ tone: "error" | "success"; message: string } | null>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://careflow-clinic.internal";
 
@@ -154,7 +154,7 @@ function PatientRegistrationPage() {
   const handleResend = async () => {
     if (!clinicId || !email) return;
     setResending(true);
-    setResendMessage(null);
+    setResendAlert(null);
     try {
       const res = await resendActivation({
         data: {
@@ -162,11 +162,16 @@ function PatientRegistrationPage() {
           input: { clinicId, email },
         },
       });
-      setResendMessage(res.message);
-      toast.success("Activation instructions sent");
+      if (res.ok) {
+        setResendAlert({ tone: "success", message: res.message });
+        toast.success("Activation link requested");
+      } else {
+        setResendAlert({ tone: "error", message: res.message });
+        toast.error(res.message);
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to resend activation email.";
-      setResendMessage(msg);
+      const msg = err instanceof Error ? err.message : "Failed to request activation link.";
+      setResendAlert({ tone: "error", message: msg });
       toast.error(msg);
     } finally {
       setResending(false);
@@ -271,8 +276,8 @@ function PatientRegistrationPage() {
             <p className="text-sm leading-relaxed">{submissionResult.message}</p>
           </div>
 
-          {resendMessage && (
-            <FormAlert tone="success">{resendMessage}</FormAlert>
+          {resendAlert && (
+            <FormAlert tone={resendAlert.tone}>{resendAlert.message}</FormAlert>
           )}
 
           <div className="space-y-3 pt-2">

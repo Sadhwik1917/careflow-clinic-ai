@@ -127,7 +127,7 @@ export function getGoogleSiteVerification(): string | undefined {
 export function generateRobotsTxt(baseUrl = getPublicBaseUrl()): string {
   const cleanBase = baseUrl.replace(/\/+$/, "");
   return `# CAREFLOW AI Robots Directive
-# https://careflow-ai-ten.vercel.app
+# https://careflow-ai-ten.vercel.app/
 
 User-agent: *
 

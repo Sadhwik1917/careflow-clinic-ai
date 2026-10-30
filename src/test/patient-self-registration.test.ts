@@ -21,6 +21,9 @@ let mockClinicReverificationsData: any = null;
 let mockExistingPatient: any = null;
 let mockInsertedPatient: any = null;
 let mockInviteError: any = null;
+let mockGenerateLinkError: any = null;
+let mockGenerateLinkUser: any = null;
+let mockUserAlreadyConfirmed = false;
 let mockUnlinkedPatients: any[] = [];
 let mockExistingMember: any = null;
 let mockProfile: any = null;
@@ -33,6 +36,11 @@ const memberInserts: any[] = [];
 const patientUpdates: any[] = [];
 const patientDeletes: any[] = [];
 let inviteCalls: any[] = [];
+let generateLinkCalls: any[] = [];
+let updateUserCalls: any[] = [];
+let gmailSendCalls: any[] = [];
+let mockGmailStatus: any = { connected: true, status: "CONNECTED", senderEmail: "clinic@gmail.com" };
+let mockGmailSendError: any = null;
 
 const mockDb = {
   from: (table: string) => {
@@ -172,6 +180,41 @@ const mockDb = {
         }
         return { data: { user: null }, error: new Error("User not found") };
       }),
+      generateLink: vi.fn(async (params: any) => {
+        generateLinkCalls.push(params);
+        if (mockGenerateLinkError) {
+          return { data: null, error: mockGenerateLinkError };
+        }
+        return {
+          data: {
+            properties: {
+              action_link: `https://test-project.supabase.co/auth/v1/verify?token=test-token-123&type=${params.type}&redirect_to=${encodeURIComponent(params.options?.redirectTo || "")}`,
+              email_otp: "123456",
+              hashed_token: "test-token-123",
+              verification_type: params.type,
+            },
+            user: mockGenerateLinkUser || {
+              id: "new-auth-user-id",
+              email: params.email,
+              user_metadata: params.options?.data || {},
+              email_confirmed_at: mockUserAlreadyConfirmed ? "2026-10-01T00:00:00Z" : null,
+            },
+          },
+          error: null,
+        };
+      }),
+      updateUserById: vi.fn(async (userId: string, attributes: any) => {
+        updateUserCalls.push({ userId, attributes });
+        return {
+          data: {
+            user: {
+              id: userId,
+              user_metadata: attributes.user_metadata,
+            },
+          },
+          error: null,
+        };
+      }),
       inviteUserByEmail: vi.fn(async (email: string, options: any) => {
         inviteCalls.push({ email, options });
         if (mockInviteError) {
@@ -185,6 +228,26 @@ const mockDb = {
 
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: mockDb,
+}));
+
+vi.mock("@/lib/gmail.server", () => ({
+  getClinicGmailStatus: vi.fn(async (clinicId: string) => {
+    return mockGmailStatus;
+  }),
+  sendPatientActivationEmail: vi.fn(async (params: any) => {
+    gmailSendCalls.push(params);
+    if (!mockGmailStatus.connected) {
+      throw new Error(
+        mockGmailStatus.status === "REVOKED"
+          ? "Clinic Gmail authorization has expired or been revoked. Please reconnect the clinic's Gmail account."
+          : "Clinic Gmail account is not connected. Patient activation emails must be sent from your clinic's authorized Gmail address. Please connect your clinic's Gmail account in Settings."
+      );
+    }
+    if (mockGmailSendError) {
+      throw mockGmailSendError;
+    }
+    return { ok: true, messageId: "gmail-msg-uuid-999", senderEmail: "clinic@gmail.com" };
+  }),
 }));
 
 // Dynamic import of the server module after mocking
@@ -427,11 +490,19 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
     mockExistingPatient = null;
     mockInsertedPatient = null;
     mockInviteError = null;
+    mockGenerateLinkError = null;
+    mockGenerateLinkUser = null;
+    mockUserAlreadyConfirmed = false;
+    mockGmailStatus = { connected: true, status: "CONNECTED", senderEmail: "clinic@gmail.com" };
+    mockGmailSendError = null;
     inviteCalls = [];
+    generateLinkCalls = [];
+    updateUserCalls = [];
+    gmailSendCalls = [];
     patientDeletes.length = 0;
   });
 
-  it("creates an unlinked patient record and invites user with registration metadata", async () => {
+  it("creates an unlinked patient record, generates Supabase action link, and dispatches activation email via clinic Gmail account", async () => {
     const origin = "https://careflow.ai";
     const res = await registerPatientSelf(origin, validRegistrationPayload);
 
@@ -450,13 +521,20 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
     expect(mockInsertedPatient.email).toBe("anita.sharma@example.com");
     expect(mockInsertedPatient.status).toBe("ACTIVE");
 
-    // Verify invite was triggered with specific registration metadata binding
-    expect(inviteCalls).toHaveLength(1);
-    expect(inviteCalls[0].email).toBe("anita.sharma@example.com");
-    expect(inviteCalls[0].options.redirectTo).toBe("https://careflow.ai/reset-password");
-    expect(inviteCalls[0].options.data.display_name).toBe("Anita Sharma");
-    expect(inviteCalls[0].options.data.registration_patient_id).toBe("new-patient-uuid");
-    expect(inviteCalls[0].options.data.registration_clinic_id).toBe(clinicId);
+    // Verify Supabase generateLink was called with specific registration metadata binding
+    expect(generateLinkCalls).toHaveLength(1);
+    expect(generateLinkCalls[0].email).toBe("anita.sharma@example.com");
+    expect(generateLinkCalls[0].options.redirectTo).toBe("https://careflow.ai/reset-password");
+    expect(generateLinkCalls[0].options.data.display_name).toBe("Anita Sharma");
+    expect(generateLinkCalls[0].options.data.registration_patient_id).toBe("new-patient-uuid");
+    expect(generateLinkCalls[0].options.data.registration_clinic_id).toBe(clinicId);
+
+    // Verify Gmail API was used to deliver the email
+    expect(gmailSendCalls).toHaveLength(1);
+    expect(gmailSendCalls[0].recipientEmail).toBe("anita.sharma@example.com");
+    expect(gmailSendCalls[0].clinicId).toBe(clinicId);
+    expect(gmailSendCalls[0].clinicName).toBe("Apollo City Clinic");
+    expect(gmailSendCalls[0].actionLink).toContain("https://test-project.supabase.co/auth/v1/verify");
   });
 
   it("prevents duplicate registration when email is already registered and linked", async () => {
@@ -472,7 +550,8 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
     const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
     expect(res.status).toBe("EXISTS_LINKED");
     expect(res.message).toContain("already registered at this clinic");
-    expect(inviteCalls).toHaveLength(0);
+    expect(generateLinkCalls).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
   });
 
   it("detects existing registration pending email activation", async () => {
@@ -488,11 +567,12 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
     const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
     expect(res.status).toBe("EXISTS_PENDING");
     expect(res.message).toContain("pending activation");
-    expect(inviteCalls).toHaveLength(0);
+    expect(generateLinkCalls).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
   });
 
   it("handles existing Supabase Auth users safely without creating duplicate auth accounts", async () => {
-    mockInviteError = { status: 422, message: "A user with this email address has already been registered" };
+    mockGenerateLinkError = { status: 422, message: "A user with this email address has already been registered" };
 
     const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
     expect(res.status).toBe("CREATED_EXISTING_USER");
@@ -504,17 +584,54 @@ describe("Patient Self-Registration Execution & Invitation Consistency", () => {
     expect(patientDeletes).toHaveLength(0);
   });
 
-  it("retains inserted patient record and returns CREATED_INVITE_PENDING when invitation email delivery fails", async () => {
-    mockInviteError = new Error("SMTP connection failed. Email service unavailable.");
+  it("handles existing confirmed user by updating metadata and directing to sign in", async () => {
+    mockUserAlreadyConfirmed = true;
+
+    const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
+    expect(res.status).toBe("CREATED_EXISTING_USER");
+    expect(res.message).toContain("already have an existing CAREFLOW account");
+
+    expect(updateUserCalls).toHaveLength(1);
+    expect(updateUserCalls[0].attributes.user_metadata.registration_patient_id).toBe("new-patient-uuid");
+    expect(updateUserCalls[0].attributes.user_metadata.registration_clinic_id).toBe(clinicId);
+  });
+
+  it("retains inserted patient record and returns CREATED_INVITE_PENDING when activation link generation fails", async () => {
+    mockGenerateLinkError = new Error("Supabase Auth API internal error");
 
     const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
 
     // Record is NOT deleted, preserving audit log integrity
     expect(res.status).toBe("CREATED_INVITE_PENDING");
-    expect(res.message).toContain("Resend activation link");
+    expect(res.message).toContain("Resend email activation link");
     expect(mockInsertedPatient).not.toBeNull();
     expect(mockInsertedPatient.user_id).toBeNull();
     expect(patientDeletes).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
+  });
+
+  it("retains inserted patient record and returns CREATED_INVITE_PENDING when clinic Gmail send fails", async () => {
+    mockGmailSendError = new Error("Gmail sending quota exceeded for this account. Please try again later.");
+
+    const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
+
+    // Record is NOT deleted, preserving audit log integrity
+    expect(res.status).toBe("CREATED_INVITE_PENDING");
+    expect(res.message).toContain("Gmail sending quota exceeded");
+    expect(mockInsertedPatient).not.toBeNull();
+    expect(mockInsertedPatient.user_id).toBeNull();
+    expect(patientDeletes).toHaveLength(0);
+  });
+
+  it("retains inserted patient record and returns CREATED_INVITE_PENDING when clinic Gmail is disconnected", async () => {
+    mockGmailStatus = { connected: false, status: "NOT_CONNECTED" };
+
+    const res = await registerPatientSelf("https://careflow.ai", validRegistrationPayload);
+
+    expect(res.status).toBe("CREATED_INVITE_PENDING");
+    expect(res.message).toContain("Clinic Gmail account is not connected");
+    expect(mockInsertedPatient).not.toBeNull();
+    expect(mockInsertedPatient.user_id).toBeNull();
   });
 });
 
@@ -522,10 +639,32 @@ describe("Resend Patient Activation & Anti-Enumeration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetRateLimits();
+    mockClinicData = {
+      id: clinicId,
+      name: "Apollo City Clinic",
+      display_name: "Apollo City Clinic",
+      address: "100 Medical Road",
+      city: "Kolkata",
+      phone: "+91 33 2222 3333",
+      status: "ACTIVE",
+    };
+    mockVerificationData = { status: "APPROVED" };
+    mockSubscriptionClinicsData = [
+      { subscription: { status: "ACTIVE", trial_end_date: null } },
+    ];
+    mockVerificationEventsData = [{ event_type: "APPROVED", created_at: "2026-10-29T00:00:00Z" }];
+    mockClinicReverificationsData = null;
+    mockExistingPatient = null;
+    mockGenerateLinkError = null;
+    mockGmailStatus = { connected: true, status: "CONNECTED", senderEmail: "clinic@gmail.com" };
+    mockGmailSendError = null;
     inviteCalls = [];
+    generateLinkCalls = [];
+    updateUserCalls = [];
+    gmailSendCalls = [];
   });
 
-  it("resends invite email for an unactivated patient and returns anti-enumeration message", async () => {
+  it("resends invite email for an unactivated patient via clinic Gmail and returns truthful requested status", async () => {
     mockExistingPatient = {
       id: "p-unlinked",
       clinic_id: clinicId,
@@ -540,12 +679,111 @@ describe("Resend Patient Activation & Anti-Enumeration", () => {
     });
 
     expect(res.ok).toBe(true);
+    expect(res.status).toBe("REQUESTED");
     expect(res.message).toContain("If an unactivated patient registration exists");
-    expect(inviteCalls).toHaveLength(1);
-    expect(inviteCalls[0].email).toBe("anita.sharma@example.com");
+    expect(generateLinkCalls).toHaveLength(1);
+    expect(generateLinkCalls[0].email).toBe("anita.sharma@example.com");
+    expect(gmailSendCalls).toHaveLength(1);
+    expect(gmailSendCalls[0].recipientEmail).toBe("anita.sharma@example.com");
   });
 
-  it("returns the exact same message when email does not exist (prevents enumeration)", async () => {
+  it("returns truthful error when clinic Gmail is disconnected", async () => {
+    mockGmailStatus = { connected: false, status: "NOT_CONNECTED" };
+
+    const res = await resendPatientActivation("https://careflow.ai", {
+      clinicId,
+      email: "anita.sharma@example.com",
+    });
+
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe("FAILED");
+    expect(res.message).toContain("Clinic email delivery is currently not connected");
+    expect(generateLinkCalls).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
+  });
+
+  it("returns actionable error message when clinic Gmail authorization is revoked", async () => {
+    mockGmailStatus = { connected: false, status: "REVOKED" };
+
+    const res = await resendPatientActivation("https://careflow.ai", {
+      clinicId,
+      email: "anita.sharma@example.com",
+    });
+
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe("FAILED");
+    expect(res.message).toContain("Clinic Gmail authorization has expired or been revoked");
+    expect(generateLinkCalls).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
+  });
+
+  it("returns truthful error when link generation fails with rate limit", async () => {
+    mockExistingPatient = {
+      id: "p-unlinked",
+      clinic_id: clinicId,
+      user_id: null,
+      first_name: "Anita",
+      last_name: "Sharma",
+    };
+    mockGenerateLinkError = {
+      status: 429,
+      message: "rate limit exceeded",
+    };
+
+    const res = await resendPatientActivation("https://careflow.ai", {
+      clinicId,
+      email: "anita.sharma@example.com",
+    });
+
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe("RATE_LIMITED");
+    expect(res.message).toContain("rate limit has been reached");
+  });
+
+  it("guides user to sign in when resending to an already registered confirmed Auth user", async () => {
+    mockExistingPatient = {
+      id: "p-unlinked",
+      clinic_id: clinicId,
+      user_id: null,
+      first_name: "Anita",
+      last_name: "Sharma",
+    };
+    mockGenerateLinkError = {
+      status: 422,
+      message: "User already registered",
+    };
+
+    const res = await resendPatientActivation("https://careflow.ai", {
+      clinicId,
+      email: "anita.sharma@example.com",
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.status).toBe("REQUESTED");
+    expect(res.message).toContain("An active account already exists for this email address");
+  });
+
+  it("returns truthful error when Gmail API fails to deliver", async () => {
+    mockExistingPatient = {
+      id: "p-unlinked",
+      clinic_id: clinicId,
+      user_id: null,
+      first_name: "Anita",
+      last_name: "Sharma",
+    };
+    mockGmailSendError = new Error("Gmail API delivery failed (500): Backend Error");
+
+    const res = await resendPatientActivation("https://careflow.ai", {
+      clinicId,
+      email: "anita.sharma@example.com",
+    });
+
+    expect(res.ok).toBe(false);
+    expect(res.status).toBe("FAILED");
+    expect(res.message).toContain("Gmail API delivery failed");
+  });
+
+  it("returns anti-enumeration message when email does not exist", async () => {
     mockExistingPatient = null;
 
     const res = await resendPatientActivation("https://careflow.ai", {
@@ -554,8 +792,10 @@ describe("Resend Patient Activation & Anti-Enumeration", () => {
     });
 
     expect(res.ok).toBe(true);
+    expect(res.status).toBe("REQUESTED");
     expect(res.message).toContain("If an unactivated patient registration exists");
-    expect(inviteCalls).toHaveLength(0);
+    expect(generateLinkCalls).toHaveLength(0);
+    expect(gmailSendCalls).toHaveLength(0);
   });
 });
 
