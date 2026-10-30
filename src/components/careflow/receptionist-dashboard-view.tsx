@@ -375,7 +375,7 @@ export function ReceptionistDashboardView({ userId, clinicId }: ReceptionistDash
                       >
                         <div className="flex items-center gap-2">
                           
-                          {getAppointmentRescheduleInfo(appt.notes).isRescheduled && (
+                          {getAppointmentRescheduleInfo(entry.appointment?.notes).isRescheduled && (
                             <Badge
                               variant="outline"
                               className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"

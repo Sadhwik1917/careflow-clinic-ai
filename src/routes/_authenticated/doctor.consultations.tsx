@@ -13,6 +13,8 @@ function Page() {
     <DoctorQueueView
       userId={user.id}
       clinicId={membership?.clinic_id ?? ""}
+      title="Doctor Consultations"
+      description="Manage live patient queue, conduct consultations, and finalize e-prescriptions."
     />
   );
 }

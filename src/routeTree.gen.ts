@@ -54,7 +54,6 @@ import { Route as AuthenticatedDoctorDashboardRouteImport } from './routes/_auth
 import { Route as AuthenticatedDoctorPatientsRouteImport } from './routes/_authenticated/doctor.patients'
 import { Route as AuthenticatedDoctorPrescriptionsRouteImport } from './routes/_authenticated/doctor.prescriptions'
 import { Route as AuthenticatedDoctorProfileRouteImport } from './routes/_authenticated/doctor.profile'
-import { Route as AuthenticatedDoctorQueueRouteImport } from './routes/_authenticated/doctor.queue'
 import { Route as AuthenticatedPatientAppointmentsRouteImport } from './routes/_authenticated/patient.appointments'
 import { Route as AuthenticatedPatientBillsRouteImport } from './routes/_authenticated/patient.bills'
 import { Route as AuthenticatedPatientDashboardRouteImport } from './routes/_authenticated/patient.dashboard'
@@ -329,12 +328,6 @@ const AuthenticatedDoctorProfileRoute =
     path: '/profile',
     getParentRoute: () => AuthenticatedDoctorRoute,
   } as any)
-const AuthenticatedDoctorQueueRoute =
-  AuthenticatedDoctorQueueRouteImport.update({
-    id: '/queue',
-    path: '/queue',
-    getParentRoute: () => AuthenticatedDoctorRoute,
-  } as any)
 const AuthenticatedPatientAppointmentsRoute =
   AuthenticatedPatientAppointmentsRouteImport.update({
     id: '/appointments',
@@ -536,7 +529,6 @@ export interface FileRoutesByFullPath {
   '/doctor/patients': typeof AuthenticatedDoctorPatientsRoute
   '/doctor/prescriptions': typeof AuthenticatedDoctorPrescriptionsRoute
   '/doctor/profile': typeof AuthenticatedDoctorProfileRoute
-  '/doctor/queue': typeof AuthenticatedDoctorQueueRoute
   '/patient/appointments': typeof AuthenticatedPatientAppointmentsRoute
   '/patient/bills': typeof AuthenticatedPatientBillsRoute
   '/patient/dashboard': typeof AuthenticatedPatientDashboardRoute
@@ -606,7 +598,6 @@ export interface FileRoutesByTo {
   '/doctor/patients': typeof AuthenticatedDoctorPatientsRoute
   '/doctor/prescriptions': typeof AuthenticatedDoctorPrescriptionsRoute
   '/doctor/profile': typeof AuthenticatedDoctorProfileRoute
-  '/doctor/queue': typeof AuthenticatedDoctorQueueRoute
   '/patient/appointments': typeof AuthenticatedPatientAppointmentsRoute
   '/patient/bills': typeof AuthenticatedPatientBillsRoute
   '/patient/dashboard': typeof AuthenticatedPatientDashboardRoute
@@ -681,7 +672,6 @@ export interface FileRoutesById {
   '/_authenticated/doctor/patients': typeof AuthenticatedDoctorPatientsRoute
   '/_authenticated/doctor/prescriptions': typeof AuthenticatedDoctorPrescriptionsRoute
   '/_authenticated/doctor/profile': typeof AuthenticatedDoctorProfileRoute
-  '/_authenticated/doctor/queue': typeof AuthenticatedDoctorQueueRoute
   '/_authenticated/patient/appointments': typeof AuthenticatedPatientAppointmentsRoute
   '/_authenticated/patient/bills': typeof AuthenticatedPatientBillsRoute
   '/_authenticated/patient/dashboard': typeof AuthenticatedPatientDashboardRoute
@@ -756,7 +746,6 @@ export interface FileRouteTypes {
     | '/doctor/patients'
     | '/doctor/prescriptions'
     | '/doctor/profile'
-    | '/doctor/queue'
     | '/patient/appointments'
     | '/patient/bills'
     | '/patient/dashboard'
@@ -826,7 +815,6 @@ export interface FileRouteTypes {
     | '/doctor/patients'
     | '/doctor/prescriptions'
     | '/doctor/profile'
-    | '/doctor/queue'
     | '/patient/appointments'
     | '/patient/bills'
     | '/patient/dashboard'
@@ -900,7 +888,6 @@ export interface FileRouteTypes {
     | '/_authenticated/doctor/patients'
     | '/_authenticated/doctor/prescriptions'
     | '/_authenticated/doctor/profile'
-    | '/_authenticated/doctor/queue'
     | '/_authenticated/patient/appointments'
     | '/_authenticated/patient/bills'
     | '/_authenticated/patient/dashboard'
@@ -1265,13 +1252,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDoctorProfileRouteImport
       parentRoute: typeof AuthenticatedDoctorRoute
     }
-    '/_authenticated/doctor/queue': {
-      id: '/_authenticated/doctor/queue'
-      path: '/queue'
-      fullPath: '/doctor/queue'
-      preLoaderRoute: typeof AuthenticatedDoctorQueueRouteImport
-      parentRoute: typeof AuthenticatedDoctorRoute
-    }
     '/_authenticated/patient/appointments': {
       id: '/_authenticated/patient/appointments'
       path: '/appointments'
@@ -1598,7 +1578,6 @@ interface AuthenticatedDoctorRouteChildren {
   AuthenticatedDoctorPatientsRoute: typeof AuthenticatedDoctorPatientsRoute
   AuthenticatedDoctorPrescriptionsRoute: typeof AuthenticatedDoctorPrescriptionsRoute
   AuthenticatedDoctorProfileRoute: typeof AuthenticatedDoctorProfileRoute
-  AuthenticatedDoctorQueueRoute: typeof AuthenticatedDoctorQueueRoute
 }
 
 const AuthenticatedDoctorRouteChildren: AuthenticatedDoctorRouteChildren = {
@@ -1608,7 +1587,6 @@ const AuthenticatedDoctorRouteChildren: AuthenticatedDoctorRouteChildren = {
   AuthenticatedDoctorPatientsRoute: AuthenticatedDoctorPatientsRoute,
   AuthenticatedDoctorPrescriptionsRoute: AuthenticatedDoctorPrescriptionsRoute,
   AuthenticatedDoctorProfileRoute: AuthenticatedDoctorProfileRoute,
-  AuthenticatedDoctorQueueRoute: AuthenticatedDoctorQueueRoute,
 }
 
 const AuthenticatedDoctorRouteWithChildren =

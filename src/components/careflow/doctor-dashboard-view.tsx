@@ -102,8 +102,8 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
               </StatusBadge>
             )}
             <Button asChild size="sm">
-              <Link to="/doctor/queue">
-                <ListOrdered className="mr-2 size-4" /> Go to live queue
+              <Link to="/doctor/consultations">
+                <ClipboardList className="mr-2 size-4" /> Go to consultations
               </Link>
             </Button>
           </div>
@@ -150,9 +150,6 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
                     <ClipboardList className="mr-1.5 size-4" /> Open consultation
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link to="/doctor/queue">Queue view</Link>
-                </Button>
               </div>
             </div>
           </CardContent>
@@ -174,7 +171,7 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
               </div>
             </div>
             <Button asChild size="sm">
-              <Link to="/doctor/queue">
+              <Link to="/doctor/consultations">
                 <Play className="mr-1.5 size-3.5 fill-current" /> Call next patient
               </Link>
             </Button>
@@ -309,13 +306,13 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
                   variant="outline"
                   className="h-auto justify-start gap-3 p-4 text-left shadow-none transition-colors hover:border-primary/40"
                 >
-                  <Link to="/doctor/queue">
+                  <Link to="/doctor/consultations">
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <ListOrdered className="size-4" />
+                      <ClipboardList className="size-4" />
                     </span>
                     <div>
-                      <p className="text-sm font-medium">Live queue</p>
-                      <p className="text-xs text-muted-foreground">Call &amp; attend patients</p>
+                      <p className="text-sm font-medium">Consultations</p>
+                      <p className="text-xs text-muted-foreground">Queue &amp; clinical encounter</p>
                     </div>
                   </Link>
                 </Button>
@@ -325,13 +322,13 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
                   variant="outline"
                   className="h-auto justify-start gap-3 p-4 text-left shadow-none transition-colors hover:border-primary/40"
                 >
-                  <Link to="/doctor/consultations">
+                  <Link to="/doctor/appointments">
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <ClipboardList className="size-4" />
+                      <CalendarDays className="size-4" />
                     </span>
                     <div>
-                      <p className="text-sm font-medium">Consultations</p>
-                      <p className="text-xs text-muted-foreground">Clinical notes &amp; vitals</p>
+                      <p className="text-sm font-medium">Appointments</p>
+                      <p className="text-xs text-muted-foreground">Schedule &amp; slot booking</p>
                     </div>
                   </Link>
                 </Button>
@@ -368,7 +365,7 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
                 </CardDescription>
               </div>
               <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary">
-                <Link to="/doctor/queue">
+                <Link to="/doctor/consultations">
                   View <ArrowUpRight className="ml-1 size-4" />
                 </Link>
               </Button>

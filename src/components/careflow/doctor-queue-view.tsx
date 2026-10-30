@@ -63,9 +63,16 @@ import { DoctorConsultationWorkspace } from "./doctor-consultation-workspace";
 interface DoctorQueueViewProps {
   userId: string;
   clinicId: string;
+  title?: string;
+  description?: string;
 }
 
-export function DoctorQueueView({ userId, clinicId }: DoctorQueueViewProps) {
+export function DoctorQueueView({
+  userId,
+  clinicId,
+  title = "Doctor Consultations",
+  description = "Manage patient consultations, call waiting patients, and complete encounter notes.",
+}: DoctorQueueViewProps) {
   const qc = useQueryClient();
   const transitionFn = useServerFn(transitionClinicQueue);
   const callNextFn = useServerFn(callNextClinicPatient);
@@ -278,8 +285,8 @@ export function DoctorQueueView({ userId, clinicId }: DoctorQueueViewProps) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <PageTitle
-          title="Doctor's Active Queue"
-          description="Manage patient consultations, call waiting patients, and complete encounter notes."
+          title={title}
+          description={description}
         />
         <div className="flex items-center gap-3">
           <div className="w-52">
