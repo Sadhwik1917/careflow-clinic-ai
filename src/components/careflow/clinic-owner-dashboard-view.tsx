@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageTitle } from "@/components/careflow/page-title";
 import { StatisticsCard } from "@/components/careflow/statistics-card";
@@ -37,6 +38,7 @@ import {
   formatQueueNumber,
   formatTime12h,
   getClinicLocalDate,
+  getAppointmentRescheduleInfo,
   type AppointmentStatus,
 } from "@/lib/appointments";
 
@@ -276,6 +278,14 @@ export function ClinicOwnerDashboardView({ userId, clinicId }: ClinicOwnerDashbo
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {getAppointmentRescheduleInfo(appt.notes).isRescheduled && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            >
+                              Rescheduled
+                            </Badge>
+                          )}
                           <StatusBadge
                             tone={
                               appt.status === "COMPLETED"

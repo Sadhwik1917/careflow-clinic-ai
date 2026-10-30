@@ -327,7 +327,51 @@ export const rescheduleAppointmentSchema = z.object({
   appointment_id: z.string().uuid(),
   scheduled_start: z.string().datetime({ offset: true }),
   scheduled_end: z.string().datetime({ offset: true }),
+  reason: z.string().trim().max(500).optional().nullable(),
 });
+
+export interface AppointmentRescheduleInfo {
+  isRescheduled: boolean;
+  originalSchedule: string | null;
+  reason: string | null;
+  history: Array<{ originalSchedule: string; reason: string | null }>;
+}
+
+/**
+ * Extracts rescheduling audit history and previous slot details from appointment notes.
+ * Format: [Rescheduled from <Date> (<Time>): <Reason>]
+ */
+export function getAppointmentRescheduleInfo(notes?: string | null): AppointmentRescheduleInfo {
+  if (!notes) return { isRescheduled: false, originalSchedule: null, reason: null, history: [] };
+  const regex = /\[Rescheduled from (.+?\))(?:[:\-]\s*([^\]]+))?\]/g;
+  let matches = Array.from(notes.matchAll(regex));
+  if (matches.length === 0) {
+    const bracketRegex = /\[Rescheduled from (.+?)(?::\s+([^\]]+))?\]/g;
+    matches = Array.from(notes.matchAll(bracketRegex));
+  }
+  if (matches.length === 0) {
+    const fallbackMatch = notes.match(/Rescheduled from ([^\n\r]+)/);
+    if (!fallbackMatch) return { isRescheduled: false, originalSchedule: null, reason: null, history: [] };
+    const raw = fallbackMatch[1]?.trim() ?? null;
+    return {
+      isRescheduled: true,
+      originalSchedule: raw,
+      reason: null,
+      history: [{ originalSchedule: raw ?? "", reason: null }],
+    };
+  }
+  const history = matches.map((m) => ({
+    originalSchedule: m[1]?.trim() ?? "",
+    reason: m[2]?.trim() ?? null,
+  }));
+  const latest = history[history.length - 1]!;
+  return {
+    isRescheduled: true,
+    originalSchedule: latest.originalSchedule,
+    reason: latest.reason,
+    history,
+  };
+}
 
 export const cancelAppointmentSchema = z.object({
   clinic_id: z.string().uuid(),

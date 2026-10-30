@@ -13,6 +13,7 @@ import {
   clinicLocalToUtc,
   getClinicDayUtcRange,
   DOCTOR_SLOT_CAPACITY,
+  getAppointmentRescheduleInfo,
   type DoctorAvailabilityConfig,
   type ClinicWorkingHoursConfig,
 } from "@/lib/appointments";
@@ -326,6 +327,9 @@ function makeFakeDb(options: {
   nextQueueNum?: number;
   hasActiveConsultation?: boolean;
   hasWaitingPatient?: boolean;
+  hasPatientConflict?: boolean;
+  doctorAvailability?: Record<string, unknown> | null;
+  closedDates?: string[];
   existingConsultation?: { id: string; status: "DRAFT" | "COMPLETED" } | null;
 } = {}) {
   const calls: [string, unknown[]][] = [];
@@ -337,6 +341,7 @@ function makeFakeDb(options: {
 
   const from = (table: string) => {
     const filters: Record<string, unknown> = {};
+    const neqFilters: Record<string, unknown> = {};
     let pendingUpdate: Record<string, unknown> | null = null;
 
     const applyPendingUpdate = () => {
@@ -369,6 +374,9 @@ function makeFakeDb(options: {
         if (m === "eq") {
           filters[String(args[0])] = args[1];
           applyPendingUpdate();
+        }
+        if (m === "neq") {
+          neqFilters[String(args[0])] = args[1];
         }
         if (m === "insert") {
           if (table === "audit_logs") auditLogs.push(args[0]);
@@ -406,7 +414,7 @@ function makeFakeDb(options: {
               break_enabled: false,
               break_start: "13:00",
               break_end: "14:00",
-              closed_dates: [],
+              closed_dates: options.closedDates ?? [],
             },
           },
           error: null,
@@ -419,7 +427,7 @@ function makeFakeDb(options: {
             clinic_id: clinicId,
             specialization: "General Medicine",
             status: options.doctorStatus ?? "ACTIVE",
-            availability: null,
+            availability: options.doctorAvailability ?? null,
             user_id: userId,
           },
           error: null,
@@ -429,6 +437,20 @@ function makeFakeDb(options: {
         return { data: { id: patientId, clinic_id: clinicId }, error: null };
       }
       if (table === "appointments") {
+        if (options.hasPatientConflict && filters["patient_id"]) {
+          return {
+            data: {
+              id: "conflict-appt-id",
+              clinic_id: clinicId,
+              patient_id: patientId,
+              scheduled_start: "2026-10-28T14:00:00.000Z",
+            },
+            error: null,
+          };
+        }
+        if (neqFilters["id"] === appointmentId) {
+          return { data: null, error: null };
+        }
         return {
           data: {
             id: appointmentId,
@@ -545,9 +567,10 @@ function makeFakeDb(options: {
             clinic_id: clinicId,
             patient_id: patientId,
             doctor_profile_id: doctorId,
-            status: "CONFIRMED",
-            scheduled_start: "2026-10-28T09:00:00.000Z",
-            scheduled_end: "2026-10-28T10:00:00.000Z",
+            status: (pendingUpdate?.["status"] as any) ?? "CONFIRMED",
+            scheduled_start: (pendingUpdate?.["scheduled_start"] as any) ?? "2026-10-28T09:00:00.000Z",
+            scheduled_end: (pendingUpdate?.["scheduled_end"] as any) ?? "2026-10-28T10:00:00.000Z",
+            notes: (pendingUpdate?.["notes"] as any) ?? null,
           },
           error: null,
         };
@@ -847,24 +870,150 @@ describe("Appointments Security, Isolation & Lifecycle Operations", () => {
       clinicId,
       appointmentId,
       "2026-10-28T14:00:00.000Z",
-      "2026-10-28T15:00:00.000Z"
+      "2026-10-28T15:00:00.000Z",
+      "Patient requested afternoon"
     );
 
     expect(result.status).toBe("CONFIRMED");
     expect(calls).toContainEqual(["appointments.update", [expect.objectContaining({
       scheduled_start: "2026-10-28T14:00:00.000Z",
       scheduled_end: "2026-10-28T15:00:00.000Z",
+      notes: expect.stringContaining("[Rescheduled from"),
     })]]);
+
+    const info = getAppointmentRescheduleInfo(result.notes);
+    expect(info.isRescheduled).toBe(true);
+    expect(info.reason).toBe("Patient requested afternoon");
+    expect(info.originalSchedule).toBeDefined();
 
     expect(auditLogs).toContainEqual(
       expect.objectContaining({
         action: "APPOINTMENT_RESCHEDULED",
         entity_id: appointmentId,
+        metadata: expect.objectContaining({
+          reason: "Patient requested afternoon",
+        }),
       })
     );
   });
 
-  it("rejects rescheduling an already COMPLETED or CANCELLED appointment", async () => {
+  it("rejects rescheduling when doctor slot has reached capacity of 6", async () => {
+    const { db: fullDb } = makeFakeDb({ bookedCount: 6 });
+    await expect(
+      rescheduleAppointment(
+        fullDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("reached maximum capacity (6 appointments)");
+  });
+
+  it("rejects rescheduling when clinic is marked closed on the target date", async () => {
+    const { db: closedDb } = makeFakeDb({ closedDates: ["2026-10-28"] });
+    await expect(
+      rescheduleAppointment(
+        closedDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("Clinic is marked closed on this date");
+  });
+
+  it("rejects rescheduling when doctor is on leave or inactive", async () => {
+    const { db: leaveDb } = makeFakeDb({ doctorStatus: "ON_LEAVE" });
+    await expect(
+      rescheduleAppointment(
+        leaveDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("on leave");
+
+    const { db: inactiveDb } = makeFakeDb({ doctorStatus: "INACTIVE" });
+    await expect(
+      rescheduleAppointment(
+        inactiveDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("inactive");
+  });
+
+  it("rejects rescheduling when doctor is marked BUSY on that date", async () => {
+    const { db: busyDb } = makeFakeDb({
+      doctorAvailability: { daily_overrides: { "2026-10-28": "BUSY" } },
+    });
+    await expect(
+      rescheduleAppointment(
+        busyDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("Doctor is marked busy on this date");
+  });
+
+  it("rejects rescheduling when patient has a conflicting double booking", async () => {
+    const { db: conflictDb } = makeFakeDb({ hasPatientConflict: true });
+    await expect(
+      rescheduleAppointment(
+        conflictDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("This patient already has an appointment booked at this time");
+  });
+
+  it("rejects rescheduling to the exact same slot", async () => {
+    const { db } = makeFakeDb();
+    await expect(
+      rescheduleAppointment(
+        db,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T09:00:00.000Z",
+        "2026-10-28T10:00:00.000Z"
+      )
+    ).rejects.toThrow("Appointment is already scheduled for this time slot");
+  });
+
+  it("cancels linked active queue entries when a checked-in appointment is rescheduled", async () => {
+    const { db, calls } = makeFakeDb({
+      appointmentStatus: "CHECKED_IN",
+      existingActiveQueue: true,
+    });
+    const result = await rescheduleAppointment(
+      db,
+      userId,
+      clinicId,
+      appointmentId,
+      "2026-10-28T14:00:00.000Z",
+      "2026-10-28T15:00:00.000Z"
+    );
+
+    expect(result.status).toBe("CONFIRMED");
+    expect(calls).toContainEqual(["queue_entries.update", [{ status: "CANCELLED" }]]);
+  });
+
+  it("rejects rescheduling an already COMPLETED, CANCELLED, or IN_PROGRESS appointment", async () => {
     const { db: completedDb } = makeFakeDb({ appointmentStatus: "COMPLETED" });
     await expect(
       rescheduleAppointment(
@@ -888,6 +1037,35 @@ describe("Appointments Security, Isolation & Lifecycle Operations", () => {
         "2026-10-28T15:00:00.000Z"
       )
     ).rejects.toThrow("Cannot reschedule an appointment that is already cancelled");
+
+    const { db: inProgDb } = makeFakeDb({ appointmentStatus: "IN_PROGRESS" });
+    await expect(
+      rescheduleAppointment(
+        inProgDb,
+        userId,
+        clinicId,
+        appointmentId,
+        "2026-10-28T14:00:00.000Z",
+        "2026-10-28T15:00:00.000Z"
+      )
+    ).rejects.toThrow("Cannot reschedule an appointment that is currently in consultation");
+  });
+
+  it("correctly parses multi-event rescheduling history from notes", () => {
+    const singleNote = "[Rescheduled from 2026-10-28 (09:00 AM - 10:00 AM): Patient fever]";
+    const parsedSingle = getAppointmentRescheduleInfo(singleNote);
+    expect(parsedSingle.isRescheduled).toBe(true);
+    expect(parsedSingle.originalSchedule).toBe("2026-10-28 (09:00 AM - 10:00 AM)");
+    expect(parsedSingle.reason).toBe("Patient fever");
+    expect(parsedSingle.history).toHaveLength(1);
+
+    const multiNote = `Existing clinical comment\n[Rescheduled from 2026-10-28 (09:00 AM - 10:00 AM): Doctor delayed]\n[Rescheduled from 2026-10-29 (11:00 AM - 12:00 PM): Patient request]`;
+    const parsedMulti = getAppointmentRescheduleInfo(multiNote);
+    expect(parsedMulti.isRescheduled).toBe(true);
+    expect(parsedMulti.originalSchedule).toBe("2026-10-29 (11:00 AM - 12:00 PM)");
+    expect(parsedMulti.reason).toBe("Patient request");
+    expect(parsedMulti.history).toHaveLength(2);
+    expect(parsedMulti.history[0]?.originalSchedule).toBe("2026-10-28 (09:00 AM - 10:00 AM)");
   });
 
   it("cancels appointment with reason, releases slot, and cancels linked queue entries", async () => {

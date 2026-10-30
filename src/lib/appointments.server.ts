@@ -495,7 +495,8 @@ export async function rescheduleAppointment(
   clinicId: string,
   appointmentId: string,
   newStart: string,
-  newEnd: string
+  newEnd: string,
+  reason?: string | null
 ): Promise<AppointmentRow> {
   const { data: appt, error: findError } = await db
     .from("appointments")
@@ -508,10 +509,63 @@ export async function rescheduleAppointment(
   if (appt.status === "COMPLETED" || appt.status === "CANCELLED") {
     throw new Error(`Cannot reschedule an appointment that is already ${appt.status.toLowerCase()}.`);
   }
+  if (appt.status === "IN_PROGRESS") {
+    throw new Error("Cannot reschedule an appointment that is currently in consultation.");
+  }
 
-  // Check capacity in the new slot for this doctor (excluding this appointment)
+  // Prevent rescheduling to the exact same slot
+  if (appt.scheduled_start === newStart && appt.scheduled_end === newEnd) {
+    throw new Error("Appointment is already scheduled for this time slot.");
+  }
+
+  const newStartDate = new Date(newStart);
+  const newEndDate = new Date(newEnd);
+  if (isNaN(newStartDate.getTime()) || isNaN(newEndDate.getTime()) || newStartDate >= newEndDate) {
+    throw new Error("Invalid appointment start and end times.");
+  }
+
+  // 1. Fetch clinic metadata for timezone & operating schedule
+  const { timezone, working_hours } = await getClinicMetadata(db, clinicId);
+  const scheduledDate = getClinicLocalDate(newStartDate, timezone);
+
+  // 2. Verify clinic is open on that date
+  if ((working_hours.closed_dates ?? []).includes(scheduledDate)) {
+    throw new Error("Clinic is marked closed on this date. Appointments cannot be scheduled.");
+  }
+
+  // 3. Verify doctor status and availability
   if (appt.doctor_profile_id) {
-    const { count: newSlotCount } = await db
+    const { data: doctor, error: docError } = await db
+      .from("doctor_profiles")
+      .select("id, status, specialization, availability")
+      .eq("clinic_id", clinicId)
+      .eq("id", appt.doctor_profile_id)
+      .maybeSingle();
+
+    if (docError || !doctor) throw new Error("Doctor is unavailable in this clinic.");
+    if (doctor.status === "INACTIVE" || doctor.status === "ON_LEAVE") {
+      throw new Error(
+        `Doctor is currently ${doctor.status === "ON_LEAVE" ? "on leave" : "inactive"}. Please select another doctor.`
+      );
+    }
+
+    const avail = (doctor.availability && typeof doctor.availability === "object"
+      ? (doctor.availability as Record<string, unknown>)
+      : {}) as DoctorAvailabilityConfig;
+
+    if (avail.daily_overrides?.[scheduledDate] === "BUSY") {
+      throw new Error("Doctor is marked busy on this date. Please select an available date or another doctor.");
+    }
+
+    const isApprovedLeave = (avail.leaves ?? []).some(
+      (l) => l.date === scheduledDate && l.status === "APPROVED"
+    );
+    if (isApprovedLeave) {
+      throw new Error("Doctor is on approved leave on this date. Please select an alternative date.");
+    }
+
+    // Capacity check in the new slot for this doctor (excluding this appointment)
+    const { count: newSlotCount, error: countErr } = await db
       .from("appointments")
       .select("id", { count: "exact", head: true })
       .eq("clinic_id", clinicId)
@@ -520,32 +574,121 @@ export async function rescheduleAppointment(
       .neq("id", appointmentId)
       .neq("status", "CANCELLED");
 
+    if (countErr) {
+      console.error("[rescheduleAppointment] count error:", countErr);
+      throw new Error("Could not verify slot capacity.");
+    }
+
     if (newSlotCount !== null && newSlotCount >= DOCTOR_SLOT_CAPACITY) {
-      throw new Error("This time slot has reached maximum capacity for this doctor.");
+      throw new Error(
+        `This time slot has reached maximum capacity (${DOCTOR_SLOT_CAPACITY} appointments) for this doctor. Please select another time slot.`
+      );
     }
   }
+
+  // 4. Prevent conflicting double-booking for the patient
+  const { data: patientConflict, error: patConflictErr } = await db
+    .from("appointments")
+    .select("id")
+    .eq("clinic_id", clinicId)
+    .eq("patient_id", appt.patient_id)
+    .eq("scheduled_start", newStart)
+    .neq("id", appointmentId)
+    .neq("status", "CANCELLED")
+    .maybeSingle();
+
+  if (patConflictErr) {
+    console.error("[rescheduleAppointment] patient conflict check error:", patConflictErr);
+  }
+  if (patientConflict) {
+    throw new Error("This patient already has an appointment booked at this time.");
+  }
+
+  // 5. Build reschedule history and preserve notes
+  const oldTimeLabel = formatSlotLabel12h(appt.scheduled_start, appt.scheduled_end, timezone);
+  const oldDateLabel = getClinicLocalDate(new Date(appt.scheduled_start), timezone);
+  const historyEntry = reason?.trim()
+    ? `Rescheduled from ${oldDateLabel} (${oldTimeLabel}): ${reason.trim()}`
+    : `Rescheduled from ${oldDateLabel} (${oldTimeLabel})`;
+  const updatedNotes = appt.notes
+    ? `${appt.notes}\n[${historyEntry}]`
+    : `[${historyEntry}]`;
+
+  // 6. Status transition: If SCHEDULED, CHECKED_IN, or IN_QUEUE, becomes CONFIRMED
+  const resultingStatus: AppointmentStatus =
+    appt.status === "SCHEDULED" || appt.status === "CHECKED_IN" || appt.status === "IN_QUEUE"
+      ? "CONFIRMED"
+      : appt.status;
 
   const { data: updated, error: updateError } = await db
     .from("appointments")
     .update({
       scheduled_start: newStart,
       scheduled_end: newEnd,
-      status: appt.status === "SCHEDULED" ? "CONFIRMED" : appt.status,
+      status: resultingStatus,
+      notes: updatedNotes,
     })
     .eq("clinic_id", clinicId)
     .eq("id", appointmentId)
     .select("*")
     .single();
 
-  if (updateError || !updated) throw new Error("Could not reschedule appointment.");
+  if (updateError || !updated) {
+    console.error("[rescheduleAppointment] update error:", updateError);
+    throw new Error("Could not reschedule appointment.");
+  }
 
+  // 7. Concurrency Safety: verify doctor capacity did not exceed DOCTOR_SLOT_CAPACITY
+  if (appt.doctor_profile_id) {
+    const { count: postCount } = await db
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("clinic_id", clinicId)
+      .eq("doctor_profile_id", appt.doctor_profile_id)
+      .eq("scheduled_start", newStart)
+      .neq("status", "CANCELLED");
+
+    if (postCount !== null && postCount > DOCTOR_SLOT_CAPACITY) {
+      // Rollback duplicate appointment inserted concurrently
+      await db
+        .from("appointments")
+        .update({
+          scheduled_start: appt.scheduled_start,
+          scheduled_end: appt.scheduled_end,
+          status: appt.status,
+          notes: appt.notes,
+        })
+        .eq("clinic_id", clinicId)
+        .eq("id", appointmentId);
+
+      throw new Error(
+        `This time slot has reached maximum capacity (${DOCTOR_SLOT_CAPACITY} appointments) for this doctor. Please select another time slot.`
+      );
+    }
+  }
+
+  // 8. If appointment was checked in or in queue for the old slot, cancel those queue entries
+  await db
+    .from("queue_entries")
+    .update({ status: "CANCELLED" })
+    .eq("clinic_id", clinicId)
+    .eq("appointment_id", appointmentId)
+    .in("status", ["WAITING", "CALLED"]);
+
+  // 9. Audit Log with complete original and new schedule details
   await db.from("audit_logs").insert({
     clinic_id: clinicId,
     user_id: userId,
     action: "APPOINTMENT_RESCHEDULED",
     entity_type: "appointments",
     entity_id: appointmentId,
-    metadata: { old_start: appt.scheduled_start, new_start: newStart },
+    metadata: {
+      old_start: appt.scheduled_start,
+      old_end: appt.scheduled_end,
+      new_start: newStart,
+      new_end: newEnd,
+      reason: reason?.trim() ?? null,
+    },
   });
 
   return updated;

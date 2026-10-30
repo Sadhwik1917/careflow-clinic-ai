@@ -418,9 +418,9 @@ describe("CAREFLOW AI — Attendance and Absence Management (Phase 1)", () => {
 
       // Verifies audit trail was recorded
       expect(auditLogs).toHaveLength(1);
-      expect(auditLogs[0]!.action).toBe("DOCTOR_MARKED_ABSENT");
-      expect(auditLogs[0]!.user_id).toBe(ownerId);
-      expect(auditLogs[0]!.clinic_id).toBe(clinicId);
+      expect(auditLogs[0]!["action"]).toBe("DOCTOR_MARKED_ABSENT");
+      expect(auditLogs[0]!["user_id"]).toBe(ownerId);
+      expect(auditLogs[0]!["clinic_id"]).toBe(clinicId);
     });
 
     it("detects and reports affected appointments when marking a doctor absent", async () => {
@@ -489,7 +489,7 @@ describe("CAREFLOW AI — Attendance and Absence Management (Phase 1)", () => {
 
       // Audit log records correction
       expect(auditLogs).toHaveLength(1);
-      expect(auditLogs[0]!.action).toBe("ATTENDANCE_CORRECTED");
+      expect(auditLogs[0]!["action"]).toBe("ATTENDANCE_CORRECTED");
     });
 
     it("allows correction of attendance from ABSENT back to PRESENT and restores availability", async () => {
@@ -530,9 +530,9 @@ describe("CAREFLOW AI — Attendance and Absence Management (Phase 1)", () => {
 
       // Audit log confirms correction
       expect(auditLogs).toHaveLength(1);
-      expect(auditLogs[0]!.action).toBe("ATTENDANCE_CORRECTED");
-      expect((auditLogs[0]!.metadata as any).previous_status).toBe("ABSENT");
-      expect((auditLogs[0]!.metadata as any).status).toBe("PRESENT");
+      expect(auditLogs[0]!["action"]).toBe("ATTENDANCE_CORRECTED");
+      expect((auditLogs[0]!["metadata"] as any).previous_status).toBe("ABSENT");
+      expect((auditLogs[0]!["metadata"] as any).status).toBe("PRESENT");
     });
 
     it("allows owner to record and correct staff attendance", async () => {
@@ -566,7 +566,7 @@ describe("CAREFLOW AI — Attendance and Absence Management (Phase 1)", () => {
       expect(corr.record.status).toBe("ABSENT");
       expect(attendanceRecords).toHaveLength(1);
       expect(auditLogs).toHaveLength(2);
-      expect(auditLogs[1]!.action).toBe("ATTENDANCE_CORRECTED");
+      expect(auditLogs[1]!["action"]).toBe("ATTENDANCE_CORRECTED");
     });
   });
 

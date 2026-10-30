@@ -125,6 +125,7 @@ export const rescheduleClinicAppointment = createServerFn({ method: "POST" })
         appointmentId: z.string().uuid(),
         scheduledStart: z.string().datetime({ offset: true }),
         scheduledEnd: z.string().datetime({ offset: true }),
+        reason: z.string().trim().max(500).optional().nullable(),
       })
       .strict()
       .parse(i)
@@ -149,7 +150,8 @@ export const rescheduleClinicAppointment = createServerFn({ method: "POST" })
       data.clinicId,
       data.appointmentId,
       data.scheduledStart,
-      data.scheduledEnd
+      data.scheduledEnd,
+      data.reason
     );
   });
 

@@ -25,6 +25,7 @@ import { VitalsDialog } from "./vitals-dialog";
 import { AppointmentForm } from "./appointment-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -65,6 +66,7 @@ import {
   formatSlotLabel12h,
   formatTime12h,
   getClinicLocalDate,
+  getAppointmentRescheduleInfo,
   type AppointmentStatus,
   type AppointmentWithDetails,
   type TimeSlot,
@@ -114,6 +116,8 @@ export function AppointmentsList({
   const [rescheduleTarget, setRescheduleTarget] = useState<AppointmentWithDetails | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<string>("");
   const [rescheduleSlot, setRescheduleSlot] = useState<TimeSlot | null>(null);
+  const [rescheduleReason, setRescheduleReason] = useState<string>("");
+  const [highlightedAppointmentId, setHighlightedAppointmentId] = useState<string | null>(null);
 
   // Cancel Modal State
   const [cancelTarget, setCancelTarget] = useState<AppointmentWithDetails | null>(null);
@@ -211,15 +215,38 @@ export function AppointmentsList({
           appointmentId: rescheduleTarget.id,
           scheduledStart: rescheduleSlot.start,
           scheduledEnd: rescheduleSlot.end,
+          reason: rescheduleReason.trim() || null,
         },
       });
     },
     onSuccess: () => {
-      toast.success("Appointment rescheduled successfully.");
+      const targetDate = rescheduleDate;
+      const targetId = rescheduleTarget?.id;
+      const slotLabel = rescheduleSlot?.timeLabel;
+      toast.success(
+        slotLabel
+          ? `Appointment rescheduled to ${targetDate} (${slotLabel}).`
+          : `Appointment rescheduled to ${targetDate}.`
+      );
+
+      // Immediately navigate view to the rescheduled appointment's date
+      if (targetDate) {
+        setDateFilter(targetDate);
+      }
+      if (targetId) {
+        setHighlightedAppointmentId(targetId);
+      }
+
       setRescheduleTarget(null);
       setRescheduleSlot(null);
+      setRescheduleReason("");
+
+      // Invalidate queries across appointment, doctor availability, queue, and patient views
       qc.invalidateQueries({ queryKey: ["appointments", clinicId] });
       qc.invalidateQueries({ queryKey: ["doctor-availability", clinicId] });
+      qc.invalidateQueries({ queryKey: ["queue-entries", clinicId] });
+      qc.invalidateQueries({ queryKey: ["patient-appointments"] });
+      qc.invalidateQueries({ queryKey: ["affected-appointments", clinicId] });
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to reschedule appointment.");
@@ -512,18 +539,39 @@ export function AppointmentsList({
                     new Date(appt.scheduled_start),
                     timeZone
                   );
+                  const rescheduleInfo = getAppointmentRescheduleInfo(appt.notes);
+                  const isHighlighted = highlightedAppointmentId === appt.id;
 
                   const canCheckIn =
                     (appt.status === "SCHEDULED" || appt.status === "CONFIRMED") &&
                     role !== "DOCTOR";
                   const canManage =
                     appt.status !== "COMPLETED" && appt.status !== "CANCELLED";
+                  const canReschedule = canManage && appt.status !== "IN_PROGRESS";
 
                   return (
-                    <tr key={appt.id} className="transition-colors hover:bg-muted/30">
+                    <tr
+                      key={appt.id}
+                      className={`transition-colors hover:bg-muted/30 ${
+                        isHighlighted ? "bg-primary/5 ring-1 ring-primary/40" : ""
+                      }`}
+                    >
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="font-medium text-foreground font-mono">{timeLabel}</div>
                         <div className="text-xs text-muted-foreground">{dateLabel}</div>
+                        {rescheduleInfo.isRescheduled && (
+                          <div
+                            className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1 mt-1 font-sans font-medium"
+                            title={
+                              rescheduleInfo.originalSchedule
+                                ? `Previously: ${rescheduleInfo.originalSchedule}`
+                                : undefined
+                            }
+                          >
+                            <CalendarClock className="size-3 shrink-0" />
+                            <span>Was: {rescheduleInfo.originalSchedule}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="font-medium text-foreground">
@@ -551,11 +599,29 @@ export function AppointmentsList({
                         <div className="text-xs text-muted-foreground truncate">
                           {appt.reason || "Routine visit"}
                         </div>
+                        {rescheduleInfo.reason && (
+                          <div
+                            className="text-[11px] text-muted-foreground italic truncate mt-0.5"
+                            title={`Reschedule reason: ${rescheduleInfo.reason}`}
+                          >
+                            Reason: {rescheduleInfo.reason}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <StatusBadge tone={getStatusTone(appt.status)}>
-                          {appointmentStatusLabel[appt.status]}
-                        </StatusBadge>
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge tone={getStatusTone(appt.status)}>
+                            {appointmentStatusLabel[appt.status]}
+                          </StatusBadge>
+                          {rescheduleInfo.isRescheduled && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            >
+                              Rescheduled
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
@@ -587,12 +653,14 @@ export function AppointmentsList({
                               <Button
                                 size="sm"
                                 variant="outline"
+                                disabled={!canReschedule}
                                 onClick={() => {
                                   setRescheduleTarget(appt);
                                   setRescheduleDate(
                                     getClinicLocalDate(new Date(appt.scheduled_start), timeZone)
                                   );
                                   setRescheduleSlot(null);
+                                  setRescheduleReason("");
                                 }}
                                 className="h-8 text-xs"
                               >
@@ -637,6 +705,27 @@ export function AppointmentsList({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Current Schedule Summary */}
+            {rescheduleTarget && (
+              <div className="rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground space-y-1">
+                <div className="font-semibold text-foreground flex items-center gap-1.5">
+                  <CalendarClock className="size-3.5 text-primary" />
+                  <span>Current Schedule:</span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground font-mono">
+                  <span>{getClinicLocalDate(new Date(rescheduleTarget.scheduled_start), timeZone)}</span>
+                  <span>·</span>
+                  <span>
+                    {formatSlotLabel12h(
+                      rescheduleTarget.scheduled_start,
+                      rescheduleTarget.scheduled_end,
+                      timeZone
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-foreground">New Date</label>
               <DatePicker
@@ -687,6 +776,19 @@ export function AppointmentsList({
                   })}
                 </div>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">
+                Reason for Rescheduling (Optional)
+              </label>
+              <Input
+                placeholder="e.g. Patient requested new time, doctor delayed..."
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                maxLength={200}
+                className="h-8 text-xs"
+              />
             </div>
           </div>
 

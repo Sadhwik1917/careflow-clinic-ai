@@ -18,6 +18,7 @@ import {
   CircleUserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageTitle } from "@/components/careflow/page-title";
 import { StatisticsCard } from "@/components/careflow/statistics-card";
@@ -34,6 +35,7 @@ import {
   formatQueueNumber,
   formatTime12h,
   getClinicLocalDate,
+  getAppointmentRescheduleInfo,
   type AppointmentStatus,
 } from "@/lib/appointments";
 
@@ -261,19 +263,29 @@ export function DoctorDashboardView({ userId, clinicId }: DoctorDashboardViewPro
                             </p>
                           </div>
                         </div>
-                        <StatusBadge
-                          tone={
-                            appt.status === "COMPLETED"
-                              ? "success"
-                              : appt.status === "CHECKED_IN"
-                                ? "info"
-                                : appt.status === "CANCELLED"
-                                  ? "danger"
-                                  : "neutral"
-                          }
-                        >
-                          {appointmentStatusLabel[appt.status as AppointmentStatus] || appt.status}
-                        </StatusBadge>
+                        <div className="flex items-center gap-2">
+                          {getAppointmentRescheduleInfo(appt.notes).isRescheduled && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            >
+                              Rescheduled
+                            </Badge>
+                          )}
+                          <StatusBadge
+                            tone={
+                              appt.status === "COMPLETED"
+                                ? "success"
+                                : appt.status === "CHECKED_IN"
+                                  ? "info"
+                                  : appt.status === "CANCELLED"
+                                    ? "danger"
+                                    : "neutral"
+                            }
+                          >
+                            {appointmentStatusLabel[appt.status as AppointmentStatus] || appt.status}
+                          </StatusBadge>
+                        </div>
                       </div>
                     );
                   })}

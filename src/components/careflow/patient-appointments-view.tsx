@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Pill,
   User,
+  CalendarClock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import {
   formatSlotLabel12h,
   formatTime12h,
   getClinicLocalDate,
+  getAppointmentRescheduleInfo,
   type AppointmentStatus,
 } from "@/lib/appointments";
 import type { PatientAppointmentWithDetails } from "@/lib/clinical";
@@ -158,6 +160,7 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
               day: "numeric",
             });
             const timeStr = formatSlotLabel12h(appt.scheduled_start, appt.scheduled_end);
+            const rescheduleInfo = getAppointmentRescheduleInfo(appt.notes);
 
             return (
               <Card key={appt.id} className="overflow-hidden border shadow-sm">
@@ -182,9 +185,19 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
                         </div>
                       )}
                     </div>
-                    <StatusBadge tone={getStatusTone(appt.status)}>
-                      {appointmentStatusLabel[appt.status as AppointmentStatus] ?? appt.status}
-                    </StatusBadge>
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge tone={getStatusTone(appt.status)}>
+                        {appointmentStatusLabel[appt.status as AppointmentStatus] ?? appt.status}
+                      </StatusBadge>
+                      {rescheduleInfo.isRescheduled && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                        >
+                          Rescheduled
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
 
@@ -200,6 +213,23 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
                       <span>{timeStr}</span>
                     </div>
                   </div>
+
+                  {/* Reschedule audit history */}
+                  {rescheduleInfo.isRescheduled && (
+                    <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/20 p-2.5 text-amber-800 dark:text-amber-300">
+                      <CalendarClock className="size-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                      <div className="space-y-0.5">
+                        <div className="font-medium">
+                          Originally scheduled: <span>{rescheduleInfo.originalSchedule}</span>
+                        </div>
+                        {rescheduleInfo.reason && (
+                          <div className="text-[11px] text-muted-foreground italic">
+                            Reason: {rescheduleInfo.reason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Visit Details */}
                   <div className="space-y-1.5">

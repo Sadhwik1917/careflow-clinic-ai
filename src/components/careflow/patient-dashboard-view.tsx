@@ -19,6 +19,7 @@ import {
   CircleUserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageTitle } from "@/components/careflow/page-title";
 import { StatisticsCard } from "@/components/careflow/statistics-card";
@@ -32,7 +33,7 @@ import {
 import { PrescriptionPreviewDialog } from "./prescription-preview-dialog";
 import type { PrescriptionWithDetails } from "@/lib/clinical";
 import { formatFrequencyLabel } from "@/lib/clinical";
-import { appointmentStatusLabel, formatTime12h, type AppointmentStatus } from "@/lib/appointments";
+import { appointmentStatusLabel, formatTime12h, getAppointmentRescheduleInfo, type AppointmentStatus } from "@/lib/appointments";
 
 interface PatientDashboardViewProps {
   userId: string;
@@ -267,7 +268,16 @@ export function PatientDashboardView({ userId, clinicId }: PatientDashboardViewP
                             </p>
                           </div>
                         </div>
-                        <StatusBadge
+                        <div className="flex items-center gap-2">
+                          {getAppointmentRescheduleInfo(appt.notes).isRescheduled && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] font-medium border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                            >
+                              Rescheduled
+                            </Badge>
+                          )}
+                          <StatusBadge
                           tone={
                             appt.status === "COMPLETED"
                               ? "success"
@@ -279,7 +289,8 @@ export function PatientDashboardView({ userId, clinicId }: PatientDashboardViewP
                           }
                         >
                           {appointmentStatusLabel[appt.status as AppointmentStatus] || appt.status}
-                        </StatusBadge>
+                          </StatusBadge>
+                        </div>
                       </div>
                     );
                   })}
