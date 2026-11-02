@@ -322,6 +322,29 @@ export const createAppointmentSchema = z.object({
 
 export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 
+export const patientBookingSchema = z.object({
+  clinic_id: z.string().uuid(),
+  patient_id: z.string().uuid().optional(),
+  doctor_profile_id: z.string().uuid("Please select a valid doctor."),
+  appointment_type: z.enum(["CONSULTATION", "FOLLOW_UP", "EMERGENCY", "OTHER"]).default("CONSULTATION"),
+  scheduled_start: z.string().datetime({ offset: true }),
+  scheduled_end: z.string().datetime({ offset: true }),
+  reason: z.string().trim().max(500).optional().nullable(),
+  notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+export type PatientBookingInput = z.infer<typeof patientBookingSchema>;
+
+export interface PatientAppointmentCreateInput {
+  patient_id?: string | undefined;
+  doctor_profile_id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  appointment_type?: AppointmentType | undefined;
+  reason?: string | null | undefined;
+  notes?: string | null | undefined;
+}
+
 export const rescheduleAppointmentSchema = z.object({
   clinic_id: z.string().uuid(),
   appointment_id: z.string().uuid(),

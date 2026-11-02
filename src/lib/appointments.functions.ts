@@ -7,6 +7,7 @@ import {
   clinicWorkingHoursSchema,
   consultPatientSchema,
   createAppointmentSchema,
+  patientBookingSchema,
   doctorDailyAvailabilitySchema,
   doctorLeaveRequestSchema,
   doctorLeaveReviewSchema,
@@ -79,6 +80,7 @@ export const getDoctorAvailabilitySlots = createServerFn({ method: "POST" })
       "OWNER",
       "STAFF",
       "DOCTOR",
+      "PATIENT",
     ]);
     return s.readDoctorAvailability(
       context.supabase,
@@ -115,6 +117,26 @@ export const createClinicAppointment = createServerFn({ method: "POST" })
       ...data.appointment,
       clinic_id: data.clinicId,
     });
+  });
+
+export const createPatientAppointment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    clinicIdSchema
+      .extend({
+        appointment: patientBookingSchema.omit({ clinic_id: true }),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./appointments.server");
+    return s.createPatientAppointment(
+      context.supabase,
+      context.userId,
+      data.clinicId,
+      data.appointment
+    );
   });
 
 export const rescheduleClinicAppointment = createServerFn({ method: "POST" })
@@ -355,6 +377,7 @@ export const getClinicHoursSettings = createServerFn({ method: "POST" })
       "OWNER",
       "STAFF",
       "DOCTOR",
+      "PATIENT",
     ]);
     return s.getClinicMetadata(context.supabase, data.clinicId);
   });
@@ -602,6 +625,7 @@ export const listClinicQueueDoctors = createServerFn({ method: "POST" })
       "OWNER",
       "STAFF",
       "DOCTOR",
+      "PATIENT",
     ]);
     return s.readClinicOperationalDoctors(context.supabase, data.clinicId, data.filters);
   });

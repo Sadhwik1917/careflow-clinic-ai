@@ -14,12 +14,14 @@ import {
   Pill,
   User,
   CalendarClock,
+  CalendarPlus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, EmptyState, LoadingState } from "@/components/careflow/feedback";
 import { patientAppointmentsQuery } from "@/lib/clinical-queries";
+import { PatientAppointmentBookingDialog } from "./patient-appointment-booking-dialog";
 import {
   appointmentStatusLabel,
   appointmentTypeLabel,
@@ -32,15 +34,17 @@ import {
 import type { PatientAppointmentWithDetails } from "@/lib/clinical";
 
 interface PatientAppointmentsViewProps {
+  userId?: string | undefined;
   clinicId?: string | undefined;
 }
 
-export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewProps) {
+export function PatientAppointmentsView({ userId, clinicId }: PatientAppointmentsViewProps) {
   const { data: appointments = [], isLoading, isError } = useQuery({
     ...patientAppointmentsQuery(clinicId),
   });
 
   const [activeTab, setActiveTab] = React.useState<"upcoming" | "past">("upcoming");
+  const [isBookingOpen, setIsBookingOpen] = React.useState<boolean>(false);
 
   const upcomingAppointments = React.useMemo(() => {
     return appointments.filter(
@@ -98,32 +102,44 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
           </p>
         </div>
 
-        {/* Tab Toggle */}
-        <div className="flex items-center rounded-lg border bg-muted p-1 text-xs">
-          <button
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
             type="button"
-            onClick={() => setActiveTab("upcoming")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
-              activeTab === "upcoming"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            size="sm"
+            onClick={() => setIsBookingOpen(true)}
+            className="gap-1.5"
           >
-            <Clock className="size-3.5" />
-            Upcoming ({upcomingAppointments.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("past")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
-              activeTab === "past"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <CheckCircle2 className="size-3.5" />
-            Past Visits ({pastAppointments.length})
-          </button>
+            <CalendarPlus className="size-4" />
+            Book Appointment
+          </Button>
+
+          {/* Tab Toggle */}
+          <div className="flex items-center rounded-lg border bg-muted p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab("upcoming")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+                activeTab === "upcoming"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Clock className="size-3.5" />
+              Upcoming ({upcomingAppointments.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("past")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-all ${
+                activeTab === "past"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <CheckCircle2 className="size-3.5" />
+              Past Visits ({pastAppointments.length})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -140,13 +156,26 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
           title={activeTab === "upcoming" ? "No upcoming appointments" : "No past appointments found"}
           description={
             activeTab === "upcoming"
-              ? "You do not have any scheduled consultations at this time. Contact your clinic to schedule an appointment."
+              ? "You do not have any scheduled consultations. Choose an available clinic doctor and time slot to book your appointment."
               : "Completed, cancelled, or past consultation records will appear here."
           }
           action={
-            <Button asChild variant="outline" size="sm">
-              <Link to="/patient/dashboard">Return to Dashboard</Link>
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {activeTab === "upcoming" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsBookingOpen(true)}
+                  className="gap-1.5"
+                >
+                  <CalendarPlus className="size-4" />
+                  Book an Appointment
+                </Button>
+              )}
+              <Button asChild variant="outline" size="sm">
+                <Link to="/patient/dashboard">Return to Dashboard</Link>
+              </Button>
+            </div>
           }
         />
       ) : (
@@ -273,6 +302,17 @@ export function PatientAppointmentsView({ clinicId }: PatientAppointmentsViewPro
           })}
         </div>
       )}
+
+      {/* Patient Appointment Booking Dialog */}
+      <PatientAppointmentBookingDialog
+        open={isBookingOpen}
+        onOpenChange={setIsBookingOpen}
+        userId={userId ?? ""}
+        clinicId={clinicId}
+        onSuccess={() => {
+          setActiveTab("upcoming");
+        }}
+      />
     </div>
   );
 }

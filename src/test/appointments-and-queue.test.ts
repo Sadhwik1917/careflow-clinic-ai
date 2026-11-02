@@ -437,6 +437,20 @@ function makeFakeDb(options: {
         return { data: { id: patientId, clinic_id: clinicId }, error: null };
       }
       if (table === "appointments") {
+        if (filters["scheduled_start"] && filters["patient_id"]) {
+          if (options.hasPatientConflict) {
+            return {
+              data: {
+                id: "conflict-appt-id",
+                clinic_id: clinicId,
+                patient_id: patientId,
+                scheduled_start: String(filters["scheduled_start"]),
+              },
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        }
         if (options.hasPatientConflict && filters["patient_id"]) {
           return {
             data: {

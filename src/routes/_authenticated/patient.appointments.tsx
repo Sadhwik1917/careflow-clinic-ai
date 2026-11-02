@@ -8,6 +8,6 @@ export const Route = createFileRoute("/_authenticated/patient/appointments")({
 });
 
 function Page() {
-  const { membership } = Route.useRouteContext();
-  return <PatientAppointmentsView clinicId={membership?.clinic_id} />;
+  const { user, membership } = Route.useRouteContext();
+  return <PatientAppointmentsView userId={user.id} clinicId={membership?.clinic_id} />;
 }

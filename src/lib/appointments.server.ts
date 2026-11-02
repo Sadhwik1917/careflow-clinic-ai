@@ -13,11 +13,14 @@ import {
   type AppointmentFilters,
   type AppointmentRow,
   type AppointmentStatus,
+  type AppointmentType,
   type AppointmentWithDetails,
   type ClinicWorkingHoursConfig,
   type CreateAppointmentInput,
   type DoctorAvailabilityConfig,
   type DoctorLeaveItem,
+  type PatientAppointmentCreateInput,
+  type PatientBookingInput,
   type QueueEntryRow,
   type QueueEntryWithDetails,
   type QueueStatus,
@@ -270,7 +273,18 @@ export async function readDoctorAvailability(
 
   // Read all active appointments for this doctor on that clinic-local date
   const { start, end } = getClinicDayUtcRange(dateStr, timezone);
-  const { data: appts, error: apptError } = await db
+  let privilegedDb: Client = db;
+  if (process.env["NODE_ENV"] !== "test" && process.env["SUPABASE_SERVICE_ROLE_KEY"] && process.env["SUPABASE_URL"]) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      if (supabaseAdmin) {
+        privilegedDb = supabaseAdmin as unknown as Client;
+      }
+    } catch {
+      // Keep caller db in test environments
+    }
+  }
+  const { data: appts, error: apptError } = await privilegedDb
     .from("appointments")
     .select("scheduled_start, scheduled_end, status")
     .eq("clinic_id", clinicId)
@@ -427,7 +441,24 @@ export async function createAppointment(
     );
   }
 
-  // 5. Insert Appointment
+  // 5. Prevent conflicting double-booking for the patient
+  const { data: patientConflict, error: patConflictErr } = await db
+    .from("appointments")
+    .select("id")
+    .eq("clinic_id", clinicId)
+    .eq("patient_id", input.patient_id)
+    .eq("scheduled_start", input.scheduled_start)
+    .neq("status", "CANCELLED")
+    .maybeSingle();
+
+  if (patConflictErr) {
+    console.error("[createAppointment] patient conflict check error:", patConflictErr);
+  }
+  if (patientConflict) {
+    throw new Error("This patient already has an appointment booked at this time.");
+  }
+
+  // 6. Insert Appointment
   const { data: created, error: insertError } = await db
     .from("appointments")
     .insert({
@@ -483,6 +514,96 @@ export async function createAppointment(
   });
 
   return created;
+}
+
+/**
+ * Creates an appointment initiated by an authenticated PATIENT.
+ * Enforces:
+ * - Caller is authenticated with active profile
+ * - Clinic is operational
+ * - Patient record belongs to the caller (user_id === userId)
+ * - Doctor belongs to clinic, is active, not busy, not on approved leave
+ * - Clinic is open on that date
+ * - Slot capacity is under DOCTOR_SLOT_CAPACITY (6)
+ * - Patient has no conflicting double booking at that time
+ * - Concurrency verification & audit logging
+ */
+export async function createPatientAppointment(
+  db: Client,
+  userId: string,
+  clinicId: string,
+  input: PatientAppointmentCreateInput
+): Promise<AppointmentRow> {
+  // 1. Verify caller profile & operational clinic
+  const [p, op] = await Promise.all([
+    db.from("profiles").select("platform_role,status").eq("id", userId).maybeSingle(),
+    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+  ]);
+
+  if (p.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER") {
+    throw denied("Authentication required to schedule an appointment.");
+  }
+  if (op.error || op.data !== true) {
+    throw denied("Clinic is not currently operational.");
+  }
+
+  // 2. Resolve & verify patient profile belongs to the caller
+  let resolvedPatientId = input.patient_id;
+  if (resolvedPatientId) {
+    const { data: patientRecord, error: patError } = await db
+      .from("patients")
+      .select("id, user_id, clinic_id, status")
+      .eq("clinic_id", clinicId)
+      .eq("id", resolvedPatientId)
+      .maybeSingle();
+
+    if (patError || !patientRecord) {
+      throw new Error("Patient not found in this clinic.");
+    }
+    if (patientRecord.user_id !== userId) {
+      throw new Error("Patients may only book appointments for their own profile.");
+    }
+    if (patientRecord.status !== "ACTIVE") {
+      throw new Error("Patient profile is not active.");
+    }
+  } else {
+    // Auto-resolve caller's patient record in this clinic
+    const { data: patientRecord, error: patError } = await db
+      .from("patients")
+      .select("id, user_id, clinic_id, status")
+      .eq("clinic_id", clinicId)
+      .eq("user_id", userId)
+      .eq("status", "ACTIVE")
+      .maybeSingle();
+
+    if (patError || !patientRecord) {
+      throw new Error("No active patient record found for your account in this clinic.");
+    }
+    resolvedPatientId = patientRecord.id;
+  }
+
+  let privilegedDb: Client = db;
+  if (process.env["NODE_ENV"] !== "test" && process.env["SUPABASE_SERVICE_ROLE_KEY"] && process.env["SUPABASE_URL"]) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      if (supabaseAdmin) {
+        privilegedDb = supabaseAdmin as unknown as Client;
+      }
+    } catch {
+      // Keep caller db in test environments
+    }
+  }
+
+  return createAppointment(privilegedDb, userId, clinicId, {
+    patient_id: resolvedPatientId,
+    doctor_profile_id: input.doctor_profile_id,
+    scheduled_start: input.scheduled_start,
+    scheduled_end: input.scheduled_end,
+    appointment_type: input.appointment_type ?? "CONSULTATION",
+    reason: input.reason ?? null,
+    notes: input.notes ?? null,
+    clinic_id: clinicId,
+  });
 }
 
 /**
