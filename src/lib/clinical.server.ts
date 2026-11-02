@@ -18,6 +18,8 @@ import {
   type PatientPaymentWithDetails,
   type PatientAppointmentWithDetails,
   type PatientProfileSummary,
+  type PatientMedicalHistoryEncounter,
+  type PatientMedicalHistoryRecord,
   type RecordPaymentInput,
   type UpdateInvoiceBillingInput,
   type CreateDirectInvoiceInput,
@@ -1730,6 +1732,174 @@ export async function listPatientPayments(
   const { data: payments, error } = await q;
   if (error || !payments) return [];
   return payments as any;
+}
+
+export async function getPatientMedicalHistory(
+  db: Client,
+  userId: string,
+  clinicId?: string
+): Promise<PatientMedicalHistoryRecord> {
+  // 1. Resolve patient record(s) linked to caller's authenticated user_id
+  let patientQuery = db
+    .from("patients")
+    .select(`
+      id,
+      clinic_id,
+      patient_number,
+      first_name,
+      last_name,
+      date_of_birth,
+      gender,
+      phone,
+      email,
+      address,
+      emergency_contact_name,
+      emergency_contact_phone,
+      notes,
+      clinic:clinics(id, name, phone, address)
+    `)
+    .eq("user_id", userId);
+
+  if (clinicId) {
+    patientQuery = patientQuery.eq("clinic_id", clinicId);
+  }
+
+  const { data: patients, error: patientError } = await patientQuery;
+
+  if (patientError || !patients || patients.length === 0) {
+    return {
+      patient: null,
+      encounters: [],
+      vitalsHistory: [],
+      prescriptions: [],
+    };
+  }
+
+  const patientIds = patients.map((p) => p.id);
+  const primaryPatient = (clinicId ? patients.find((p) => p.clinic_id === clinicId) : null) || patients[0];
+
+  // 2. Fetch consultations for the caller's patient IDs
+  let consultQuery = db
+    .from("consultations")
+    .select(`
+      *,
+      clinic:clinics(id, name, phone, address),
+      doctor:doctor_profiles(id, specialization, department, user_id),
+      appointment:appointments(id, scheduled_start, scheduled_end, appointment_type, status, reason)
+    `)
+    .in("patient_id", patientIds)
+    .eq("status", "COMPLETED")
+    .order("created_at", { ascending: false });
+
+  if (clinicId) {
+    consultQuery = consultQuery.eq("clinic_id", clinicId);
+  }
+
+  // 3. Fetch vitals for the caller's patient IDs
+  let vitalsQuery = db
+    .from("vitals")
+    .select(`
+      *,
+      clinic:clinics(id, name)
+    `)
+    .in("patient_id", patientIds)
+    .order("recorded_at", { ascending: false });
+
+  if (clinicId) {
+    vitalsQuery = vitalsQuery.eq("clinic_id", clinicId);
+  }
+
+  // 4. Fetch prescriptions reusing listPatientPrescriptions
+  const [consultRes, vitalsRes, prescriptions] = await Promise.all([
+    consultQuery,
+    vitalsQuery,
+    listPatientPrescriptions(db, userId, clinicId),
+  ]);
+
+  const consultations = (consultRes.data ?? []) as any[];
+  const vitalsRows = (vitalsRes.data ?? []) as any[];
+
+  // 5. Load doctor name maps for clinic IDs
+  const clinicIds = Array.from(new Set(consultations.map((c: any) => c.clinic_id)));
+  const nameMap = new Map<string, string>();
+  for (const cId of clinicIds) {
+    const map = await readDoctorNameMap(db, cId);
+    map.forEach((val: string, key: string) => nameMap.set(key, val));
+  }
+
+  // 6. Map encounters
+  const encounters: PatientMedicalHistoryEncounter[] = consultations.map((c: any) => {
+    const doctor = c.doctor
+      ? {
+          ...c.doctor,
+          display_name: nameMap.get(c.doctor.user_id) ?? "Doctor",
+        }
+      : null;
+
+    const linkedVitals = vitalsRows.find(
+      (v: any) =>
+        (v.consultation_id && v.consultation_id === c.id) ||
+        (c.appointment_id && v.appointment_id && v.appointment_id === c.appointment_id)
+    ) ?? null;
+
+    const linkedPrescriptions = prescriptions.filter(
+      (rx) => rx.consultation_id === c.id || (rx.consultation && rx.consultation.id === c.id)
+    );
+
+    return {
+      id: c.id,
+      clinic_id: c.clinic_id,
+      patient_id: c.patient_id,
+      doctor_profile_id: c.doctor_profile_id,
+      appointment_id: c.appointment_id,
+      chief_complaint: c.chief_complaint,
+      assessment: c.assessment,
+      clinical_notes: c.clinical_notes,
+      follow_up_date: c.follow_up_date,
+      follow_up_notes: c.follow_up_notes,
+      status: c.status,
+      completed_at: c.completed_at,
+      created_at: c.created_at,
+      clinic: c.clinic ?? null,
+      doctor,
+      appointment: c.appointment ?? null,
+      vitals: linkedVitals,
+      prescriptions: linkedPrescriptions,
+    };
+  });
+
+  const vitalsHistory = vitalsRows.map((v: any) => {
+    const linkedConsult = consultations.find((c: any) => c.id === v.consultation_id);
+    return {
+      ...v,
+      consultationDate: linkedConsult?.created_at ?? null,
+      clinic: v.clinic ?? null,
+    };
+  });
+
+  return {
+    patient: primaryPatient
+      ? {
+          id: primaryPatient.id,
+          clinic_id: primaryPatient.clinic_id,
+          patient_number: primaryPatient.patient_number,
+          first_name: primaryPatient.first_name,
+          last_name: primaryPatient.last_name,
+          date_of_birth: primaryPatient.date_of_birth,
+          gender: primaryPatient.gender,
+          phone: primaryPatient.phone,
+          email: primaryPatient.email,
+          address: primaryPatient.address,
+          emergency_contact_name: primaryPatient.emergency_contact_name,
+          emergency_contact_phone: primaryPatient.emergency_contact_phone,
+          notes: primaryPatient.notes,
+          clinic: (primaryPatient as any).clinic ?? null,
+        }
+      : null,
+    encounters,
+    vitalsHistory,
+    prescriptions,
+  };
 }
 
 

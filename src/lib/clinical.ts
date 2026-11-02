@@ -316,6 +316,74 @@ export interface PatientProfileSummary {
   }>;
 }
 
+export interface PatientMedicalHistoryEncounter {
+  id: string;
+  clinic_id: string;
+  patient_id: string;
+  doctor_profile_id: string;
+  appointment_id: string | null;
+  chief_complaint: string | null;
+  assessment: string | null;
+  clinical_notes: string | null;
+  follow_up_date: string | null;
+  follow_up_notes: string | null;
+  status: ConsultationStatus;
+  completed_at: string | null;
+  created_at: string;
+  clinic?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+  } | null;
+  doctor?: {
+    id: string;
+    specialization: string;
+    department: string | null;
+    display_name?: string | null;
+  } | null;
+  appointment?: {
+    id: string;
+    scheduled_start: string;
+    scheduled_end: string;
+    appointment_type: string;
+    status: string;
+    reason?: string | null;
+  } | null;
+  vitals?: VitalsRow | null;
+  prescriptions: PrescriptionWithDetails[];
+}
+
+export interface PatientMedicalHistoryRecord {
+  patient: {
+    id: string;
+    clinic_id: string;
+    patient_number: string;
+    first_name: string;
+    last_name: string | null;
+    date_of_birth: string | null;
+    gender: string | null;
+    phone: string | null;
+    email?: string | null;
+    address?: string | null;
+    emergency_contact_name?: string | null;
+    emergency_contact_phone?: string | null;
+    notes?: string | null;
+    clinic?: {
+      id: string;
+      name: string;
+      phone?: string | null;
+      address?: string | null;
+    } | null;
+  } | null;
+  encounters: PatientMedicalHistoryEncounter[];
+  vitalsHistory: (VitalsRow & {
+    clinic?: { id: string; name: string } | null;
+    consultationDate?: string | null;
+  })[];
+  prescriptions: PrescriptionWithDetails[];
+}
+
 // -------------------------------------------------------------
 // Formatting Helpers
 // -------------------------------------------------------------

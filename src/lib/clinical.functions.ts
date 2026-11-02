@@ -266,3 +266,22 @@ export const listPatientPaymentsFn = createServerFn({ method: "POST" })
       data.clinicId
     );
   });
+
+export const getPatientMedicalHistoryFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) =>
+    z
+      .object({
+        clinicId: z.string().uuid().optional(),
+      })
+      .strict()
+      .parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const s = await import("./clinical.server");
+    return s.getPatientMedicalHistory(
+      context.supabase,
+      context.userId,
+      data.clinicId
+    );
+  });
