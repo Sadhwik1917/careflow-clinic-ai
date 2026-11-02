@@ -7,6 +7,7 @@ import {
   listPatientAppointmentsFn,
   getPatientProfileSummaryFn,
   listPatientInvoicesFn,
+  listPatientPaymentsFn,
 } from "./clinical.functions";
 
 export const appointmentClinicalContextQuery = (
@@ -80,6 +81,16 @@ export const patientInvoicesQuery = (clinicId?: string) =>
     queryKey: ["patient-invoices", clinicId ?? "all"],
     queryFn: () =>
       listPatientInvoicesFn({
+        data: { clinicId },
+      }),
+    staleTime: 15_000,
+  });
+
+export const patientPaymentsQuery = (clinicId?: string) =>
+  queryOptions({
+    queryKey: ["patient-payments", clinicId ?? "all"],
+    queryFn: () =>
+      listPatientPaymentsFn({
         data: { clinicId },
       }),
     staleTime: 15_000,

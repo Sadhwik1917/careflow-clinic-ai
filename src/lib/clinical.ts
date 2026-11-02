@@ -221,6 +221,12 @@ export * from "./billing-calculations";
 export interface InvoiceWithDetails extends InvoiceRow {
   items: InvoiceItemRow[];
   payments: PaymentRow[];
+  clinic?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+  } | null;
   patient?: {
     id: string;
     patient_number: string;
@@ -233,6 +239,24 @@ export interface InvoiceWithDetails extends InvoiceRow {
     scheduled_start: string;
     scheduled_end: string;
     appointment_type: string;
+  } | null;
+}
+
+export interface PatientPaymentWithDetails extends PaymentRow {
+  clinic?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+  } | null;
+  invoice?: {
+    id: string;
+    invoice_number: string;
+    total_amount: number;
+    amount_paid: number;
+    amount_due: number;
+    status: InvoiceStatus;
+    issued_at?: string | null;
   } | null;
 }
 

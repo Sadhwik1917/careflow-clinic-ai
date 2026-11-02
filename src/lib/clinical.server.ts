@@ -15,6 +15,7 @@ import {
   type AppointmentClinicalContext,
   type PrescriptionWithDetails,
   type InvoiceWithDetails,
+  type PatientPaymentWithDetails,
   type PatientAppointmentWithDetails,
   type PatientProfileSummary,
   type RecordPaymentInput,
@@ -1655,6 +1656,7 @@ export async function listPatientInvoices(
     .from("invoices")
     .select(`
       *,
+      clinic:clinics(id, name, phone, address),
       patient:patients(id, patient_number, first_name, last_name, phone),
       appointment:appointments(id, scheduled_start, scheduled_end, appointment_type)
     `)
@@ -1697,6 +1699,37 @@ export async function listPatientInvoices(
     items: itemsMap.get(inv.id) ?? [],
     payments: paymentsMap.get(inv.id) ?? [],
   }));
+}
+
+export async function listPatientPayments(
+  db: Client,
+  userId: string,
+  clinicId?: string
+): Promise<PatientPaymentWithDetails[]> {
+  let patientQuery = db.from("patients").select("id, clinic_id").eq("user_id", userId);
+  if (clinicId) patientQuery = patientQuery.eq("clinic_id", clinicId);
+
+  const { data: patients } = await patientQuery;
+  const patientIds = (patients ?? []).map((p) => p.id);
+  if (patientIds.length === 0) return [];
+
+  let q = db
+    .from("payments")
+    .select(`
+      *,
+      clinic:clinics(id, name, phone, address),
+      invoice:invoices(id, invoice_number, total_amount, amount_paid, amount_due, status, issued_at)
+    `)
+    .in("patient_id", patientIds)
+    .order("created_at", { ascending: false });
+
+  if (clinicId) {
+    q = q.eq("clinic_id", clinicId);
+  }
+
+  const { data: payments, error } = await q;
+  if (error || !payments) return [];
+  return payments as any;
 }
 
 
