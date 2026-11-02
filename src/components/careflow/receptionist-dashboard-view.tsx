@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   ListOrdered,
@@ -18,6 +18,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AppointmentForm } from "@/components/careflow/appointment-form";
 import { PageTitle } from "@/components/careflow/page-title";
 import { StatisticsCard } from "@/components/careflow/statistics-card";
 import { StatusBadge, EmptyState, LoadingState } from "@/components/careflow/feedback";
@@ -42,6 +50,8 @@ interface ReceptionistDashboardViewProps {
 }
 
 export function ReceptionistDashboardView({ userId, clinicId }: ReceptionistDashboardViewProps) {
+  const qc = useQueryClient();
+  const [isBookingOpen, setIsBookingOpen] = React.useState<boolean>(false);
   // Clinic metadata for timezone & operating hours
   const { data: clinicHoursData } = useQuery(clinicHoursQuery(userId, clinicId));
   const timeZone = clinicHoursData?.timezone || "Asia/Kolkata";
@@ -96,10 +106,8 @@ export function ReceptionistDashboardView({ userId, clinicId }: ReceptionistDash
         description="Patient check-in, live queue management, daily appointments, and payment collection."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button asChild size="sm">
-              <Link to="/clinic/appointments/new">
-                <CalendarPlus className="mr-2 size-4" /> Book appointment
-              </Link>
+            <Button size="sm" onClick={() => setIsBookingOpen(true)}>
+              <CalendarPlus className="mr-2 size-4" /> Book appointment
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link to="/staff/queue">
@@ -174,10 +182,8 @@ export function ReceptionistDashboardView({ userId, clinicId }: ReceptionistDash
                   description="No patient visits are booked for today yet."
                   icon={CalendarDays}
                   action={
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/clinic/appointments/new">
-                        <CalendarPlus className="mr-2 size-4" /> Book appointment
-                      </Link>
+                    <Button size="sm" variant="outline" onClick={() => setIsBookingOpen(true)}>
+                      <CalendarPlus className="mr-2 size-4" /> Book appointment
                     </Button>
                   }
                 />
@@ -462,6 +468,31 @@ export function ReceptionistDashboardView({ userId, clinicId }: ReceptionistDash
           </Card>
         </div>
       </div>
+
+      {/* Book Appointment Dialog */}
+      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Schedule New Appointment</DialogTitle>
+            <DialogDescription>
+              Select a patient and doctor, choose an available time slot, and confirm the booking.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <AppointmentForm
+              userId={userId}
+              clinicId={clinicId}
+              onSuccess={() => {
+                setIsBookingOpen(false);
+                qc.invalidateQueries({ queryKey: ["appointments", clinicId] });
+                qc.invalidateQueries({ queryKey: ["queue-entries", clinicId] });
+                qc.invalidateQueries({ queryKey: ["doctor-availability", clinicId] });
+              }}
+              onCancel={() => setIsBookingOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -444,7 +444,7 @@ describe("Patient Medical History Server Function & Authorization", () => {
 
     await getPatientMedicalHistory(db, patientUserId, clinicAId);
 
-    const mutatingCalls = db.calls.filter(([name]) =>
+    const mutatingCalls = (db.calls as [string, unknown[]][]).filter(([name]) =>
       name.includes("insert") || name.includes("update") || name.includes("delete")
     );
     expect(mutatingCalls).toHaveLength(0);
