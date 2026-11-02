@@ -55,3 +55,39 @@ export const getDoctorPatient = createServerFn({ method: "POST" })
     const doc = await s.assertDoctorPatientAccess(context.supabase, context.userId, data.clinicId);
     return s.readDoctorPatient(context.supabase, data.clinicId, doc.id, data.patientId);
   });
+
+export const listStaffPatients = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => clinic.extend({ filters: patientFiltersSchema }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./patients.server");
+    await s.assertPatientStaff(context.supabase, context.userId, data.clinicId);
+    return s.readPatients(context.supabase, data.clinicId, data.filters);
+  });
+
+export const getStaffPatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => identity.strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./patients.server");
+    await s.assertPatientStaff(context.supabase, context.userId, data.clinicId);
+    return s.readPatient(context.supabase, data.clinicId, data.patientId);
+  });
+
+export const registerStaffPatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => clinic.extend({ fields: z.unknown().refine(v => registrationSchema.safeParse(v).success, "Invalid patient registration.") }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./patients.server");
+    await s.assertPatientStaff(context.supabase, context.userId, data.clinicId);
+    return s.insertPatient(context.supabase, data.clinicId, data.fields);
+  });
+
+export const updateStaffPatient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((i: unknown) => identity.extend({ updatedAt: z.string().datetime({ offset: true }), fields: z.unknown().refine(v => patientFieldsSchema.safeParse(v).success, "Invalid patient changes.") }).strict().parse(i))
+  .handler(async ({ data, context }) => {
+    const s = await import("./patients.server");
+    await s.assertPatientStaff(context.supabase, context.userId, data.clinicId);
+    return s.editPatient(context.supabase, data.clinicId, data.patientId, data.updatedAt, data.fields);
+  });

@@ -14,6 +14,26 @@ export async function assertPatientOwner(db: Client, userId: string, clinicId: s
   if (p.error || m.error || op.error || p.data?.status !== "ACTIVE" || p.data.platform_role !== "USER" || m.data?.role !== "OWNER" || m.data.status !== "ACTIVE" || op.data !== true) throw denied();
 }
 
+export async function assertPatientStaff(db: Client, userId: string, clinicId: string) {
+  const [p, m, op] = await Promise.all([
+    db.from("profiles").select("platform_role,status").eq("id", userId).maybeSingle(),
+    db.from("clinic_members").select("role,status").eq("user_id", userId).eq("clinic_id", clinicId).maybeSingle(),
+    db.rpc("clinic_is_operational", { p_clinic: clinicId }),
+  ]);
+  if (
+    p.error ||
+    m.error ||
+    op.error ||
+    p.data?.status !== "ACTIVE" ||
+    p.data.platform_role !== "USER" ||
+    m.data?.role !== "STAFF" ||
+    m.data.status !== "ACTIVE" ||
+    op.data !== true
+  ) {
+    throw denied();
+  }
+}
+
 // Every read/write uses the authenticated caller's RLS client and an explicitly verified clinic.
 export async function readPatients(db: Client, clinicId: string, filters: PatientFilters) {
   let q = db.from("patients").select("*", { count: "exact" }).eq("clinic_id", clinicId);

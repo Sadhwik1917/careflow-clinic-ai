@@ -132,8 +132,8 @@ export function MarkDoctorAbsentDialog({
       const affectedCount = res.affectedAppointments.length;
       toast.success({
         title: res.isCorrection
-          ? `Dr. ${docName} attendance updated to Absent for ${date}.`
-          : `Dr. ${docName} marked absent for ${date}.`,
+          ? `${docName} attendance updated to Absent for ${date}.`
+          : `${docName} marked absent for ${date}.`,
         description:
           affectedCount > 0
             ? `Notice: ${affectedCount} appointment${affectedCount === 1 ? "" : "s"} scheduled for this date.`
@@ -205,7 +205,7 @@ export function MarkDoctorAbsentDialog({
                 <SelectContent>
                   {doctors.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
-                      Dr. {d.display_name || "Doctor"} ({d.specialization})
+                      {d.display_name || "Doctor"} ({d.specialization})
                     </SelectItem>
                   ))}
                 </SelectContent>

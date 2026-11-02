@@ -6,10 +6,16 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { MotionDialogContent, DialogTitle, DialogDescription } from "./motion-primitives";
 import { PatientQrScanner } from "./patient-qr-scanner";
 import { generateQrSvg } from "@/lib/qr";
-import { createPatientRegistrationUrl } from "@/lib/qr-payload";
+import { createPatientRegistrationUrl, isValidClinicUuid } from "@/lib/qr-payload";
 import { toast } from "@/lib/toast";
 
-export function PatientQrDialog({ clinicId }: { clinicId?: string }) {
+export function PatientQrDialog({
+  clinicId,
+  onScanSuccess,
+}: {
+  clinicId?: string;
+  onScanSuccess?: ((clinicId: string) => void) | undefined;
+}) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"display" | "scan">("display");
   const [copied, setCopied] = useState(false);
@@ -17,9 +23,10 @@ export function PatientQrDialog({ clinicId }: { clinicId?: string }) {
   const navigate = useNavigate();
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://careflow-clinic.internal";
-  const registrationUrl = clinicId
-    ? createPatientRegistrationUrl(origin, clinicId)
-    : `${origin}/clinic/patients/new`;
+  const registrationUrl =
+    clinicId && isValidClinicUuid(clinicId)
+      ? createPatientRegistrationUrl(origin, clinicId)
+      : `${origin}/clinic/patients/new`;
   const svgMarkup = generateQrSvg(registrationUrl, { size: 280, margin: 4 });
 
   const copyLink = async () => {
@@ -185,10 +192,14 @@ export function PatientQrDialog({ clinicId }: { clinicId?: string }) {
               onSuccess={result => {
                 toast.success("Clinic registration verified");
                 setOpen(false);
-                void navigate({
-                  to: "/clinic/patients/new",
-                  search: { clinic: result.clinicId },
-                });
+                if (onScanSuccess) {
+                  onScanSuccess(result.clinicId);
+                } else {
+                  void navigate({
+                    to: "/clinic/patients/new",
+                    search: { clinic: result.clinicId },
+                  });
+                }
               }}
               onCancel={() => setOpen(false)}
             />
