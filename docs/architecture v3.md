@@ -1142,7 +1142,6 @@ History
 ```text
 /doctor/dashboard
 /doctor/appointments
-/doctor/queue
 /doctor/patients
 /doctor/consultations
 /doctor/prescriptions

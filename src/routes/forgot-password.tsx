@@ -10,7 +10,7 @@ import { authErrorMessage } from "@/lib/auth";
 import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => publicMeta("Reset your password", "Request a password reset link for your CAREFLOW AI account."),
+  head: () => publicMeta("Reset your password", "Request a password reset link for your CAREFLOW AI account.", { noindex: true }),
   component: ForgotPasswordPage,
 });
 

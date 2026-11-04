@@ -3,6 +3,7 @@ import { redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { AppRole } from "@/lib/navigation";
+import { syncPatientAccountFn } from "./patient-registration.functions";
 
 type MemberRole = Database["public"]["Enums"]["member_role"];
 
@@ -19,6 +20,15 @@ export type UserAccess = { userId: string; email: string | null; profile: Access
 // Reads the signed-in user's own profile and memberships. RLS limits both queries to the caller's rows,
 // so this is a navigation aid only; every data request is still authorized by the database.
 export async function fetchUserAccess(userId: string, email: string | null): Promise<UserAccess> {
+  // If email is available, synchronize any pending verified patient self-registrations
+  if (email && typeof window !== "undefined") {
+    try {
+      await syncPatientAccountFn();
+    } catch {
+      // Ignore background sync errors; access queries still proceed cleanly
+    }
+  }
+
   const [profileResult, membershipResult] = await Promise.all([
     supabase.from("profiles").select("id, display_name, platform_role, status").eq("id", userId).maybeSingle(),
     supabase.from("clinic_members").select("id, clinic_id, role, status, clinic:clinics(id, name, display_name, status)").eq("user_id", userId),

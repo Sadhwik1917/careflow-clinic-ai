@@ -11,9 +11,10 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/lib/auth";
 import { ThemeProvider, themeBootScript } from "@/lib/theme";
+import { Toaster } from "sileo";
+import { getGoogleSiteVerification } from "@/lib/seo";
 
 function NotFoundComponent() {
   return (
@@ -40,9 +41,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -74,28 +72,35 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     </div>
   );
 }
-
+ 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CAREFLOW AI" },
-      { name: "description", content: "Clinic operations and patient management." },
-      { property: "og:title", content: "CAREFLOW AI" },
-      { property: "og:description", content: "Clinic operations and patient management." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" },
-    ],
-  }),
+  head: () => {
+    const googleVerification = getGoogleSiteVerification();
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title: "CAREFLOW AI" },
+        { name: "description", content: "Clinic operations and patient management." },
+        { property: "og:title", content: "CAREFLOW AI" },
+        { property: "og:description", content: "Clinic operations and patient management." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        ...(googleVerification
+          ? [{ name: "google-site-verification", content: googleVerification }]
+          : []),
+      ],
+      links: [
+        {
+          rel: "stylesheet",
+          href: appCss,
+        },
+        { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+        { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -123,7 +128,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <ThemeProvider><AuthProvider><Outlet /></AuthProvider></ThemeProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Outlet />
+          <Toaster theme="dark" position="top-right" />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

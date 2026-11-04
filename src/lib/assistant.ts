@@ -1,7 +1,7 @@
 /** Client-safe rules for the clinic AI assistant. The server re-checks every one of them. */
 export const ASSISTANT_MODELS = {
-  Fast: { id: "openai/gpt-6-luna", description: "Quick answers for everyday questions" },
-  Smart: { id: "openai/gpt-6-astra", description: "Careful answers for harder questions" },
+  Fast: { id: "gemini-3.8-flash", description: "Quick answers for everyday questions" },
+  Smart: { id: "gemini-3.7-flash", description: "Careful answers with deep reasoning" },
 } as const;
 export type AssistantModel = keyof typeof ASSISTANT_MODELS;
 export const ASSISTANT_EFFORTS = ["Low", "Medium", "High"] as const;

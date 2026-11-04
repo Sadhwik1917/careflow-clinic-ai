@@ -20,9 +20,34 @@ export const doctorFieldsSchema = z.object({
   specialization: z.string().trim().min(1, "Specialty is required.").max(120),
   department: optionalText(120),
   qualification: optionalText(200),
-  experience_years: z.coerce.number().int("Enter whole years.").min(0, "Experience cannot be negative.").max(70, "Enter a realistic number of years."),
+  experience_years: z.preprocess(
+    v => (typeof v === "string" && v.trim() === "" ? NaN : v),
+    z.coerce.number({ invalid_type_error: "Enter a valid number of years." })
+      .int("Enter whole years.")
+      .min(0, "Experience cannot be negative.")
+      .max(70, "Enter a realistic number of years.")
+  ),
   license_number: optionalText(80),
-  consultation_fee: z.union([z.literal(""), z.coerce.number().min(0, "Fee cannot be negative.").max(1000000, "Enter a realistic fee.")]).transform(v => v === "" ? null : v).optional(),
+  consultation_fee: z.preprocess(
+    v => (v === "" || v === null || v === undefined ? null : v),
+    z.any().superRefine((val, ctx) => {
+      if (val === null) return;
+      const num = typeof val === "number" ? val : Number(val);
+      if (typeof val === "string" && val.trim() === "") return;
+      if (isNaN(num)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a valid consultation fee." });
+        return;
+      }
+      if (num < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Fee cannot be negative." });
+        return;
+      }
+      if (num > 1000000) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Enter a realistic fee." });
+        return;
+      }
+    }).transform(val => (val === null || val === "" ? null : Number(val)))
+  ).optional(),
   bio: optionalText(2000),
   status: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE"]),
 }).strict();
@@ -46,3 +71,80 @@ export function invitationState(inv: Pick<InvitationRow, "status" | "expires_at"
   if (inv.status === "CANCELLED") return { label: "Cancelled", tone: "neutral" };
   return { label: "Expired", tone: "warning" };
 }
+
+export const doctorOnboardingSchema = z.object({
+  displayName: optionalText(120),
+  specialization: z.string().trim().min(1, "Specialty is required.").max(120),
+  department: optionalText(120),
+  qualification: optionalText(200),
+  experience_years: z.preprocess(
+    v => (typeof v === "string" && v.trim() === "" ? 0 : v),
+    z.coerce.number().int("Enter whole years.").min(0, "Experience cannot be negative.").max(70, "Enter realistic years.").catch(0).default(0)
+  ),
+  license_number: optionalText(80),
+  consultation_fee: z.preprocess(
+    v => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.number().min(0, "Fee cannot be negative.").max(1000000, "Enter a realistic fee.").nullable().optional()
+  ),
+  bio: optionalText(2000),
+}).strict();
+export type DoctorOnboardingInput = z.infer<typeof doctorOnboardingSchema>;
+
+export const staffOnboardingSchema = z.object({
+  displayName: optionalText(120),
+  phone: optionalText(30),
+}).strict();
+export type StaffOnboardingInput = z.infer<typeof staffOnboardingSchema>;
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().uuid("Invalid invitation token."),
+  doctorProfile: doctorOnboardingSchema.optional(),
+  staffProfile: staffOnboardingSchema.optional(),
+}).strict();
+export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
+
+/** Safely masks an email address for public preview display (e.g., d***r@example.com). */
+export function maskEmail(email: string): string {
+  const parts = email.trim().split("@");
+  if (parts.length !== 2) return "***";
+  const [local, domain] = parts;
+  if (!local || !domain) return "***";
+  if (local.length <= 2) {
+    return `${local[0]}***@${domain}`;
+  }
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+export type InvitationPreview = {
+  valid: boolean;
+  reason?: "NOT_FOUND" | "EXPIRED" | "CANCELLED" | "ALREADY_ACCEPTED" | "CLINIC_NOT_OPERATIONAL" | undefined;
+  clinicId?: string | undefined;
+  clinicName?: string | undefined;
+  role?: "DOCTOR" | "STAFF" | undefined;
+  email?: string | undefined;
+  maskedEmail?: string | undefined;
+  expiresAt?: string | undefined;
+};
+
+export const staffDisplayNameSchema = z.object({
+  displayName: z.string().trim().min(1, "Display name cannot be empty.").max(120, "Display name must be 120 characters or fewer."),
+}).strict();
+export type StaffDisplayNameInput = z.infer<typeof staffDisplayNameSchema>;
+
+export type StaffSelfProfile = {
+  member: Database["public"]["Tables"]["clinic_members"]["Row"];
+  profile: { id: string; display_name: string | null; avatar_url: string | null };
+  clinic: {
+    id: string;
+    name: string;
+    display_name: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    phone: string | null;
+    email: string | null;
+    status: Database["public"]["Enums"]["clinic_status"];
+  } | null;
+};
+
+

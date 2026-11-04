@@ -6,7 +6,8 @@ type Admin = SupabaseClient<Database>;
 type Row = { id: string; status: string; provider_subscription_id: string | null };
 
 export function razorpayAuth(): string | null {
-  const id = process.env["RAZORPAY_KEY_ID"], secret = process.env["RAZORPAY_KEY_SECRET"];
+  const id = process.env["RAZORPAY_KEY_ID"] || process.env["VITE_RAZORPAY_KEY_ID"];
+  const secret = process.env["RAZORPAY_KEY_SECRET"];
   return id && secret ? "Basic " + btoa(`${id}:${secret}`) : null;
 }
 

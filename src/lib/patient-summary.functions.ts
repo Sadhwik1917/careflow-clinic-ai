@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { meteredAi } from "@/lib/ai.functions";
 import {
   MAX_CONSULTATIONS, MAX_PATIENT_SEARCH, MAX_PRESCRIPTIONS, MAX_VITALS,
-  SUMMARY_FORMAT, SUMMARY_SYSTEM, buildSummaryInput, canRequestSummary, hasAnyHistory, parseSummary,
+  SUMMARY_SYSTEM, buildSummaryInput, canRequestSummary, hasAnyHistory, parseSummary,
   type SummaryFacts, type SummaryPatient,
 } from "@/lib/patient-summary";
 
@@ -113,37 +113,109 @@ async function gatherFacts(db: Db, clinicId: string, patientId: string): Promise
   };
 }
 
-/** Non-streaming gateway call with a strict JSON answer. */
+/** Calls Google Gemini Interactions API server-side with strict JSON schema. */
 async function generateSummary(input: string, signal: AbortSignal): Promise<string> {
-  const apiKey = process.env["LOVABLE_API_KEY"];
+  const apiKey = process.env["GEMINI_API_KEY"];
   if (!apiKey) throw new Error("AI_UNAVAILABLE");
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-    method: "POST",
-    signal,
-    headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch" },
-    body: JSON.stringify({
-      model: "openai/gpt-6-astra",
-      instructions: SUMMARY_SYSTEM,
-      input: [{ role: "user", content: [{ type: "input_text", text: input }] }],
-      store: false,
-      reasoning: { effort: "medium" },
-      text: { format: SUMMARY_FORMAT },
-    }),
-  });
-  if (!res.ok) {
-    console.error("patient summary gateway error", res.status);
-    throw new Error(res.status === 429 ? "AI_RATE_LIMITED" : "AI_UNAVAILABLE");
-  }
-  const json = (await res.json()) as { output?: { type?: string; content?: { type?: string; text?: string; refusal?: string }[] }[]; error?: unknown };
-  if (json.error) throw new Error("AI_UNAVAILABLE");
-  for (const item of json.output ?? []) {
-    if (item.type !== "message") continue;
-    for (const c of item.content ?? []) {
-      if (c.type === "refusal" || c.refusal) throw new Error("AI_REFUSED");
-      if (c.type === "output_text" && typeof c.text === "string") return parseSummary(c.text);
+
+  const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash"];
+  let lastError: Error | null = null;
+
+  for (let mIdx = 0; mIdx < candidateModels.length; mIdx++) {
+    const currentModel = candidateModels[mIdx]!;
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      signal.throwIfAborted();
+      let res: Response;
+      try {
+        res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+          method: "POST",
+          signal,
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            model: currentModel,
+            input: [
+              {
+                type: "user_input",
+                content: [{ type: "text", text: input }],
+              },
+            ],
+            system_instruction: SUMMARY_SYSTEM,
+            response_format: {
+              type: "text",
+              mime_type: "application/json",
+              schema: {
+                type: "object",
+                properties: {
+                  summary: { type: "string" },
+                },
+                required: ["summary"],
+              },
+            },
+          }),
+        });
+      } catch (networkErr) {
+        if (signal.aborted) throw networkErr;
+        lastError = new Error("AI_UNAVAILABLE");
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, Math.min(attempt * 1000, 3000)));
+          continue;
+        }
+        break; // try fallback model
+      }
+
+      if (res.ok) {
+        const json = (await res.json()) as {
+          status?: string;
+          steps?: {
+            type: string;
+            content?: { type: string; text?: string }[];
+          }[];
+          error?: unknown;
+        };
+
+        if (json.error) {
+          lastError = new Error("AI_UNAVAILABLE");
+          break;
+        }
+
+        const modelOutputStep = json.steps?.find((s) => s.type === "model_output");
+        const textContent = modelOutputStep?.content?.find((c) => c.type === "text" && c.text);
+        const text = textContent?.text;
+
+        if (!text || typeof text !== "string") {
+          lastError = new Error("AI_UNAVAILABLE");
+          break;
+        }
+
+        return parseSummary(text);
+      }
+
+      const isCapacityError = res.status === 503 || res.status === 429 || res.status === 500 || res.status === 504;
+      if (isCapacityError) {
+        lastError = new Error(res.status === 429 ? "AI_RATE_LIMITED" : "AI_UNAVAILABLE");
+        if (attempt < maxAttempts) {
+          const retryAfterSec = parseInt(res.headers.get("retry-after") || "", 10);
+          const delayMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0
+            ? Math.min(retryAfterSec * 1000, 5000)
+            : Math.min(attempt * 1000, 3000);
+          await new Promise((r) => setTimeout(r, delayMs));
+          continue;
+        }
+        break;
+      }
+
+      const errText = await res.text().catch(() => "");
+      console.error(`patient summary non-retryable error on ${currentModel}`, res.status, errText);
+      throw new Error("AI_UNAVAILABLE");
     }
   }
-  throw new Error("AI_UNAVAILABLE");
+
+  throw lastError || new Error("AI_UNAVAILABLE");
 }
 
 export type SummaryResult =

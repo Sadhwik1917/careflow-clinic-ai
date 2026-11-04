@@ -27,7 +27,7 @@ export const createClinicSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseCreateSubscriptionInput)
   .handler(async ({ data, context }): Promise<CreateSubscriptionResult> => {
-    const keyId = process.env["RAZORPAY_KEY_ID"];
+    const keyId = process.env["RAZORPAY_KEY_ID"] || process.env["VITE_RAZORPAY_KEY_ID"];
     const auth = razorpayAuth();
     if (!keyId || !auth) { console.error("[subscriptions] Razorpay credentials missing"); return { ok: false, error: "Payments aren't configured yet." }; }
     const { userId } = context;
@@ -127,21 +127,25 @@ export const getClinicPlanState = createServerFn({ method: "POST" })
   .inputValidator(parseClinic)
   .handler(async ({ data, context }): Promise<PlanState> => {
     if (await assertOwner(context, data.clinicId, false)) return { current: null, trialUsed: true, registrationMissing: false };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const subs = await openSubsForClinic(supabaseAdmin, data.clinicId);
+    const subs = await openSubsForClinic(context.supabase as never, data.clinicId);
     const now = Date.now();
     const cur = subs.find(s => s.status === "ACTIVE" || s.status === "PAST_DUE" || (s.status === "TRIAL_ACTIVE" && s.trial_end_date && new Date(s.trial_end_date).getTime() > now));
     // Mirrors begin_mandated_trial: one activated trial per owner, clinic and registration number, ever.
-    const clinic = await supabaseAdmin.from("clinics").select("registration_number").eq("id", data.clinicId).maybeSingle();
+    const clinic = await context.supabase.from("clinics").select("registration_number").eq("id", data.clinicId).maybeSingle();
     const reg = registrationKey(clinic.data?.registration_number);
+    const hasServiceKey = !!process.env["SUPABASE_SERVICE_ROLE_KEY"];
     const filters = [`owner_user_id.eq.${context.userId}`, `clinic_id.eq.${data.clinicId}`, ...(reg ? [`registration_key.eq.${reg}`] : [])].join(",");
-    const [consumed, byClinic, byOwner] = await Promise.all([
-      supabaseAdmin.from("trial_consumptions").select("owner_user_id, clinic_id, registration_key").or(filters),
-      supabaseAdmin.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
-      supabaseAdmin.from("clinic_subscriptions").select("mandate_status, status, subscription_type").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL"),
+    const [consumedResult, byClinic, byOwner] = await Promise.all([
+      hasServiceKey
+        ? import("@/integrations/supabase/client.server").then(({ supabaseAdmin }) =>
+            supabaseAdmin.from("trial_consumptions").select("owner_user_id, clinic_id, registration_key").or(filters)
+          )
+        : Promise.resolve({ data: [] as { owner_user_id: string; clinic_id: string; registration_key: string | null }[], error: null }),
+      context.supabase.from("trial_events").select("id").eq("event_type", "TRIAL_STARTED").eq("clinic_id", data.clinicId).limit(1),
+      context.supabase.from("clinic_subscriptions").select("mandate_status, status, subscription_type").eq("owner_user_id", context.userId).eq("subscription_type", "TRIAL"),
     ]);
-    const failed = !!clinic.error || !!consumed.error || !!byClinic.error || !!byOwner.error;
-    const denial = failed ? "TRIAL_ALREADY_USED" : trialDenial({ registrationKey: reg, consumed: consumed.data ?? [], ownerId: context.userId, clinicId: data.clinicId });
+    const failed = !!clinic.error || !!consumedResult.error || !!byClinic.error || !!byOwner.error;
+    const denial = failed ? "TRIAL_ALREADY_USED" : trialDenial({ registrationKey: reg, consumed: consumedResult.data ?? [], ownerId: context.userId, clinicId: data.clinicId });
     const trialUsed = denial === "TRIAL_ALREADY_USED" || isTrialUsed({ startedEvents: byClinic.data?.length ?? 0, ownerRows: byOwner.data ?? [], lookupFailed: failed });
     const registrationMissing = !trialUsed && denial === "TRIAL_REGISTRATION_REQUIRED";
     return {
@@ -162,7 +166,7 @@ export const startClinicTrial = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(parseCreateSubscriptionInput)
   .handler(async ({ data, context }): Promise<StartTrialResult> => {
-    const keyId = process.env["RAZORPAY_KEY_ID"];
+    const keyId = process.env["RAZORPAY_KEY_ID"] || process.env["VITE_RAZORPAY_KEY_ID"];
     const auth = razorpayAuth();
     if (!keyId || !auth) return { ok: false, error: "Payments aren't configured yet." };
     const denied = await assertOwner(context, data.clinicId, true);

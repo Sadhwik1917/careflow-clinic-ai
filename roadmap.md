@@ -5,9 +5,16 @@
 - [ ] Signed-in registration-to-profile browser check — blocked: external Supabase has no available authenticated test session.
 
 ## Clinic Owner MVP — Doctors & Staff
-- [ ] Doctors directory + detail/edit via caller RLS client (whitelisted fields, optimistic concurrency); names via owner-gated trusted lookup.
-- [ ] Staff roster + invitations via trusted DB functions (invite/cancel/status-only member changes; no role edits, no self-escalation).
-- [ ] Tests, type check, build; report live-verification limits.
+- [x] Doctors directory + detail/edit via caller RLS client (whitelisted fields, optimistic concurrency with conflict reload feedback); names via owner-gated trusted lookup; profile update audit logging.
+- [x] Staff roster + invitations via trusted DB functions & caller-scoped fallback (invite/cancel/status-only member changes; no role edits, self-demotion prevention, cancellation confirmation, audit logging).
+- [x] Moved "Invite Members" from Staff roster to Clinic Dashboard with prominent action banner and owner validation.
+- [x] Root-cause fix for invitation link failure: anonymous/incognito lookup via server function `getInvitationPreview` masking recipient email.
+- [x] Clinic Gmail OAuth 2.0 email delivery: AES-256-GCM encrypted tokens, sender email matching check, Gmail API REST MIME message dispatch with responsive template, no Supabase Auth fallback.
+- [x] Complete Doctor & Staff onboarding: role-specific fields (specialization, license, consultation fee, bio for doctors; display name for staff), atomic acceptance, and owner `MEMBER_JOINED` in-app notification.
+- [x] Patient registration with QR code: scannable, mobile-accessible, printable/downloadable SVG QR code pointing to canonical registration URL with zero health data encoded.
+- [x] Application-wide Sileo toast notifications: reusable helper in `src/lib/toast.ts`, single root toaster mount in `__root.tsx`, dark mode styling, wired across team, profile, QR, and auth actions.
+- [x] Tests, type check, build: 338 tests pass across 38 files; tsc clean; production build OK.
+- [ ] Live signed-in invitation redemption & doctor profile edit — blocked: requires applying migration 20261023180000_accept_clinic_invitation.sql, Google Cloud OAuth Web Client configuration, and external Supabase test credentials.
 
 ## Phase 3C.2 — Assistant secure retrieval
 - [x] Connect existing assistant request to caller-authorized RAG inside existing metered flow.

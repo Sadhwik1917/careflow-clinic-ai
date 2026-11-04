@@ -55,7 +55,18 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       </nav>
     </div></header>
     <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 md:px-8 md:py-16">{children}</main>
-    <footer className="border-t px-4 py-5 text-center text-xs text-muted-foreground">© CAREFLOW AI</footer>
+    <footer className="border-t bg-card py-6 text-xs text-muted-foreground">
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row md:px-8">
+        <p>© {new Date().getFullYear()} CAREFLOW AI. All rights reserved.</p>
+        <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-4">
+          <Link to="/about" className="transition-colors hover:text-foreground">About</Link>
+          <Link to="/pricing" className="transition-colors hover:text-foreground">Pricing</Link>
+          <Link to="/contact" className="transition-colors hover:text-foreground">Contact</Link>
+          <Link to="/privacy" className="transition-colors hover:text-foreground">Privacy Policy</Link>
+          <Link to="/terms" className="transition-colors hover:text-foreground">Terms of Service</Link>
+        </nav>
+      </div>
+    </footer>
   </div>;
 }
 

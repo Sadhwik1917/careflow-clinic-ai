@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { WorkspacePage } from "@/components/careflow/workspace-page";
+import { PatientPrescriptionsView } from "@/components/careflow/patient-prescriptions-view";
 import { pageMetadata } from "@/lib/navigation";
 
 export const Route = createFileRoute("/_authenticated/patient/prescriptions")({
@@ -8,5 +8,6 @@ export const Route = createFileRoute("/_authenticated/patient/prescriptions")({
 });
 
 function Page() {
-  return <WorkspacePage role="PATIENT" title="Prescriptions" />;
+  const { membership } = Route.useRouteContext();
+  return <PatientPrescriptionsView clinicId={membership?.clinic_id} />;
 }

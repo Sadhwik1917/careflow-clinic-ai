@@ -10,30 +10,38 @@ type Rpc = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ d
 type Embed = (inputs: string[]) => Promise<number[][]>;
 
 export async function embedTexts(inputs: string[]): Promise<number[][]> {
-  const key = process.env["LOVABLE_API_KEY"];
+  const key = process.env["GEMINI_API_KEY"];
   if (!key) throw new Error("AI_UNAVAILABLE");
+  const modelName = EMBEDDING_MODEL.replace(/^google\//, "");
   const out: number[][] = [];
   for (let i = 0; i < inputs.length; i += 100) {
     const batch = inputs.slice(i, i + 100);
     let res: Response | undefined;
     for (let attempt = 1; attempt <= 3; attempt++) {
-      res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:batchEmbedContents`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: EMBEDDING_MODEL, input: batch }),
+        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requests: batch.map((text) => ({
+            model: `models/${modelName}`,
+            content: { parts: [{ text }] },
+            outputDimensionality: EMBEDDING_DIMS,
+          })),
+        }),
       });
       if (res.ok || !(res.status === 429 || res.status >= 500) || attempt === 3) break;
       await res.body?.cancel();
       await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt + Math.random() * 500));
     }
     if (!res?.ok) { console.error("embedding error", res?.status); throw new Error(res?.status === 429 ? "AI_RATE_LIMITED" : "AI_UNAVAILABLE"); }
-    const json = (await res.json()) as { data: { index: number; embedding: number[] }[] };
-    const ordered: number[][] = [];
-    for (const d of json.data) {
-      if (!Number.isInteger(d.index) || d.index < 0 || d.index >= batch.length || ordered[d.index] || d.embedding?.length !== EMBEDDING_DIMS) throw new Error("AI_UNAVAILABLE");
-      ordered[d.index] = d.embedding;
+    const json = (await res.json()) as { embeddings?: { values: number[] }[] };
+    const embeddings = json.embeddings ?? [];
+    if (embeddings.length !== batch.length) throw new Error("AI_UNAVAILABLE");
+    for (let j = 0; j < batch.length; j++) {
+      const vec = embeddings[j]?.values;
+      if (!vec || vec.length !== EMBEDDING_DIMS || !vec.every((n) => typeof n === "number" && Number.isFinite(n))) throw new Error("AI_UNAVAILABLE");
+      out.push(vec);
     }
-    for (let j = 0; j < batch.length; j++) { const vec = ordered[j]; if (!vec) throw new Error("AI_UNAVAILABLE"); out.push(vec); }
   }
   return out;
 }

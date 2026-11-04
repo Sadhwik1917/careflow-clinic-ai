@@ -6,6 +6,11 @@ import { PageTitle } from "@/components/careflow/page-title";
 import { publicMeta } from "@/lib/public-meta";
 
 export const Route = createFileRoute("/pricing")({
-  head: () => publicMeta("Pricing", "Subscription plans for CAREFLOW AI clinics."),
+  head: () =>
+    publicMeta(
+      "Pricing",
+      "Transparent subscription plans for CAREFLOW AI clinic operations, practice management, and patient coordination.",
+      "/pricing"
+    ),
   component: () => <PublicLayout><PageTitle title="Pricing" description="Subscription plans for clinics of every size." /><div className="rounded-lg border bg-card"><EmptyState icon={CreditCard} title="Plans are not published yet" description="Subscription plans will appear here once they are available." /></div></PublicLayout>,
 });
