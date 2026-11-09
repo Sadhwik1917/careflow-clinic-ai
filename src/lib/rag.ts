@@ -8,7 +8,25 @@ export const MAX_RESULTS = 10;
 export type KnowledgeDomain = "SHAREABLE" | "CONFIDENTIAL" | "CLINIC";
 export const KNOWLEDGE_DOMAINS: readonly KnowledgeDomain[] = ["SHAREABLE", "CONFIDENTIAL", "CLINIC"];
 
-export type RetrievedChunk = { chunkId: string; sourceKey: string; title: string; content: string; similarity: number; domain: KnowledgeDomain };
+export interface RagPassage {
+  chunkId: string;
+  documentId?: string | undefined;
+  sourceKey: string;
+  title: string;
+  content: string;
+  similarity: number;
+  domain: KnowledgeDomain;
+}
+
+export type RetrievedChunk = RagPassage;
+
+export interface SearchKnowledgeBaseOptions {
+  domain: KnowledgeDomain;
+  queryText: string;
+  clinicId?: string | null;
+  matchCount?: number;
+  similarityThreshold?: number;
+}
 
 /** Splits on paragraph/sentence boundaries; every character of the input lands in some chunk (never truncated). */
 export function chunkText(text: string, max = MAX_CHUNK_CHARS, overlap = CHUNK_OVERLAP_CHARS): string[] {

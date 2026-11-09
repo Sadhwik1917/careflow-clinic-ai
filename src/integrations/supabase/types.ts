@@ -2203,7 +2203,16 @@ export type Database = {
         Returns: undefined
       }
       rag_search_clinic: {
-        Args: { p_clinic: string; p_count?: number; p_embedding: string }
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          p_clinic?: string
+          p_clinic_id?: string
+          p_count?: number
+          p_embedding?: string
+          p_threshold?: number
+          query_embedding?: string
+        }
         Returns: {
           chunk_id: string
           content: string
@@ -2213,7 +2222,14 @@ export type Database = {
         }[]
       }
       rag_search_confidential: {
-        Args: { p_count?: number; p_embedding: string }
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          p_count?: number
+          p_embedding?: string
+          p_threshold?: number
+          query_embedding?: string
+        }
         Returns: {
           chunk_id: string
           content: string
@@ -2223,7 +2239,14 @@ export type Database = {
         }[]
       }
       rag_search_shared: {
-        Args: { p_count?: number; p_embedding: string }
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          p_count?: number
+          p_embedding?: string
+          p_threshold?: number
+          query_embedding?: string
+        }
         Returns: {
           chunk_id: string
           content: string
